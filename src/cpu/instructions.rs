@@ -94,6 +94,24 @@ lazy_static! {
 
         Instruction::new(0xCA, DEX, |cpu, mode| cpu.dex(mode), AddrMode::IMP, 2),
         Instruction::new(0x88, DEY, |cpu, mode| cpu.dey(mode), AddrMode::IMP, 2),
+        
+        Instruction::new(0xC9, CMP, |cpu, mode| cpu.cpa(mode), AddrMode::IMM, 2),
+        Instruction::new(0xC5, CMP, |cpu, mode| cpu.cpa(mode), AddrMode::ZP0, 3),
+        Instruction::new(0xD5, CMP, |cpu, mode| cpu.cpa(mode), AddrMode::ZPX, 4),
+        Instruction::new(0xCD, CMP, |cpu, mode| cpu.cpa(mode), AddrMode::ABS, 4),
+        Instruction::new(0xDD, CMP, |cpu, mode| cpu.cpa(mode), AddrMode::ABX, 4),
+        Instruction::new(0xD9, CMP, |cpu, mode| cpu.cpa(mode), AddrMode::ABY, 4),
+        Instruction::new(0xC1, CMP, |cpu, mode| cpu.cpa(mode), AddrMode::IZX, 6),
+        Instruction::new(0xD1, CMP, |cpu, mode| cpu.cpa(mode), AddrMode::IZY, 5),
+        
+        Instruction::new(0xE0, CPX, |cpu, mode| cpu.cpx(mode), AddrMode::IMM, 2),
+        Instruction::new(0xE4, CPX, |cpu, mode| cpu.cpx(mode), AddrMode::ZP0, 3),
+        Instruction::new(0xEC, CPX, |cpu, mode| cpu.cpx(mode), AddrMode::ABS, 4),
+
+        Instruction::new(0xC0, CPY, |cpu, mode| cpu.cpy(mode), AddrMode::IMM, 2),
+        Instruction::new(0xC4, CPY, |cpu, mode| cpu.cpy(mode), AddrMode::ZP0, 3),
+        Instruction::new(0xCC, CPY, |cpu, mode| cpu.cpy(mode), AddrMode::ABS, 4),
+
     ];
 
     pub static ref OPTABLE: HashMap<u8, &'static Instruction> = {

@@ -315,6 +315,30 @@ impl Cpu {
     fn dey(&mut self, mode: AddrMode) {
         self.set_y(self.y.wrapping_sub(1));
     }
+
+    fn cmp(&mut self, v1: u8, v2: u8) {
+        let result = v1.wrapping_sub(v2);
+        self.p.set(Flags::C, v1 >= v2);
+        self.set_z_n(result);
+    }
+
+    fn cpa(&mut self, mode: AddrMode) {
+        let addr = self.operand_addr(mode);
+        let v = self.fetch_operand(addr, mode);
+        self.cmp(self.a, v);
+    }
+
+    fn cpx(&mut self, mode: AddrMode) {
+        let addr = self.operand_addr(mode);
+        let v = self.fetch_operand(addr, mode);
+        self.cmp(self.x, v);
+    }
+
+    fn cpy(&mut self, mode: AddrMode) {
+        let addr = self.operand_addr(mode);
+        let v = self.fetch_operand(addr, mode);
+        self.cmp(self.y, v);
+    }
 }
 
 #[cfg(test)]
@@ -934,5 +958,53 @@ mod tests {
         assert!(cpu.p.contains(Flags::Z));
         assert_eq!(cpu.y, 0x00);
         assert_eq!(cpu.ins_cycles, 2);
+    }
+
+    #[test]
+    fn test_c9() {
+        let mut cpu = get_test_cpu(vec![0xC9, 0x05], vec![]);
+        cpu.a = 0x05;
+        cpu.execute();
+
+        assert!(cpu.p.contains(Flags::C));
+        assert!(cpu.p.contains(Flags::Z));
+        assert!(!cpu.p.contains(Flags::N));
+
+        let mut cpu = get_test_cpu(vec![0xC9, 0x0A], vec![]);
+        cpu.a = 0x05;
+        cpu.execute();
+
+        assert!(!cpu.p.contains(Flags::C));
+        assert!(!cpu.p.contains(Flags::Z));
+        assert!(cpu.p.contains(Flags::N));
+        assert_eq!(cpu.ins_cycles, 2);
+    }
+
+    #[test]
+    fn test_e4() {
+        let mut bus = TestBus::new(vec![0xE4, 0x05]);
+        bus.set_ram(0x05, 0x0A);
+        let mut cpu = get_test_cpu_from_bus(bus);
+        cpu.x = 0x05;
+        cpu.execute();
+
+        assert!(!cpu.p.contains(Flags::C));
+        assert!(!cpu.p.contains(Flags::Z));
+        assert!(cpu.p.contains(Flags::N));
+        assert_eq!(cpu.ins_cycles, 3);
+    }
+
+    #[test]
+    fn test_cc() {
+        let mut bus = TestBus::new(vec![0xCC, 0x05, 0x03]);
+        bus.set_ram(0x0305, 0x0A);
+        let mut cpu = get_test_cpu_from_bus(bus);
+        cpu.y = 0x05;
+        cpu.execute();
+
+        assert!(!cpu.p.contains(Flags::C));
+        assert!(!cpu.p.contains(Flags::Z));
+        assert!(cpu.p.contains(Flags::N));
+        assert_eq!(cpu.ins_cycles, 4);
     }
 }
