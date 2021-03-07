@@ -478,6 +478,71 @@ impl Cpu {
             }
         }
     }
+
+    fn bit(&mut self, mode: AddrMode) {
+        let addr = self.operand_addr(mode);
+        let v = self.fetch_operand(addr, mode);
+
+        self.p.set(Flags::Z, self.a & v == 0);
+        self.p.set(Flags::V, v & 0x40 != 0);
+        self.p.set(Flags::N, v & 0x80 != 0);
+    }
+
+    fn and(&mut self, mode: AddrMode) {
+        let addr = self.operand_addr(mode);
+        let v = self.fetch_operand(addr, mode);
+        self.set_a(self.a & v);
+    }
+
+    fn eor(&mut self, mode: AddrMode) {
+        let addr = self.operand_addr(mode);
+        let v = self.fetch_operand(addr, mode);
+        self.set_a(self.a ^ v);
+    }
+
+    fn ora(&mut self, mode: AddrMode) {
+        let addr = self.operand_addr(mode);
+        let v = self.fetch_operand(addr, mode);
+        self.set_a(self.a | v);
+    }
+
+    fn asl(&mut self, v: u8) -> u8 {
+        self.p.set(Flags::C, v & 0x80 != 0);
+        let result = v << 1;
+        self.set_z_n(result);
+        result
+    }
+
+    fn asl_acc(&mut self, _mode: AddrMode) {
+        let v = self.asl(self.a);
+        self.set_a(v);
+    }
+
+    fn asl_mem(&mut self, mode: AddrMode) {
+        let addr = self.operand_addr(mode);
+        let v = self.fetch_operand(addr, mode);
+        let result = self.asl(v);
+        self.mem_write(addr, result);
+    }
+
+    fn lsr(&mut self, v: u8) -> u8 {
+        self.p.set(Flags::C, v & 0x01 != 0);
+        let result = v >> 1;
+        self.set_z_n(result);
+        result
+    }
+
+    fn lsr_acc(&mut self, _mode: AddrMode) {
+        let v = self.lsr(self.a);
+        self.set_a(v);
+    }
+
+    fn lsr_mem(&mut self, mode: AddrMode) {
+        let addr = self.operand_addr(mode);
+        let v = self.fetch_operand(addr, mode);
+        let result = self.lsr(v);
+        self.mem_write(addr, result);
+    }
 }
 
 #[cfg(test)]
@@ -1415,5 +1480,107 @@ mod tests {
         cpu.execute();
 
         assert_eq!(cpu.pc, 0x2001);
+        assert_eq!(cpu.ins_cycles, 2);
+    }
+
+    #[test]
+    fn test_24() {
+        let mut bus = TestBus::new(vec![0x24, 0xFE]);
+        bus.set_ram(0xFE, 0b0010_0110);
+        let mut cpu = get_test_cpu_from_bus(bus);
+        cpu.a = 0b1101_1001;
+        cpu.execute();
+
+        assert!(cpu.p.contains(Flags::Z));
+        assert_eq!(cpu.ins_cycles, 3);
+
+        let mut bus = TestBus::new(vec![0x24, 0xFE]);
+        bus.set_ram(0xFE, 0b1100_0110);
+        let mut cpu = get_test_cpu_from_bus(bus);
+        cpu.a = 0b1101_1001;
+        cpu.execute();
+
+        assert!(!cpu.p.contains(Flags::Z));
+        assert!(cpu.p.contains(Flags::V));
+        assert!(cpu.p.contains(Flags::N));
+        assert_eq!(cpu.ins_cycles, 3);
+    }
+
+    #[test]
+    fn test_29() {
+        let mut cpu = get_test_cpu(vec![0x29, 0x8E], vec![]);
+        cpu.a = 0x3C;
+        cpu.execute();
+
+        assert!(!cpu.p.contains(Flags::N));
+        assert!(!cpu.p.contains(Flags::Z));
+        assert_eq!(cpu.a, 0x3C & 0x8E);
+        assert_eq!(cpu.ins_cycles, 2);
+    }
+
+    #[test]
+    fn test_49() {
+        let mut cpu = get_test_cpu(vec![0x49, 0x8E], vec![]);
+        cpu.a = 0x3C;
+        cpu.execute();
+
+        assert!(cpu.p.contains(Flags::N));
+        assert!(!cpu.p.contains(Flags::Z));
+        assert_eq!(cpu.a, 0x3C ^ 0x8E);
+        assert_eq!(cpu.ins_cycles, 2);
+    }
+
+    #[test]
+    fn test_09() {
+        let mut cpu = get_test_cpu(vec![0x09, 0x8E], vec![]);
+        cpu.a = 0x3C;
+        cpu.execute();
+
+        assert!(cpu.p.contains(Flags::N));
+        assert!(!cpu.p.contains(Flags::Z));
+        assert_eq!(cpu.a, 0x3C | 0x8E);
+        assert_eq!(cpu.ins_cycles, 2);
+    }
+
+    #[test]
+    fn test_0a() {
+        let mut cpu = get_test_cpu(vec![0x0A], vec![]);
+        cpu.a = 0xC1;
+        cpu.execute();
+
+        assert!(cpu.p.contains(Flags::C));
+        assert_eq!(cpu.a, 0xC1 << 1);
+        assert_eq!(cpu.ins_cycles, 2);
+    }
+
+    #[test]
+    fn test_06() {
+        let mut cpu = get_test_cpu(vec![0x06, 0x00], vec![0x67]);
+        cpu.execute();
+
+        assert!(!cpu.p.contains(Flags::C));
+        assert_eq!(cpu.mem_read(0x00), 0x67 << 1);
+        assert_eq!(cpu.ins_cycles, 5);
+    }
+
+    #[test]
+    fn test_4a() {
+        let mut cpu = get_test_cpu(vec![0x4A], vec![]);
+        cpu.a = 0xC0;
+        cpu.execute();
+
+        assert!(!cpu.p.contains(Flags::C));
+        assert_eq!(cpu.a, 0xC1 >> 1);
+        assert_eq!(cpu.ins_cycles, 2);
+    }
+
+    #[test]
+    fn test_46() {
+        let mut cpu = get_test_cpu(vec![0x46, 0x00], vec![0x67]);
+        cpu.execute();
+
+        assert!(cpu.p.contains(Flags::C));
+        assert_eq!(cpu.mem_read(0x00), 0x67 >> 1);
+        assert_eq!(cpu.ins_cycles, 5);
     }
 }

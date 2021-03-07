@@ -135,6 +135,48 @@ lazy_static! {
 
         Instruction::new(0xEA, NOP, |cpu, mode| cpu.nop(mode), AddrMode::IMP, 2),
 
+        Instruction::new(0x24, BIT, |cpu, mode| cpu.bit(mode), AddrMode::ZP0, 3),
+        Instruction::new(0x2C, BIT, |cpu, mode| cpu.bit(mode), AddrMode::ABS, 4),
+
+        Instruction::new(0x29, AND, |cpu, mode| cpu.and(mode), AddrMode::IMM, 2),
+        Instruction::new(0x25, AND, |cpu, mode| cpu.and(mode), AddrMode::ZP0, 3),
+        Instruction::new(0x35, AND, |cpu, mode| cpu.and(mode), AddrMode::ZPX, 4),
+        Instruction::new(0x2D, AND, |cpu, mode| cpu.and(mode), AddrMode::ABS, 4),
+        Instruction::new(0x3D, AND, |cpu, mode| cpu.and(mode), AddrMode::ABX, 4),
+        Instruction::new(0x39, AND, |cpu, mode| cpu.and(mode), AddrMode::ABY, 4),
+        Instruction::new(0x21, AND, |cpu, mode| cpu.and(mode), AddrMode::IZX, 6),
+        Instruction::new(0x31, AND, |cpu, mode| cpu.and(mode), AddrMode::IZY, 5),
+
+        Instruction::new(0x49, EOR, |cpu, mode| cpu.eor(mode), AddrMode::IMM, 2),
+        Instruction::new(0x45, EOR, |cpu, mode| cpu.eor(mode), AddrMode::ZP0, 3),
+        Instruction::new(0x55, EOR, |cpu, mode| cpu.eor(mode), AddrMode::ZPX, 4),
+        Instruction::new(0x4D, EOR, |cpu, mode| cpu.eor(mode), AddrMode::ABS, 4),
+        Instruction::new(0x5D, EOR, |cpu, mode| cpu.eor(mode), AddrMode::ABX, 4),
+        Instruction::new(0x59, EOR, |cpu, mode| cpu.eor(mode), AddrMode::ABY, 4),
+        Instruction::new(0x41, EOR, |cpu, mode| cpu.eor(mode), AddrMode::IZX, 6),
+        Instruction::new(0x51, EOR, |cpu, mode| cpu.eor(mode), AddrMode::IZY, 5),
+
+        Instruction::new(0x09, ORA, |cpu, mode| cpu.ora(mode), AddrMode::IMM, 2),
+        Instruction::new(0x05, ORA, |cpu, mode| cpu.ora(mode), AddrMode::ZP0, 3),
+        Instruction::new(0x15, ORA, |cpu, mode| cpu.ora(mode), AddrMode::ZPX, 4),
+        Instruction::new(0x0D, ORA, |cpu, mode| cpu.ora(mode), AddrMode::ABS, 4),
+        Instruction::new(0x1D, ORA, |cpu, mode| cpu.ora(mode), AddrMode::ABX, 4),
+        Instruction::new(0x19, ORA, |cpu, mode| cpu.ora(mode), AddrMode::ABY, 4),
+        Instruction::new(0x01, ORA, |cpu, mode| cpu.ora(mode), AddrMode::IZX, 6),
+        Instruction::new(0x11, ORA, |cpu, mode| cpu.ora(mode), AddrMode::IZY, 5),
+
+        Instruction::new(0x0A, ASL, |cpu, mode| cpu.asl_acc(mode), AddrMode::IMP, 2),
+        Instruction::new(0x06, ASL, |cpu, mode| cpu.asl_mem(mode), AddrMode::ZP0, 5),
+        Instruction::new(0x16, ASL, |cpu, mode| cpu.asl_mem(mode), AddrMode::ZPX, 6),
+        Instruction::new(0x0E, ASL, |cpu, mode| cpu.asl_mem(mode), AddrMode::ABS, 6),
+        Instruction::new(0x1E, ASL, |cpu, mode| cpu.asl_mem(mode), AddrMode::ABXW, 7),
+
+        Instruction::new(0x4A, LSR, |cpu, mode| cpu.lsr_acc(mode), AddrMode::IMP, 2),
+        Instruction::new(0x46, LSR, |cpu, mode| cpu.lsr_mem(mode), AddrMode::ZP0, 5),
+        Instruction::new(0x56, LSR, |cpu, mode| cpu.lsr_mem(mode), AddrMode::ZPX, 6),
+        Instruction::new(0x4E, LSR, |cpu, mode| cpu.lsr_mem(mode), AddrMode::ABS, 6),
+        Instruction::new(0x5E, LSR, |cpu, mode| cpu.lsr_mem(mode), AddrMode::ABXW, 7),
+
     ];
 
     pub static ref OPTABLE: HashMap<u8, &'static Instruction> = {
