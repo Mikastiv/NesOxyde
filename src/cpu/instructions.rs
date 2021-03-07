@@ -36,6 +36,14 @@ lazy_static! {
         Instruction::new(0xA1, LDA, |cpu, mode| cpu.lda(mode), AddrMode::IZX, 6),
         Instruction::new(0xB1, LDA, |cpu, mode| cpu.lda(mode), AddrMode::IZY, 5),
 
+        Instruction::new(0x85, STA, |cpu, mode| cpu.sta(mode), AddrMode::ZP0, 3),
+        Instruction::new(0x95, STA, |cpu, mode| cpu.sta(mode), AddrMode::ZPX, 4),
+        Instruction::new(0x8D, STA, |cpu, mode| cpu.sta(mode), AddrMode::ABS, 4),
+        Instruction::new(0x9D, STA, |cpu, mode| cpu.sta(mode), AddrMode::ABXW, 5),
+        Instruction::new(0x99, STA, |cpu, mode| cpu.sta(mode), AddrMode::ABYW, 5),
+        Instruction::new(0x81, STA, |cpu, mode| cpu.sta(mode), AddrMode::IZX, 6),
+        Instruction::new(0x91, STA, |cpu, mode| cpu.sta(mode), AddrMode::IZYW, 6),
+
         Instruction::new(0xAA, TAX, |cpu, mode| cpu.tax(mode), AddrMode::IMP, 2),
     ];
 

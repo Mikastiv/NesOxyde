@@ -79,6 +79,10 @@ impl Cpu {
         u16::from_le_bytes([lo, hi])
     }
 
+    fn mem_write(&mut self, addr: u16, data: u8) {
+        self.bus.write(addr, data);
+    }
+
     fn read_byte(&mut self) -> u8 {
         let b = self.mem_read(self.pc);
         self.increment_pc();
@@ -117,11 +121,7 @@ impl Cpu {
             }
             AddrMode::ABXW => {
                 let base = self.read_word();
-                let addr = base.wrapping_add(self.x as u16);
-
-                self.ins_cycles += 1;
-
-                addr
+                base.wrapping_add(self.x as u16)
             }
             AddrMode::ABY => {
                 let base = self.read_word();
@@ -135,11 +135,7 @@ impl Cpu {
             }
             AddrMode::ABYW => {
                 let base = self.read_word();
-                let addr = base.wrapping_add(self.y as u16);
-
-                self.ins_cycles += 1;
-
-                addr
+                base.wrapping_add(self.y as u16)
             }
             AddrMode::IZX => {
                 let base = self.read_byte();
@@ -164,11 +160,7 @@ impl Cpu {
                 let ptr = self.read_byte();
                 let lo = self.mem_read(ptr as u16);
                 let hi = self.mem_read(ptr.wrapping_add(1) as u16);
-                let addr = u16::from_le_bytes([lo, hi]).wrapping_add(self.y as u16);
-
-                self.ins_cycles += 1;
-
-                addr
+                u16::from_le_bytes([lo, hi]).wrapping_add(self.y as u16)
             }
         }
     }
@@ -205,6 +197,11 @@ impl Cpu {
         self.set_a(v);
     }
 
+    fn sta(&mut self, mode: AddrMode) {
+        let addr = self.operand_addr(mode);
+        self.mem_write(addr, self.a);
+    }
+
     fn tax(&mut self, mode: AddrMode) {
         self.x = self.a;
         self.set_z_n(self.x);
@@ -234,6 +231,17 @@ mod tests {
     }
 
     #[test]
+    fn test_aa() {
+        let mut cpu = get_test_cpu(vec![0xAA], vec![0]);
+        cpu.a = 0x20;
+        cpu.execute();
+
+        assert_eq!(cpu.x, cpu.a);
+        assert_eq!(cpu.x, 0x20);
+        assert_eq!(cpu.ins_cycles, 2);
+    }
+
+    #[test]
     fn test_a9() {
         let mut cpu = get_test_cpu(vec![0xA9, 0x05], vec![0]);
         cpu.execute();
@@ -255,17 +263,6 @@ mod tests {
         assert_eq!(cpu.a, 0x80);
         assert_eq!(cpu.p.contains(Flags::N), true);
         assert_eq!(cpu.p.contains(Flags::Z), false);
-    }
-
-    #[test]
-    fn test_aa() {
-        let mut cpu = get_test_cpu(vec![0xAA], vec![0]);
-        cpu.a = 0x20;
-        cpu.execute();
-
-        assert_eq!(cpu.x, cpu.a);
-        assert_eq!(cpu.x, 0x20);
-        assert_eq!(cpu.ins_cycles, 2);
     }
 
     #[test]
@@ -415,5 +412,26 @@ mod tests {
 
         assert_eq!(cpu.a, 0xFE);
         assert_eq!(cpu.ins_cycles, 6);
+    }
+
+    #[test]
+    fn test_85() {
+        let mut cpu = get_test_cpu(vec![0x85, 0x03], vec![]);
+        cpu.a = 0xDE;
+        cpu.execute();
+
+        assert_eq!(cpu.mem_read(0x03), 0xDE);
+        assert_eq!(cpu.ins_cycles, 3);
+    }
+
+    #[test]
+    fn test_9d() {
+        let mut cpu = get_test_cpu(vec![0x9D, 0x03, 0x04], vec![]);
+        cpu.a = 0xDE;
+        cpu.x = 0x0A;
+        cpu.execute();
+
+        assert_eq!(cpu.mem_read(0x040D), 0xDE);
+        assert_eq!(cpu.ins_cycles, 5);
     }
 }
