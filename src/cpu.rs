@@ -312,4 +312,67 @@ mod tests {
         assert_eq!(cpu.p.contains(Flags::N), false);
         assert_eq!(cpu.p.contains(Flags::Z), false);
     }
+
+    #[test]
+    fn test_ad() {
+        let mut bus = TestBus::new(vec![0xAD, 0x05, 0x02]);
+        bus.set_ram(0x0205, 0xFE);
+        let mut cpu = get_test_cpu_from_bus(bus);
+
+        cpu.execute();
+
+        assert_eq!(cpu.a, 0xFE);
+    }
+
+    #[test]
+    fn test_bd() {
+        let mut bus = TestBus::new(vec![0xBD, 0x05, 0x02]);
+        bus.set_ram(0x020A, 0xFE);
+        let mut cpu = get_test_cpu_from_bus(bus);
+
+        cpu.x = 5;
+        cpu.execute();
+
+        assert_eq!(cpu.a, 0xFE);
+    }
+
+    #[test]
+    fn test_b9() {
+        let mut bus = TestBus::new(vec![0xB9, 0x05, 0x02]);
+        bus.set_ram(0x020A, 0xFE);
+        let mut cpu = get_test_cpu_from_bus(bus);
+
+        cpu.y = 5;
+        cpu.execute();
+
+        assert_eq!(cpu.a, 0xFE);
+    }
+
+    #[test]
+    fn test_a1() {
+        let mut bus = TestBus::new(vec![0xA1, 0x05]);
+        bus.set_ram(0x0A, 0x00);
+        bus.set_ram(0x0B, 0x02);
+        bus.set_ram(0x0200, 0xFE);
+        let mut cpu = get_test_cpu_from_bus(bus);
+
+        cpu.x = 5;
+        cpu.execute();
+
+        assert_eq!(cpu.a, 0xFE);
+    }
+
+    #[test]
+    fn test_b1() {
+        let mut bus = TestBus::new(vec![0xB1, 0x05]);
+        bus.set_ram(0x05, 0x00);
+        bus.set_ram(0x06, 0x02);
+        bus.set_ram(0x0205, 0xFE);
+        let mut cpu = get_test_cpu_from_bus(bus);
+
+        cpu.y = 5;
+        cpu.execute();
+
+        assert_eq!(cpu.a, 0xFE);
+    }
 }
