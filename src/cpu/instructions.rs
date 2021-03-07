@@ -78,6 +78,22 @@ lazy_static! {
         Instruction::new(0x38, SEC, |cpu, mode| cpu.sec(mode), AddrMode::IMP, 2),
         Instruction::new(0xF8, SED, |cpu, mode| cpu.sed(mode), AddrMode::IMP, 2),
         Instruction::new(0x78, SEI, |cpu, mode| cpu.sei(mode), AddrMode::IMP, 2),
+
+        Instruction::new(0xE6, INC, |cpu, mode| cpu.inc(mode), AddrMode::ZP0, 5),
+        Instruction::new(0xF6, INC, |cpu, mode| cpu.inc(mode), AddrMode::ZPX, 6),
+        Instruction::new(0xEE, INC, |cpu, mode| cpu.inc(mode), AddrMode::ABS, 6),
+        Instruction::new(0xFE, INC, |cpu, mode| cpu.inc(mode), AddrMode::ABXW, 7),
+
+        Instruction::new(0xE8, INX, |cpu, mode| cpu.inx(mode), AddrMode::IMP, 2),
+        Instruction::new(0xC8, INY, |cpu, mode| cpu.iny(mode), AddrMode::IMP, 2),
+
+        Instruction::new(0xC6, DEC, |cpu, mode| cpu.dec(mode), AddrMode::ZP0, 5),
+        Instruction::new(0xD6, DEC, |cpu, mode| cpu.dec(mode), AddrMode::ZPX, 6),
+        Instruction::new(0xCE, DEC, |cpu, mode| cpu.dec(mode), AddrMode::ABS, 6),
+        Instruction::new(0xDE, DEC, |cpu, mode| cpu.dec(mode), AddrMode::ABXW, 7),
+
+        Instruction::new(0xCA, DEX, |cpu, mode| cpu.dex(mode), AddrMode::IMP, 2),
+        Instruction::new(0x88, DEY, |cpu, mode| cpu.dey(mode), AddrMode::IMP, 2),
     ];
 
     pub static ref OPTABLE: HashMap<u8, &'static Instruction> = {
