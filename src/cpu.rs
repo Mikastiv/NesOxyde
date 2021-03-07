@@ -217,6 +217,10 @@ impl Cpu {
         old & 0xFF00 != new & 0xFF00
     }
 
+    fn wrap(old: u16, new: u16) -> u16 {
+        (old & 0xFF00) | (new & 0x00FF)
+    }
+
     fn lda(&mut self, mode: AddrMode) {
         let addr = self.operand_addr(mode);
         let v = self.fetch_operand(addr, mode);
@@ -386,6 +390,18 @@ impl Cpu {
 
     fn bvc(&mut self, mode: AddrMode) {
         self.branch(mode, !self.p.contains(Flags::V));
+    }
+
+    fn jmp_abs(&mut self, mode: AddrMode) {
+        let addr = self.operand_addr(mode);
+        self.pc = addr;
+    }
+
+    fn jmp_ind(&mut self, mode: AddrMode) {
+        let addr = self.operand_addr(mode);
+        let lo = self.mem_read(addr);
+        let hi = self.mem_read(Self::wrap(addr, addr.wrapping_add(1)));
+        self.pc = u16::from_le_bytes([lo, hi]);
     }
 }
 
@@ -1114,10 +1130,10 @@ mod tests {
     fn test_d0() {
         let mut cpu = get_test_cpu(vec![0xD0, 0x05], vec![]);
         cpu.execute();
-        
+
         assert_eq!(cpu.pc, 0x2002 + 0x05);
         assert_eq!(cpu.ins_cycles, 3);
-        
+
         let mut cpu = get_test_cpu(vec![0xD0, !0x05 + 1], vec![]);
         cpu.p.insert(Flags::Z);
         cpu.execute();
@@ -1131,10 +1147,10 @@ mod tests {
         let mut cpu = get_test_cpu(vec![0x30, 0x05], vec![]);
         cpu.p.insert(Flags::N);
         cpu.execute();
-        
+
         assert_eq!(cpu.pc, 0x2002 + 0x05);
         assert_eq!(cpu.ins_cycles, 3);
-        
+
         let mut cpu = get_test_cpu(vec![0x30, !0x05 + 1], vec![]);
         cpu.execute();
 
@@ -1146,10 +1162,10 @@ mod tests {
     fn test_10() {
         let mut cpu = get_test_cpu(vec![0x10, 0x05], vec![]);
         cpu.execute();
-        
+
         assert_eq!(cpu.pc, 0x2002 + 0x05);
         assert_eq!(cpu.ins_cycles, 3);
-        
+
         let mut cpu = get_test_cpu(vec![0x10, !0x05 + 1], vec![]);
         cpu.p.insert(Flags::N);
         cpu.execute();
@@ -1162,10 +1178,10 @@ mod tests {
     fn test_50() {
         let mut cpu = get_test_cpu(vec![0x50, 0x05], vec![]);
         cpu.execute();
-        
+
         assert_eq!(cpu.pc, 0x2002 + 0x05);
         assert_eq!(cpu.ins_cycles, 3);
-        
+
         let mut cpu = get_test_cpu(vec![0x50, !0x05 + 1], vec![]);
         cpu.p.insert(Flags::V);
         cpu.execute();
@@ -1179,14 +1195,42 @@ mod tests {
         let mut cpu = get_test_cpu(vec![0x70, 0x05], vec![]);
         cpu.p.insert(Flags::V);
         cpu.execute();
-        
+
         assert_eq!(cpu.pc, 0x2002 + 0x05);
         assert_eq!(cpu.ins_cycles, 3);
-        
+
         let mut cpu = get_test_cpu(vec![0x70, !0x05 + 1], vec![]);
         cpu.execute();
 
         assert_eq!(cpu.pc, 0x2002);
         assert_eq!(cpu.ins_cycles, 2);
+    }
+
+    #[test]
+    fn test_4c() {
+        let mut cpu = get_test_cpu(vec![0x4C, 0x34, 0x02], vec![]);
+        cpu.execute();
+
+        assert_eq!(cpu.pc, 0x0234);
+    }
+
+    #[test]
+    fn test_6c() {
+        let mut bus = TestBus::new(vec![0x6C, 0x05, 0x03]);
+        bus.set_ram(0x0305, 0x0A);
+        bus.set_ram(0x0306, 0x06);
+        let mut cpu = get_test_cpu_from_bus(bus);
+        cpu.execute();
+
+        assert_eq!(cpu.pc, 0x060A);
+
+        // wrap bug test
+        let mut bus = TestBus::new(vec![0x6C, 0xFF, 0x10]);
+        bus.set_ram(0x10FF, 0x0A);
+        bus.set_ram(0x1000, 0x06);
+        let mut cpu = get_test_cpu_from_bus(bus);
+        cpu.execute();
+
+        assert_eq!(cpu.pc, 0x060A);
     }
 }

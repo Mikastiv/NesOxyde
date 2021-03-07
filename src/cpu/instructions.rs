@@ -121,6 +121,9 @@ lazy_static! {
         Instruction::new(0x50, BVC, |cpu, mode| cpu.bvc(mode), AddrMode::REL, 2),
         Instruction::new(0x70, BVS, |cpu, mode| cpu.bvs(mode), AddrMode::REL, 2),
 
+        Instruction::new(0x4C, JMP, |cpu, mode| cpu.jmp_abs(mode), AddrMode::ABS, 3),
+        Instruction::new(0x6C, JMP, |cpu, mode| cpu.jmp_ind(mode), AddrMode::IND, 3),
+
     ];
 
     pub static ref OPTABLE: HashMap<u8, &'static Instruction> = {
