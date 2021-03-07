@@ -36,6 +36,18 @@ lazy_static! {
         Instruction::new(0xA1, LDA, |cpu, mode| cpu.lda(mode), AddrMode::IZX, 6),
         Instruction::new(0xB1, LDA, |cpu, mode| cpu.lda(mode), AddrMode::IZY, 5),
 
+        Instruction::new(0xA2, LDX, |cpu, mode| cpu.ldx(mode), AddrMode::IMM, 2),
+        Instruction::new(0xA6, LDX, |cpu, mode| cpu.ldx(mode), AddrMode::ZP0, 3),
+        Instruction::new(0xB6, LDX, |cpu, mode| cpu.ldx(mode), AddrMode::ZPY, 4),
+        Instruction::new(0xAE, LDX, |cpu, mode| cpu.ldx(mode), AddrMode::ABS, 4),
+        Instruction::new(0xBE, LDX, |cpu, mode| cpu.ldx(mode), AddrMode::ABY, 4),
+
+        Instruction::new(0xA0, LDY, |cpu, mode| cpu.ldy(mode), AddrMode::IMM, 2),
+        Instruction::new(0xA4, LDY, |cpu, mode| cpu.ldy(mode), AddrMode::ZP0, 3),
+        Instruction::new(0xB4, LDY, |cpu, mode| cpu.ldy(mode), AddrMode::ZPY, 4),
+        Instruction::new(0xAC, LDY, |cpu, mode| cpu.ldy(mode), AddrMode::ABS, 4),
+        Instruction::new(0xBC, LDY, |cpu, mode| cpu.ldy(mode), AddrMode::ABY, 4),
+
         Instruction::new(0x85, STA, |cpu, mode| cpu.sta(mode), AddrMode::ZP0, 3),
         Instruction::new(0x95, STA, |cpu, mode| cpu.sta(mode), AddrMode::ZPX, 4),
         Instruction::new(0x8D, STA, |cpu, mode| cpu.sta(mode), AddrMode::ABS, 4),
@@ -44,7 +56,23 @@ lazy_static! {
         Instruction::new(0x81, STA, |cpu, mode| cpu.sta(mode), AddrMode::IZX, 6),
         Instruction::new(0x91, STA, |cpu, mode| cpu.sta(mode), AddrMode::IZYW, 6),
 
+        Instruction::new(0x86, STX, |cpu, mode| cpu.stx(mode), AddrMode::ZP0, 3),
+        Instruction::new(0x96, STX, |cpu, mode| cpu.stx(mode), AddrMode::ZPY, 4),
+        Instruction::new(0x8E, STX, |cpu, mode| cpu.stx(mode), AddrMode::ABS, 4),
+
+        Instruction::new(0x84, STY, |cpu, mode| cpu.sty(mode), AddrMode::ZP0, 3),
+        Instruction::new(0x94, STY, |cpu, mode| cpu.sty(mode), AddrMode::ZPY, 4),
+        Instruction::new(0x8C, STY, |cpu, mode| cpu.sty(mode), AddrMode::ABS, 4),
+
         Instruction::new(0xAA, TAX, |cpu, mode| cpu.tax(mode), AddrMode::IMP, 2),
+        
+        Instruction::new(0x18, CLC, |cpu, mode| cpu.clc(mode), AddrMode::IMP, 2),
+        Instruction::new(0xD8, CLD, |cpu, mode| cpu.cld(mode), AddrMode::IMP, 2),
+        Instruction::new(0x58, CLI, |cpu, mode| cpu.cli(mode), AddrMode::IMP, 2),
+        Instruction::new(0xB8, CLV, |cpu, mode| cpu.clv(mode), AddrMode::IMP, 2),
+        Instruction::new(0x38, SEC, |cpu, mode| cpu.sec(mode), AddrMode::IMP, 2),
+        Instruction::new(0xF8, SED, |cpu, mode| cpu.sed(mode), AddrMode::IMP, 2),
+        Instruction::new(0x78, SEI, |cpu, mode| cpu.sei(mode), AddrMode::IMP, 2),
     ];
 
     pub static ref OPTABLE: HashMap<u8, &'static Instruction> = {

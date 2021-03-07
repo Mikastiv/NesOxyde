@@ -187,6 +187,16 @@ impl Cpu {
         self.set_z_n(v);
     }
 
+    fn set_x(&mut self, v: u8) {
+        self.x = v;
+        self.set_z_n(v);
+    }
+
+    fn set_y(&mut self, v: u8) {
+        self.y = v;
+        self.set_z_n(v);
+    }
+
     fn page_crossed(old: u16, new: u16) -> bool {
         old & 0xFF00 != new & 0xFF00
     }
@@ -197,14 +207,63 @@ impl Cpu {
         self.set_a(v);
     }
 
+    fn ldx(&mut self, mode: AddrMode) {
+        let addr = self.operand_addr(mode);
+        let v = self.fetch_operand(addr, mode);
+        self.set_x(v);
+    }
+
+    fn ldy(&mut self, mode: AddrMode) {
+        let addr = self.operand_addr(mode);
+        let v = self.fetch_operand(addr, mode);
+        self.set_y(v);
+    }
+
     fn sta(&mut self, mode: AddrMode) {
         let addr = self.operand_addr(mode);
         self.mem_write(addr, self.a);
     }
 
+    fn stx(&mut self, mode: AddrMode) {
+        let addr = self.operand_addr(mode);
+        self.mem_write(addr, self.x);
+    }
+
+    fn sty(&mut self, mode: AddrMode) {
+        let addr = self.operand_addr(mode);
+        self.mem_write(addr, self.y);
+    }
+
+    fn clc(&mut self, mode: AddrMode) {
+        self.p.remove(Flags::C);
+    }
+
+    fn cld(&mut self, mode: AddrMode) {
+        self.p.remove(Flags::D);
+    }
+
+    fn cli(&mut self, mode: AddrMode) {
+        self.p.remove(Flags::I);
+    }
+
+    fn clv(&mut self, mode: AddrMode) {
+        self.p.remove(Flags::V);
+    }
+
+    fn sec(&mut self, mode: AddrMode) {
+        self.p.insert(Flags::C);
+    }
+
+    fn sed(&mut self, mode: AddrMode) {
+        self.p.insert(Flags::D);
+    }
+
+    fn sei(&mut self, mode: AddrMode) {
+        self.p.insert(Flags::I);
+    }
+
     fn tax(&mut self, mode: AddrMode) {
-        self.x = self.a;
-        self.set_z_n(self.x);
+        self.set_x(self.a);
     }
 }
 
@@ -415,6 +474,138 @@ mod tests {
     }
 
     #[test]
+    fn test_a2() {
+        let mut cpu = get_test_cpu(vec![0xA2, 0x05], vec![0]);
+        cpu.execute();
+
+        assert_eq!(cpu.x, 0x05);
+        assert_eq!(cpu.p.contains(Flags::N), false);
+        assert_eq!(cpu.p.contains(Flags::Z), false);
+
+        let mut cpu = get_test_cpu(vec![0xA2, 0x00], vec![0]);
+        cpu.execute();
+
+        assert_eq!(cpu.x, 0x00);
+        assert_eq!(cpu.p.contains(Flags::N), false);
+        assert_eq!(cpu.p.contains(Flags::Z), true);
+
+        let mut cpu = get_test_cpu(vec![0xA2, 0x80], vec![0]);
+        cpu.execute();
+
+        assert_eq!(cpu.x, 0x80);
+        assert_eq!(cpu.p.contains(Flags::N), true);
+        assert_eq!(cpu.p.contains(Flags::Z), false);
+    }
+
+    #[test]
+    fn test_a6() {
+        let mut cpu = get_test_cpu(vec![0xA6, 0x02], vec![0x00, 0x00, 0x23]);
+        cpu.execute();
+
+        assert_eq!(cpu.x, 0x23);
+        assert_eq!(cpu.p.contains(Flags::N), false);
+        assert_eq!(cpu.p.contains(Flags::Z), false);
+
+        let mut cpu = get_test_cpu(vec![0xA6, 0x00], vec![0x00]);
+        cpu.execute();
+
+        assert_eq!(cpu.x, 0x00);
+        assert_eq!(cpu.p.contains(Flags::N), false);
+        assert_eq!(cpu.p.contains(Flags::Z), true);
+
+        let mut cpu = get_test_cpu(vec![0xA6, 0x00], vec![0x85]);
+        cpu.execute();
+
+        assert_eq!(cpu.x, 0x85);
+        assert_eq!(cpu.p.contains(Flags::N), true);
+        assert_eq!(cpu.p.contains(Flags::Z), false);
+        assert_eq!(cpu.ins_cycles, 3);
+    }
+
+    #[test]
+    fn test_b6() {
+        let mut bus = TestBus::new(vec![0xB6, 0x00]);
+        bus.set_ram(0xFF, 0x50);
+        let mut cpu = get_test_cpu_from_bus(bus);
+
+        cpu.y = 0xFF;
+        cpu.execute();
+
+        assert_eq!(cpu.x, 0x50);
+        assert_eq!(cpu.p.contains(Flags::N), false);
+        assert_eq!(cpu.p.contains(Flags::Z), false);
+
+        let mut cpu = get_test_cpu(vec![0xB6, 0x01], vec![0x50]);
+
+        cpu.y = 0xFF;
+        cpu.execute();
+
+        assert_eq!(cpu.x, 0x50);
+        assert_eq!(cpu.p.contains(Flags::N), false);
+        assert_eq!(cpu.p.contains(Flags::Z), false);
+        assert_eq!(cpu.ins_cycles, 4);
+    }
+
+    #[test]
+    fn test_ae() {
+        let mut bus = TestBus::new(vec![0xAE, 0x05, 0x02]);
+        bus.set_ram(0x0205, 0xFE);
+        let mut cpu = get_test_cpu_from_bus(bus);
+
+        cpu.execute();
+
+        assert_eq!(cpu.x, 0xFE);
+        assert_eq!(cpu.ins_cycles, 4);
+    }
+
+    #[test]
+    fn test_be() {
+        let mut bus = TestBus::new(vec![0xBE, 0x05, 0x02]);
+        bus.set_ram(0x020A, 0xFE);
+        let mut cpu = get_test_cpu_from_bus(bus);
+
+        cpu.y = 5;
+        cpu.execute();
+
+        assert_eq!(cpu.x, 0xFE);
+        assert_eq!(cpu.ins_cycles, 4);
+
+        let mut bus = TestBus::new(vec![0xBE, 0xFF, 0x05]);
+        bus.set_ram(0x0604, 0xFE);
+        let mut cpu = get_test_cpu_from_bus(bus);
+
+        cpu.y = 5;
+        cpu.execute();
+
+        assert_eq!(cpu.x, 0xFE);
+        assert_eq!(cpu.ins_cycles, 5);
+    }
+
+    #[test]
+    fn test_a0() {
+        let mut cpu = get_test_cpu(vec![0xA0, 0x05], vec![0]);
+        cpu.execute();
+
+        assert_eq!(cpu.y, 0x05);
+        assert_eq!(cpu.p.contains(Flags::N), false);
+        assert_eq!(cpu.p.contains(Flags::Z), false);
+
+        let mut cpu = get_test_cpu(vec![0xA0, 0x00], vec![0]);
+        cpu.execute();
+
+        assert_eq!(cpu.y, 0x00);
+        assert_eq!(cpu.p.contains(Flags::N), false);
+        assert_eq!(cpu.p.contains(Flags::Z), true);
+
+        let mut cpu = get_test_cpu(vec![0xA0, 0x80], vec![0]);
+        cpu.execute();
+
+        assert_eq!(cpu.y, 0x80);
+        assert_eq!(cpu.p.contains(Flags::N), true);
+        assert_eq!(cpu.p.contains(Flags::Z), false);
+    }
+
+    #[test]
     fn test_85() {
         let mut cpu = get_test_cpu(vec![0x85, 0x03], vec![]);
         cpu.a = 0xDE;
@@ -433,5 +624,92 @@ mod tests {
 
         assert_eq!(cpu.mem_read(0x040D), 0xDE);
         assert_eq!(cpu.ins_cycles, 5);
+    }
+
+    #[test]
+    fn test_86() {
+        let mut cpu = get_test_cpu(vec![0x86, 0x03], vec![]);
+        cpu.x = 0xDE;
+        cpu.execute();
+
+        assert_eq!(cpu.mem_read(0x03), 0xDE);
+        assert_eq!(cpu.ins_cycles, 3);
+    }
+
+    #[test]
+    fn test_84() {
+        let mut cpu = get_test_cpu(vec![0x84, 0x03], vec![]);
+        cpu.y = 0xDE;
+        cpu.execute();
+
+        assert_eq!(cpu.mem_read(0x03), 0xDE);
+        assert_eq!(cpu.ins_cycles, 3);
+    }
+
+    #[test]
+    fn test_18() {
+        let mut cpu = get_test_cpu(vec![0x18], vec![]);
+        cpu.p.insert(Flags::C);
+        cpu.execute();
+
+        assert!(!cpu.p.contains(Flags::C));
+        assert_eq!(cpu.ins_cycles, 2);
+    }
+
+    #[test]
+    fn test_d8() {
+        let mut cpu = get_test_cpu(vec![0xD8], vec![]);
+        cpu.p.insert(Flags::D);
+        cpu.execute();
+
+        assert!(!cpu.p.contains(Flags::D));
+        assert_eq!(cpu.ins_cycles, 2);
+    }
+
+    #[test]
+    fn test_58() {
+        let mut cpu = get_test_cpu(vec![0x58], vec![]);
+        cpu.p.insert(Flags::I);
+        cpu.execute();
+
+        assert!(!cpu.p.contains(Flags::I));
+        assert_eq!(cpu.ins_cycles, 2);
+    }
+
+    #[test]
+    fn test_b8() {
+        let mut cpu = get_test_cpu(vec![0xB8], vec![]);
+        cpu.p.insert(Flags::V);
+        cpu.execute();
+
+        assert!(!cpu.p.contains(Flags::V));
+        assert_eq!(cpu.ins_cycles, 2);
+    }
+
+    #[test]
+    fn test_38() {
+        let mut cpu = get_test_cpu(vec![0x38], vec![]);
+        cpu.execute();
+
+        assert!(cpu.p.contains(Flags::C));
+        assert_eq!(cpu.ins_cycles, 2);
+    }
+
+    #[test]
+    fn test_f8() {
+        let mut cpu = get_test_cpu(vec![0xF8], vec![]);
+        cpu.execute();
+
+        assert!(cpu.p.contains(Flags::D));
+        assert_eq!(cpu.ins_cycles, 2);
+    }
+
+    #[test]
+    fn test_78() {
+        let mut cpu = get_test_cpu(vec![0x78], vec![]);
+        cpu.execute();
+
+        assert!(cpu.p.contains(Flags::I));
+        assert_eq!(cpu.ins_cycles, 2);
     }
 }
