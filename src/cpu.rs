@@ -234,6 +234,30 @@ impl Cpu {
         self.mem_write(addr, self.y);
     }
 
+    fn tax(&mut self, mode: AddrMode) {
+        self.set_x(self.a);
+    }
+
+    fn tay(&mut self, mode: AddrMode) {
+        self.set_y(self.a);
+    }
+
+    fn tsx(&mut self, mode: AddrMode) {
+        self.set_x(self.s);
+    }
+
+    fn txa(&mut self, mode: AddrMode) {
+        self.set_a(self.x);
+    }
+
+    fn txs(&mut self, mode: AddrMode) {
+        self.s = self.x;
+    }
+
+    fn tya(&mut self, mode: AddrMode) {
+        self.set_a(self.y);
+    }
+
     fn clc(&mut self, mode: AddrMode) {
         self.p.remove(Flags::C);
     }
@@ -261,10 +285,6 @@ impl Cpu {
     fn sei(&mut self, mode: AddrMode) {
         self.p.insert(Flags::I);
     }
-
-    fn tax(&mut self, mode: AddrMode) {
-        self.set_x(self.a);
-    }
 }
 
 #[cfg(test)]
@@ -287,17 +307,6 @@ mod tests {
         let mut cpu = Cpu::new(Box::new(bus));
         cpu.pc = 0x2000;
         cpu
-    }
-
-    #[test]
-    fn test_aa() {
-        let mut cpu = get_test_cpu(vec![0xAA], vec![0]);
-        cpu.a = 0x20;
-        cpu.execute();
-
-        assert_eq!(cpu.x, cpu.a);
-        assert_eq!(cpu.x, 0x20);
-        assert_eq!(cpu.ins_cycles, 2);
     }
 
     #[test]
@@ -644,6 +653,72 @@ mod tests {
 
         assert_eq!(cpu.mem_read(0x03), 0xDE);
         assert_eq!(cpu.ins_cycles, 3);
+    }
+
+    #[test]
+    fn test_aa() {
+        let mut cpu = get_test_cpu(vec![0xAA], vec![]);
+        cpu.a = 0x20;
+        cpu.execute();
+
+        assert_eq!(cpu.x, cpu.a);
+        assert_eq!(cpu.x, 0x20);
+        assert_eq!(cpu.ins_cycles, 2);
+    }
+
+    #[test]
+    fn test_a8() {
+        let mut cpu = get_test_cpu(vec![0xA8], vec![]);
+        cpu.a = 0x20;
+        cpu.execute();
+
+        assert_eq!(cpu.y, cpu.a);
+        assert_eq!(cpu.y, 0x20);
+        assert_eq!(cpu.ins_cycles, 2);
+    }
+
+    #[test]
+    fn test_ba() {
+        let mut cpu = get_test_cpu(vec![0xBA], vec![]);
+        cpu.s = 0x20;
+        cpu.execute();
+
+        assert_eq!(cpu.x, cpu.s);
+        assert_eq!(cpu.x, 0x20);
+        assert_eq!(cpu.ins_cycles, 2);
+    }
+
+    #[test]
+    fn test_8a() {
+        let mut cpu = get_test_cpu(vec![0x8A], vec![]);
+        cpu.x = 0x20;
+        cpu.execute();
+
+        assert_eq!(cpu.a, cpu.x);
+        assert_eq!(cpu.a, 0x20);
+        assert_eq!(cpu.ins_cycles, 2);
+    }
+
+    #[test]
+    fn test_9a() {
+        let mut cpu = get_test_cpu(vec![0x9A], vec![]);
+        cpu.x = 0x20;
+        cpu.execute();
+
+        assert_eq!(cpu.s, cpu.x);
+        assert_eq!(cpu.s, 0x20);
+        assert_eq!(cpu.ins_cycles, 2);
+    }
+
+    #[test]
+    fn test_98() {
+        let mut cpu = get_test_cpu(vec![0x98], vec![]);
+        cpu.y = 0x20;
+        cpu.execute();
+
+        assert_eq!(cpu.a, cpu.y);
+        assert_eq!(cpu.a, 0x20);
+        assert_eq!(cpu.ins_cycles, 2);
     }
 
     #[test]

@@ -65,6 +65,11 @@ lazy_static! {
         Instruction::new(0x8C, STY, |cpu, mode| cpu.sty(mode), AddrMode::ABS, 4),
 
         Instruction::new(0xAA, TAX, |cpu, mode| cpu.tax(mode), AddrMode::IMP, 2),
+        Instruction::new(0xA8, TAY, |cpu, mode| cpu.tay(mode), AddrMode::IMP, 2),
+        Instruction::new(0xBA, TSX, |cpu, mode| cpu.tsx(mode), AddrMode::IMP, 2),
+        Instruction::new(0x8A, TXA, |cpu, mode| cpu.txa(mode), AddrMode::IMP, 2),
+        Instruction::new(0x9A, TXS, |cpu, mode| cpu.txs(mode), AddrMode::IMP, 2),
+        Instruction::new(0x98, TYA, |cpu, mode| cpu.tya(mode), AddrMode::IMP, 2),
         
         Instruction::new(0x18, CLC, |cpu, mode| cpu.clc(mode), AddrMode::IMP, 2),
         Instruction::new(0xD8, CLD, |cpu, mode| cpu.cld(mode), AddrMode::IMP, 2),
