@@ -122,7 +122,12 @@ lazy_static! {
         Instruction::new(0x70, BVS, |cpu, mode| cpu.bvs(mode), AddrMode::REL, 2),
 
         Instruction::new(0x4C, JMP, |cpu, mode| cpu.jmp_abs(mode), AddrMode::ABS, 3),
-        Instruction::new(0x6C, JMP, |cpu, mode| cpu.jmp_ind(mode), AddrMode::IND, 3),
+        Instruction::new(0x6C, JMP, |cpu, mode| cpu.jmp_ind(mode), AddrMode::IND, 5),
+
+        Instruction::new(0x48, PHA, |cpu, mode| cpu.pha(mode), AddrMode::IMP, 3),
+        Instruction::new(0x08, PHP, |cpu, mode| cpu.php(mode), AddrMode::IMP, 3),
+        Instruction::new(0x68, PLA, |cpu, mode| cpu.pla(mode), AddrMode::IMP, 4),
+        Instruction::new(0x28, PLP, |cpu, mode| cpu.plp(mode), AddrMode::IMP, 4),
 
     ];
 

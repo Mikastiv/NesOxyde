@@ -4,6 +4,8 @@ use self::instructions::OPTABLE;
 mod addr_modes;
 mod instructions;
 
+const STACK_PAGE: u16 = 0x0100;
+
 pub trait Interface {
     fn read(&self, addr: u16) -> u8;
     fn write(&mut self, addr: u16, data: u8);
@@ -92,6 +94,29 @@ impl Cpu {
     fn read_word(&mut self) -> u16 {
         let lo = self.read_byte();
         let hi = self.read_byte();
+        u16::from_le_bytes([lo, hi])
+    }
+
+    fn push_byte(&mut self, data: u8) {
+        self.mem_write(STACK_PAGE + self.s as u16, data);
+        self.s = self.s.wrapping_sub(1);
+    }
+
+    fn push_word(&mut self, data: u16) {
+        let hi = (data >> 8) as u8;
+        let lo = data as u8;
+        self.push_byte(hi);
+        self.push_byte(lo);
+    }
+
+    fn pop_byte(&mut self) -> u8 {
+        self.s = self.s.wrapping_add(1);
+        self.mem_read(STACK_PAGE + self.s as u16)
+    }
+
+    fn pop_word(&mut self) -> u16 {
+        let lo = self.pop_byte();
+        let hi = self.pop_byte();
         u16::from_le_bytes([lo, hi])
     }
 
@@ -211,6 +236,10 @@ impl Cpu {
     fn set_y(&mut self, v: u8) {
         self.y = v;
         self.set_z_n(v);
+    }
+
+    fn set_p(&mut self, v: u8) {
+        self.p.bits = (v | Flags::U.bits) & !Flags::B.bits;
     }
 
     fn page_crossed(old: u16, new: u16) -> bool {
@@ -402,6 +431,24 @@ impl Cpu {
         let lo = self.mem_read(addr);
         let hi = self.mem_read(Self::wrap(addr, addr.wrapping_add(1)));
         self.pc = u16::from_le_bytes([lo, hi]);
+    }
+
+    fn pha(&mut self, _mode: AddrMode) {
+        self.push_byte(self.a);
+    }
+
+    fn php(&mut self, _mode: AddrMode) {
+        self.push_byte(self.p.bits | Flags::B.bits);
+    }
+
+    fn pla(&mut self, _mode: AddrMode) {
+        let v = self.pop_byte();
+        self.set_a(v);
+    }
+
+    fn plp(&mut self, _mode: AddrMode) {
+        let v = self.pop_byte();
+        self.set_p(v);
     }
 }
 
@@ -1212,6 +1259,7 @@ mod tests {
         cpu.execute();
 
         assert_eq!(cpu.pc, 0x0234);
+        assert_eq!(cpu.ins_cycles, 3);
     }
 
     #[test]
@@ -1232,5 +1280,68 @@ mod tests {
         cpu.execute();
 
         assert_eq!(cpu.pc, 0x060A);
+        assert_eq!(cpu.ins_cycles, 5);
+    }
+
+    #[test]
+    fn test_48() {
+        let mut cpu = get_test_cpu(vec![0x48], vec![]);
+        cpu.a = 0x93;
+        cpu.execute();
+
+        assert_eq!(
+            cpu.mem_read(STACK_PAGE + cpu.s.wrapping_add(1) as u16),
+            0x93
+        );
+        assert_eq!(cpu.ins_cycles, 3);
+    }
+
+    #[test]
+    fn test_08() {
+        let mut cpu = get_test_cpu(vec![0x08], vec![]);
+        cpu.p.insert(Flags::N);
+        cpu.p.insert(Flags::V);
+        cpu.p.insert(Flags::C);
+        cpu.execute();
+
+        assert_eq!(
+            cpu.mem_read(STACK_PAGE + cpu.s.wrapping_add(1) as u16),
+            Flags::N.bits | Flags::V.bits | Flags::U.bits | Flags::B.bits | Flags::C.bits
+        );
+        assert_eq!(cpu.ins_cycles, 3);
+    }
+
+    #[test]
+    fn test_68() {
+        let mut bus = TestBus::new(vec![0x68]);
+        bus.set_ram(STACK_PAGE + 0xA5, 0x0A);
+        let mut cpu = get_test_cpu_from_bus(bus);
+        cpu.s = 0xA4;
+        cpu.execute();
+
+        assert_eq!(cpu.a, 0x0A);
+        assert_eq!(cpu.ins_cycles, 4);
+
+        let mut cpu = get_test_cpu(vec![0x68], vec![]);
+        cpu.execute();
+
+        assert_eq!(cpu.a, 0x00);
+        assert!(cpu.p.contains(Flags::Z));
+        assert_eq!(cpu.ins_cycles, 4);
+    }
+
+    #[test]
+    fn test_28() {
+        let mut bus = TestBus::new(vec![0x28]);
+        bus.set_ram(
+            STACK_PAGE + 0xA5,
+            Flags::N.bits | Flags::B.bits | Flags::I.bits,
+        );
+        let mut cpu = get_test_cpu_from_bus(bus);
+        cpu.s = 0xA4;
+        cpu.execute();
+
+        assert_eq!(cpu.p, Flags::N | Flags::U | Flags::I);
+        assert_eq!(cpu.ins_cycles, 4);
     }
 }
