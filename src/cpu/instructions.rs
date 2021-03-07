@@ -28,8 +28,13 @@ impl Instruction {
 lazy_static! {
     pub static ref INSTRUCTIONS: Vec<Instruction> = vec![
         Instruction::new(0xA9, LDA, |cpu, mode| cpu.lda(mode), AddrMode::IMM, 2),
-        Instruction::new(0xA5, LDA, |cpu, mode| cpu.lda(mode), AddrMode::ZP0, 2),
-        Instruction::new(0xB5, LDA, |cpu, mode| cpu.lda(mode), AddrMode::ZPX, 2),
+        Instruction::new(0xA5, LDA, |cpu, mode| cpu.lda(mode), AddrMode::ZP0, 3),
+        Instruction::new(0xB5, LDA, |cpu, mode| cpu.lda(mode), AddrMode::ZPX, 4),
+        Instruction::new(0xAD, LDA, |cpu, mode| cpu.lda(mode), AddrMode::ABS, 4),
+        Instruction::new(0xBD, LDA, |cpu, mode| cpu.lda(mode), AddrMode::ABX, 4),
+        Instruction::new(0xB9, LDA, |cpu, mode| cpu.lda(mode), AddrMode::ABY, 4),
+        Instruction::new(0xA1, LDA, |cpu, mode| cpu.lda(mode), AddrMode::ABY, 6),
+        Instruction::new(0xB1, LDA, |cpu, mode| cpu.lda(mode), AddrMode::ABY, 5),
 
         Instruction::new(0xAA, TAX, |cpu, mode| cpu.tax(mode), AddrMode::IMP, 2),
     ];

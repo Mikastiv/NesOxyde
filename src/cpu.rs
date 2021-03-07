@@ -31,6 +31,7 @@ pub struct Cpu {
     pc: u16,
 
     bus: Box<dyn Interface>,
+    ins_cycles: u32,
 }
 
 impl Cpu {
@@ -44,6 +45,8 @@ impl Cpu {
             pc: 0,
 
             bus,
+
+            ins_cycles: 0,
         }
     }
 
@@ -101,13 +104,41 @@ impl Cpu {
                 base.wrapping_add(self.y) as u16
             }
             AddrMode::ABS | AddrMode::IND => self.read_word(),
-            AddrMode::ABX | AddrMode::ABXW => {
+            AddrMode::ABX => {
                 let base = self.read_word();
-                base.wrapping_add(self.x as u16)
+                let addr = base.wrapping_add(self.x as u16);
+
+                if Self::page_crossed(base, addr) {
+                    self.ins_cycles += 1;
+                }
+
+                addr
             }
-            AddrMode::ABY | AddrMode::ABYW => {
+            AddrMode::ABXW => {
                 let base = self.read_word();
-                base.wrapping_add(self.x as u16)
+                let addr = base.wrapping_add(self.x as u16);
+
+                self.ins_cycles += 1;
+
+                addr
+            }
+            AddrMode::ABY => {
+                let base = self.read_word();
+                let addr = base.wrapping_add(self.y as u16);
+
+                if Self::page_crossed(base, addr) {
+                    self.ins_cycles += 1;
+                }
+
+                addr
+            }
+            AddrMode::ABYW => {
+                let base = self.read_word();
+                let addr = base.wrapping_add(self.y as u16);
+
+                self.ins_cycles += 1;
+
+                addr
             }
             AddrMode::IZX => {
                 let base = self.read_byte();
@@ -116,11 +147,27 @@ impl Cpu {
                 let hi = self.mem_read(ptr.wrapping_add(1) as u16);
                 u16::from_le_bytes([lo, hi])
             }
-            AddrMode::IZY | AddrMode::IZYW => {
+            AddrMode::IZY => {
                 let ptr = self.read_byte();
                 let lo = self.mem_read(ptr as u16);
                 let hi = self.mem_read(ptr.wrapping_add(1) as u16);
-                u16::from_le_bytes([lo, hi]).wrapping_add(self.y as u16)
+                let addr = u16::from_le_bytes([lo, hi]).wrapping_add(self.y as u16);
+
+                if Self::page_crossed(u16::from_le_bytes([lo, hi]), addr) {
+                    self.ins_cycles += 1;
+                }
+
+                addr
+            }
+            AddrMode::IZYW => {
+                let ptr = self.read_byte();
+                let lo = self.mem_read(ptr as u16);
+                let hi = self.mem_read(ptr.wrapping_add(1) as u16);
+                let addr = u16::from_le_bytes([lo, hi]).wrapping_add(self.y as u16);
+
+                self.ins_cycles += 1;
+
+                addr
             }
         }
     }
@@ -145,6 +192,10 @@ impl Cpu {
     fn set_a(&mut self, v: u8) {
         self.a = v;
         self.set_z_n(v);
+    }
+
+    fn page_crossed(old: u16, new: u16) -> bool {
+        old & 0xFF00 != new & 0xFF00
     }
 
     fn lda(&mut self, mode: AddrMode) {
