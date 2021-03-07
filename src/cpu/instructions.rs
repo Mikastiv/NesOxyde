@@ -129,6 +129,12 @@ lazy_static! {
         Instruction::new(0x68, PLA, |cpu, mode| cpu.pla(mode), AddrMode::IMP, 4),
         Instruction::new(0x28, PLP, |cpu, mode| cpu.plp(mode), AddrMode::IMP, 4),
 
+        Instruction::new(0x20, JSR, |cpu, mode| cpu.jsr(mode), AddrMode::ABS, 6),
+        Instruction::new(0x60, RTS, |cpu, mode| cpu.rts(mode), AddrMode::IMP, 6),
+        Instruction::new(0x40, RTI, |cpu, mode| cpu.rti(mode), AddrMode::IMP, 6),
+
+        Instruction::new(0xEA, NOP, |cpu, mode| cpu.nop(mode), AddrMode::IMP, 2),
+
     ];
 
     pub static ref OPTABLE: HashMap<u8, &'static Instruction> = {

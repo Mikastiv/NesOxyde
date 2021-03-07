@@ -42,7 +42,7 @@ impl Cpu {
             a: 0,
             x: 0,
             y: 0,
-            s: 0,
+            s: 0xFD,
             p: Flags::U,
             pc: 0,
 
@@ -57,7 +57,7 @@ impl Cpu {
         self.x = 0;
         self.y = 0;
         self.s = 0xFD;
-        self.p = Flags::from_bits_truncate(0);
+        self.p = Flags::U;
         self.pc = self.mem_read_word(0xFFFC);
     }
 
@@ -449,6 +449,34 @@ impl Cpu {
     fn plp(&mut self, _mode: AddrMode) {
         let v = self.pop_byte();
         self.set_p(v);
+    }
+
+    fn jsr(&mut self, mode: AddrMode) {
+        let addr = self.operand_addr(mode);
+        self.push_word(self.pc.wrapping_sub(1));
+        self.pc = addr;
+    }
+
+    fn rts(&mut self, _mode: AddrMode) {
+        let addr = self.pop_word();
+        self.pc = addr.wrapping_add(1);
+    }
+
+    fn rti(&mut self, _mode: AddrMode) {
+        let v = self.pop_byte();
+        let addr = self.pop_word();
+        self.set_p(v);
+        self.pc = addr;
+    }
+
+    fn nop(&mut self, mode: AddrMode) {
+        match mode {
+            AddrMode::IMP => {}
+            _ => {
+                let addr = self.operand_addr(mode);
+                self.fetch_operand(addr, mode);
+            }
+        }
     }
 }
 
@@ -1343,5 +1371,49 @@ mod tests {
 
         assert_eq!(cpu.p, Flags::N | Flags::U | Flags::I);
         assert_eq!(cpu.ins_cycles, 4);
+    }
+
+    #[test]
+    fn test_20() {
+        let mut cpu = get_test_cpu(vec![0x20, 0x63, 0x05], vec![]);
+        cpu.execute();
+
+        assert_eq!(cpu.mem_read_word(STACK_PAGE + cpu.s as u16 + 1), 0x2002);
+        assert_eq!(cpu.pc, 0x0563);
+        assert_eq!(cpu.ins_cycles, 6);
+    }
+
+    #[test]
+    fn test_60() {
+        let mut bus = TestBus::new(vec![0x60]);
+        bus.set_ram(STACK_PAGE + 0xFE, 0xEF);
+        bus.set_ram(STACK_PAGE + 0xFF, 0xBE);
+        let mut cpu = get_test_cpu_from_bus(bus);
+        cpu.execute();
+
+        assert_eq!(cpu.pc, 0xBEEF + 1);
+        assert_eq!(cpu.ins_cycles, 6);
+    }
+
+    #[test]
+    fn test_40() {
+        let mut bus = TestBus::new(vec![0x40]);
+        bus.set_ram(STACK_PAGE + 0xFE, Flags::V.bits | Flags::C.bits);
+        bus.set_ram(STACK_PAGE + 0xFF, 0xEF);
+        bus.set_ram(STACK_PAGE, 0xBE);
+        let mut cpu = get_test_cpu_from_bus(bus);
+        cpu.execute();
+
+        assert_eq!(cpu.pc, 0xBEEF);
+        assert_eq!(cpu.p, Flags::V | Flags::U | Flags::C);
+        assert_eq!(cpu.ins_cycles, 6);
+    }
+
+    #[test]
+    fn test_ea() {
+        let mut cpu = get_test_cpu(vec![0xEA], vec![]);
+        cpu.execute();
+
+        assert_eq!(cpu.pc, 0x2001);
     }
 }
