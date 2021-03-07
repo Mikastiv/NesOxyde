@@ -63,9 +63,10 @@ impl Cpu {
         let opcode = self.read_byte();
 
         let ins = *OPTABLE.get(&opcode).unwrap();
+        self.ins_cycles = ins.cycles;
         (ins.cpu_fn)(self, ins.mode);
 
-        ins.cycles
+        self.ins_cycles
     }
 
     fn mem_read(&mut self, addr: u16) -> u8 {
@@ -264,6 +265,7 @@ mod tests {
 
         assert_eq!(cpu.x, cpu.a);
         assert_eq!(cpu.x, 0x20);
+        assert_eq!(cpu.ins_cycles, 2);
     }
 
     #[test]
@@ -288,6 +290,7 @@ mod tests {
         assert_eq!(cpu.a, 0x85);
         assert_eq!(cpu.p.contains(Flags::N), true);
         assert_eq!(cpu.p.contains(Flags::Z), false);
+        assert_eq!(cpu.ins_cycles, 3);
     }
 
     #[test]
@@ -311,6 +314,7 @@ mod tests {
         assert_eq!(cpu.a, 0x50);
         assert_eq!(cpu.p.contains(Flags::N), false);
         assert_eq!(cpu.p.contains(Flags::Z), false);
+        assert_eq!(cpu.ins_cycles, 4);
     }
 
     #[test]
@@ -322,6 +326,7 @@ mod tests {
         cpu.execute();
 
         assert_eq!(cpu.a, 0xFE);
+        assert_eq!(cpu.ins_cycles, 4);
     }
 
     #[test]
@@ -334,6 +339,17 @@ mod tests {
         cpu.execute();
 
         assert_eq!(cpu.a, 0xFE);
+        assert_eq!(cpu.ins_cycles, 4);
+
+        let mut bus = TestBus::new(vec![0xBD, 0xFF, 0x05]);
+        bus.set_ram(0x0604, 0xFE);
+        let mut cpu = get_test_cpu_from_bus(bus);
+
+        cpu.x = 5;
+        cpu.execute();
+
+        assert_eq!(cpu.a, 0xFE);
+        assert_eq!(cpu.ins_cycles, 5);
     }
 
     #[test]
@@ -346,6 +362,17 @@ mod tests {
         cpu.execute();
 
         assert_eq!(cpu.a, 0xFE);
+        assert_eq!(cpu.ins_cycles, 4);
+
+        let mut bus = TestBus::new(vec![0xB9, 0xFF, 0x05]);
+        bus.set_ram(0x0604, 0xFE);
+        let mut cpu = get_test_cpu_from_bus(bus);
+
+        cpu.y = 5;
+        cpu.execute();
+
+        assert_eq!(cpu.a, 0xFE);
+        assert_eq!(cpu.ins_cycles, 5);
     }
 
     #[test]
@@ -360,6 +387,7 @@ mod tests {
         cpu.execute();
 
         assert_eq!(cpu.a, 0xFE);
+        assert_eq!(cpu.ins_cycles, 6);
     }
 
     #[test]
@@ -374,5 +402,18 @@ mod tests {
         cpu.execute();
 
         assert_eq!(cpu.a, 0xFE);
+        assert_eq!(cpu.ins_cycles, 5);
+
+        let mut bus = TestBus::new(vec![0xB1, 0x05]);
+        bus.set_ram(0x05, 0xFF);
+        bus.set_ram(0x06, 0x02);
+        bus.set_ram(0x0300, 0xFE);
+        let mut cpu = get_test_cpu_from_bus(bus);
+
+        cpu.y = 1;
+        cpu.execute();
+
+        assert_eq!(cpu.a, 0xFE);
+        assert_eq!(cpu.ins_cycles, 6);
     }
 }
