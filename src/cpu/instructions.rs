@@ -177,6 +177,35 @@ lazy_static! {
         Instruction::new(0x4E, LSR, |cpu, mode| cpu.lsr_mem(mode), AddrMode::ABS, 6),
         Instruction::new(0x5E, LSR, |cpu, mode| cpu.lsr_mem(mode), AddrMode::ABXW, 7),
 
+        Instruction::new(0x2A, ROL, |cpu, mode| cpu.rol_acc(mode), AddrMode::IMP, 2),
+        Instruction::new(0x26, ROL, |cpu, mode| cpu.rol_mem(mode), AddrMode::ZP0, 5),
+        Instruction::new(0x36, ROL, |cpu, mode| cpu.rol_mem(mode), AddrMode::ZPX, 6),
+        Instruction::new(0x2E, ROL, |cpu, mode| cpu.rol_mem(mode), AddrMode::ABS, 6),
+        Instruction::new(0x3E, ROL, |cpu, mode| cpu.rol_mem(mode), AddrMode::ABXW, 7),
+
+        Instruction::new(0x6A, ROR, |cpu, mode| cpu.ror_acc(mode), AddrMode::IMP, 2),
+        Instruction::new(0x66, ROR, |cpu, mode| cpu.ror_mem(mode), AddrMode::ZP0, 5),
+        Instruction::new(0x76, ROR, |cpu, mode| cpu.ror_mem(mode), AddrMode::ZPX, 6),
+        Instruction::new(0x6E, ROR, |cpu, mode| cpu.ror_mem(mode), AddrMode::ABS, 6),
+        Instruction::new(0x7E, ROR, |cpu, mode| cpu.ror_mem(mode), AddrMode::ABXW, 7),
+        
+        Instruction::new(0x69, ADC, |cpu, mode| cpu.adc(mode), AddrMode::IMM, 2),
+        Instruction::new(0x65, ADC, |cpu, mode| cpu.adc(mode), AddrMode::ZP0, 3),
+        Instruction::new(0x75, ADC, |cpu, mode| cpu.adc(mode), AddrMode::ZPX, 4),
+        Instruction::new(0x6D, ADC, |cpu, mode| cpu.adc(mode), AddrMode::ABS, 4),
+        Instruction::new(0x7D, ADC, |cpu, mode| cpu.adc(mode), AddrMode::ABX, 4),
+        Instruction::new(0x79, ADC, |cpu, mode| cpu.adc(mode), AddrMode::ABY, 4),
+        Instruction::new(0x61, ADC, |cpu, mode| cpu.adc(mode), AddrMode::IZX, 6),
+        Instruction::new(0x71, ADC, |cpu, mode| cpu.adc(mode), AddrMode::IZY, 5),
+
+        Instruction::new(0xE9, SBC, |cpu, mode| cpu.sbc(mode), AddrMode::IMM, 2),
+        Instruction::new(0xE5, SBC, |cpu, mode| cpu.sbc(mode), AddrMode::ZP0, 3),
+        Instruction::new(0xF5, SBC, |cpu, mode| cpu.sbc(mode), AddrMode::ZPX, 4),
+        Instruction::new(0xED, SBC, |cpu, mode| cpu.sbc(mode), AddrMode::ABS, 4),
+        Instruction::new(0xFD, SBC, |cpu, mode| cpu.sbc(mode), AddrMode::ABX, 4),
+        Instruction::new(0xF9, SBC, |cpu, mode| cpu.sbc(mode), AddrMode::ABY, 4),
+        Instruction::new(0xE1, SBC, |cpu, mode| cpu.sbc(mode), AddrMode::IZX, 6),
+        Instruction::new(0xF1, SBC, |cpu, mode| cpu.sbc(mode), AddrMode::IZY, 5),
     ];
 
     pub static ref OPTABLE: HashMap<u8, &'static Instruction> = {

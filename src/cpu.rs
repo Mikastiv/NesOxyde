@@ -543,6 +543,75 @@ impl Cpu {
         let result = self.lsr(v);
         self.mem_write(addr, result);
     }
+
+    fn rol(&mut self, v: u8) -> u8 {
+        let c = self.p.contains(Flags::C) as u8;
+        self.p.set(Flags::C, v & 0x80 != 0);
+
+        let result = (v << 1) | c;
+        self.set_z_n(result);
+        result
+    }
+
+    fn rol_acc(&mut self, _mode: AddrMode) {
+        let v = self.rol(self.a);
+        self.set_a(v);
+    }
+
+    fn rol_mem(&mut self, mode: AddrMode) {
+        let addr = self.operand_addr(mode);
+        let v = self.fetch_operand(addr, mode);
+        let result = self.rol(v);
+        self.mem_write(addr, result);
+    }
+
+    fn ror(&mut self, v: u8) -> u8 {
+        let c = self.p.contains(Flags::C) as u8;
+        self.p.set(Flags::C, v & 0x01 != 0);
+
+        let result = (c << 7) | (v >> 1);
+        self.set_z_n(result);
+        result
+    }
+
+    fn ror_acc(&mut self, _mode: AddrMode) {
+        let v = self.ror(self.a);
+        self.set_a(v);
+    }
+
+    fn ror_mem(&mut self, mode: AddrMode) {
+        let addr = self.operand_addr(mode);
+        let v = self.fetch_operand(addr, mode);
+        let result = self.ror(v);
+        self.mem_write(addr, result);
+    }
+
+    fn add(&mut self, v: u8) {
+        let c = self.p.contains(Flags::C) as u16;
+        let sum = self.a as u16 + v as u16 + c;
+        let result = sum as u8;
+
+        self.p
+            .set(Flags::V, (v ^ result) & (result ^ self.a) & 0x80 != 0);
+        self.p.set(Flags::C, sum > 0xFF);
+        self.set_a(result);
+    }
+
+    fn sub(&mut self, v: u8) {
+        self.add(((v as i8).wrapping_neg().wrapping_sub(1)) as u8);
+    }
+
+    fn adc(&mut self, mode: AddrMode) {
+        let addr = self.operand_addr(mode);
+        let v = self.fetch_operand(addr, mode);
+        self.add(v);
+    }
+
+    fn sbc(&mut self, mode: AddrMode) {
+        let addr = self.operand_addr(mode);
+        let v = self.fetch_operand(addr, mode);
+        self.sub(v);
+    }
 }
 
 #[cfg(test)]
@@ -1582,5 +1651,71 @@ mod tests {
         assert!(cpu.p.contains(Flags::C));
         assert_eq!(cpu.mem_read(0x00), 0x67 >> 1);
         assert_eq!(cpu.ins_cycles, 5);
+    }
+
+    #[test]
+    fn test_2a() {
+        let mut cpu = get_test_cpu(vec![0x2A], vec![]);
+        cpu.a = 0b0100_0010;
+        cpu.p.insert(Flags::C);
+        cpu.execute();
+
+        assert!(cpu.p.contains(Flags::N));
+        assert!(!cpu.p.contains(Flags::Z | Flags::C));
+        assert_eq!(cpu.a, 0b1000_0101);
+    }
+
+    #[test]
+    fn test_2e() {
+        let mut bus = TestBus::new(vec![0x2E, 0xFE, 0x10]);
+        bus.set_ram(0x10FE, 0b1001_0110);
+        let mut cpu = get_test_cpu_from_bus(bus);
+        cpu.p.insert(Flags::C);
+        cpu.execute();
+
+        assert!(cpu.p.contains(Flags::C));
+        assert!(!cpu.p.contains(Flags::N | Flags::Z));
+        assert_eq!(cpu.mem_read(0x10FE), 0b0010_1101);
+
+        let mut bus = TestBus::new(vec![0x2E, 0xFE, 0x10]);
+        bus.set_ram(0x10FE, 0b0001_0110);
+        let mut cpu = get_test_cpu_from_bus(bus);
+        cpu.execute();
+
+        assert!(!cpu.p.contains(Flags::N | Flags::Z | Flags::C));
+        assert_eq!(cpu.mem_read(0x10FE), 0b0010_1100);
+    }
+
+    #[test]
+    fn test_6a() {
+        let mut cpu = get_test_cpu(vec![0x6A], vec![]);
+        cpu.a = 0b0100_0011;
+        cpu.p.insert(Flags::C);
+        cpu.execute();
+
+        assert!(cpu.p.contains(Flags::N | Flags::C));
+        assert!(!cpu.p.contains(Flags::Z));
+        assert_eq!(cpu.a, 0b1010_0001);
+    }
+
+    #[test]
+    fn test_6e() {
+        let mut bus = TestBus::new(vec![0x6E, 0xFE, 0x10]);
+        bus.set_ram(0x10FE, 0b1001_0110);
+        let mut cpu = get_test_cpu_from_bus(bus);
+        cpu.p.insert(Flags::C);
+        cpu.execute();
+
+        assert!(cpu.p.contains(Flags::N));
+        assert!(!cpu.p.contains(Flags::C | Flags::Z));
+        assert_eq!(cpu.mem_read(0x10FE), 0b1100_1011);
+
+        let mut bus = TestBus::new(vec![0x6E, 0xFE, 0x10]);
+        bus.set_ram(0x10FE, 0b0001_0110);
+        let mut cpu = get_test_cpu_from_bus(bus);
+        cpu.execute();
+
+        assert!(!cpu.p.contains(Flags::N | Flags::Z | Flags::C));
+        assert_eq!(cpu.mem_read(0x10FE), 0b0000_1011);
     }
 }
