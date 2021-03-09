@@ -598,7 +598,7 @@ impl Cpu {
     }
 
     fn sub(&mut self, v: u8) {
-        self.add(((v as i8).wrapping_neg().wrapping_sub(1)) as u8);
+        self.add(!(v.wrapping_sub(1)));
     }
 
     fn adc(&mut self, mode: AddrMode) {
@@ -1717,5 +1717,51 @@ mod tests {
 
         assert!(!cpu.p.contains(Flags::N | Flags::Z | Flags::C));
         assert_eq!(cpu.mem_read(0x10FE), 0b0000_1011);
+    }
+
+    #[test]
+    fn test_69() {
+        let mut cpu = get_test_cpu(vec![0x69, 0x45], vec![]);
+        cpu.a = 0xBA;
+        cpu.p.insert(Flags::C);
+        cpu.execute();
+
+        assert!(cpu.p.contains(Flags::C | Flags::Z));
+        assert!(!cpu.p.contains(Flags::V | Flags::N));
+        assert_eq!(cpu.a, 0x00);
+
+        let mut cpu = get_test_cpu(vec![0x69, 0xB5], vec![]);
+        cpu.a = 0xBA;
+        cpu.execute();
+
+        assert!(cpu.p.contains(Flags::C | Flags::V));
+        assert!(!cpu.p.contains(Flags::N | Flags::Z));
+        assert_eq!(cpu.a, 0x6F);
+    }
+
+    #[test]
+    fn test_e9() {
+        let mut cpu = get_test_cpu(vec![0xE9, 0x45], vec![]);
+        cpu.a = 0xBA;
+        cpu.execute();
+
+        assert!(!cpu.p.contains(Flags::Z | Flags::C | Flags::V | Flags::N));
+        assert_eq!(cpu.a, 0x75);
+
+        let mut cpu = get_test_cpu(vec![0xE9, 0x38], vec![]);
+        cpu.a = 0xF7;
+        cpu.execute();
+
+        assert!(cpu.p.contains(Flags::N));
+        assert!(!cpu.p.contains(Flags::Z | Flags::C | Flags::V));
+        assert_eq!(cpu.a, 0xBF);
+
+        let mut cpu = get_test_cpu(vec![0xE9, 0x02], vec![]);
+        cpu.a = 0xFF;
+        cpu.execute();
+
+        assert!(cpu.p.contains(Flags::C | Flags::N));
+        assert!(!cpu.p.contains(Flags::Z | Flags::V));
+        assert_eq!(cpu.a, 0xFD);
     }
 }
