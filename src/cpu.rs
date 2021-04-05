@@ -5,6 +5,9 @@ mod addr_modes;
 mod instructions;
 
 const STACK_PAGE: u16 = 0x0100;
+const STACK_RESET: u8 = 0xFD;
+const STATUS_RESET: u8 = Flags::U.bits | Flags::I.bits;
+const RESET_VECTOR: u16 = 0xFFFC;
 
 pub trait Interface {
     fn read(&self, addr: u16) -> u8;
@@ -42,8 +45,8 @@ impl Cpu {
             a: 0,
             x: 0,
             y: 0,
-            s: 0xFD,
-            p: Flags::U,
+            s: STACK_RESET,
+            p: Flags::from_bits_truncate(STATUS_RESET),
             pc: 0,
 
             bus,
@@ -56,9 +59,9 @@ impl Cpu {
         self.a = 0;
         self.x = 0;
         self.y = 0;
-        self.s = 0xFD;
-        self.p = Flags::U;
-        self.pc = self.mem_read_word(0xFFFC);
+        self.s = STACK_RESET;
+        self.p = Flags::from_bits_truncate(STATUS_RESET);
+        self.pc = self.mem_read_word(RESET_VECTOR);
     }
 
     pub fn execute(&mut self) -> u32 {
