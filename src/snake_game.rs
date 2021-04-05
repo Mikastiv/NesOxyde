@@ -4,9 +4,12 @@ use sdl2::keyboard::Keycode;
 use sdl2::pixels::Color;
 use sdl2::pixels::PixelFormatEnum;
 use sdl2::EventPump;
+use std::time::Instant;
 
 use crate::cpu::Cpu;
 use crate::bus::SnakeBus;
+
+const NS_BETWEEN_INS: u128 = 100_000;
 
 fn handle_user_input(cpu: &mut Cpu, event_pump: &mut EventPump) {
     for event in event_pump.poll_iter() {
@@ -134,6 +137,10 @@ pub fn play() {
             canvas.present();
         }
 
-        std::thread::sleep(std::time::Duration::new(0, 50000));
+        let start = Instant::now();
+        let mut elapsed = 0;
+        while elapsed < NS_BETWEEN_INS {
+            elapsed = (Instant::now() - start).as_nanos();
+        }
     });
 }
