@@ -20,25 +20,25 @@ fn handle_user_input(cpu: &mut Cpu, event_pump: &mut EventPump) {
                 keycode: Some(Keycode::W),
                 ..
             } => {
-                cpu.mem_write(0xff, 0x77);
+                cpu.mem_write(0xFF, 0x77);
             }
             Event::KeyDown {
                 keycode: Some(Keycode::S),
                 ..
             } => {
-                cpu.mem_write(0xff, 0x73);
+                cpu.mem_write(0xFF, 0x73);
             }
             Event::KeyDown {
                 keycode: Some(Keycode::A),
                 ..
             } => {
-                cpu.mem_write(0xff, 0x61);
+                cpu.mem_write(0xFF, 0x61);
             }
             Event::KeyDown {
                 keycode: Some(Keycode::D),
                 ..
             } => {
-                cpu.mem_write(0xff, 0x64);
+                cpu.mem_write(0xFF, 0x64);
             }
             _ => { /* do nothing */ }
         }
@@ -126,7 +126,7 @@ pub fn play() {
     cpu.reset();
     cpu.run_with_callback(move |cpu| {
         handle_user_input(cpu, &mut event_pump);
-        cpu.mem_write(0xfe, rng.gen_range(1..16));
+        cpu.mem_write(0xFE, rng.gen_range(1..16));
 
         if read_screen_state(cpu, &mut screen_state) {
             texture.update(None, &screen_state, 32 * 3).unwrap();
