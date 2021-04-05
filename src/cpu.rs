@@ -613,7 +613,7 @@ impl Cpu {
 
     fn add(&mut self, v: u8) {
         let c = self.p.contains(Flags::C);
-        let sum = self.a as u16 + v as u16 + (if c { 1 } else { 0 });
+        let sum = self.a as u16 + v as u16 + c as u16;
         let result = sum as u8;
 
         self.p
@@ -1776,42 +1776,46 @@ mod tests {
     fn test_e9() {
         let mut cpu = get_test_cpu(vec![0xE9, 0x45], vec![]);
         cpu.a = 0xBA;
+        cpu.p.insert(Flags::C);
         cpu.execute();
 
         assert!(!cpu.p.contains(Flags::Z));
         assert!(!cpu.p.contains(Flags::N));
         assert!(cpu.p.contains(Flags::C));
         assert!(cpu.p.contains(Flags::V));
-        assert_eq!(cpu.a, 0x74);
+        assert_eq!(cpu.a, 0xBA - 0x45);
 
         let mut cpu = get_test_cpu(vec![0xE9, 0x38], vec![]);
         cpu.a = 0xF7;
+        cpu.p.insert(Flags::C);
         cpu.execute();
 
         assert!(cpu.p.contains(Flags::C));
         assert!(cpu.p.contains(Flags::N));
         assert!(!cpu.p.contains(Flags::Z));
         assert!(!cpu.p.contains(Flags::V));
-        assert_eq!(cpu.a, 0xBE);
+        assert_eq!(cpu.a, 0xF7 - 0x38);
 
         let mut cpu = get_test_cpu(vec![0xE9, 0x02], vec![]);
         cpu.a = 0xFF;
+        cpu.p.insert(Flags::C);
         cpu.execute();
 
         assert!(cpu.p.contains(Flags::C));
         assert!(cpu.p.contains(Flags::N));
         assert!(!cpu.p.contains(Flags::Z));
         assert!(!cpu.p.contains(Flags::V));
-        assert_eq!(cpu.a, 0xFC);
+        assert_eq!(cpu.a, 0xFF - 0x02);
 
         let mut cpu = get_test_cpu(vec![0xE9, 0x02], vec![]);
         cpu.a = 0x00;
+        cpu.p.insert(Flags::C);
         cpu.execute();
 
         assert!(cpu.p.contains(Flags::N));
         assert!(!cpu.p.contains(Flags::C));
         assert!(!cpu.p.contains(Flags::Z));
         assert!(!cpu.p.contains(Flags::V));
-        assert_eq!(cpu.a, 0xFD);
+        assert_eq!(cpu.a, 0x00u8.wrapping_sub(0x02));
     }
 }
