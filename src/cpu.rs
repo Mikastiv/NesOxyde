@@ -8,6 +8,7 @@ const STACK_PAGE: u16 = 0x0100;
 const STACK_RESET: u8 = 0xFD;
 const STATUS_RESET: u8 = Flags::U.bits | Flags::I.bits;
 const RESET_VECTOR: u16 = 0xFFFC;
+const IRQ_VECTOR: u16 = 0xFFFE;
 
 pub trait Interface {
     fn read(&self, addr: u16) -> u8;
@@ -64,6 +65,17 @@ impl Cpu {
         self.pc = self.mem_read_word(RESET_VECTOR);
     }
 
+    pub fn run(&mut self) {
+        self.run_with_callback(|_| {});
+    }
+
+    pub fn run_with_callback<F: FnMut(&mut Self)>(&mut self, mut callback: F) {
+		loop {
+			callback(self);
+			self.execute();
+		}
+	}
+
     pub fn execute(&mut self) -> u32 {
         let opcode = self.read_byte();
 
@@ -74,7 +86,7 @@ impl Cpu {
         self.ins_cycles
     }
 
-    fn mem_read(&mut self, addr: u16) -> u8 {
+    pub fn mem_read(&mut self, addr: u16) -> u8 {
         self.bus.read(addr)
     }
 
@@ -84,7 +96,7 @@ impl Cpu {
         u16::from_le_bytes([lo, hi])
     }
 
-    fn mem_write(&mut self, addr: u16, data: u8) {
+    pub fn mem_write(&mut self, addr: u16, data: u8) {
         self.bus.write(addr, data);
     }
 
@@ -435,6 +447,13 @@ impl Cpu {
         let hi = self.mem_read(Self::wrap(addr, addr.wrapping_add(1)));
         self.pc = u16::from_le_bytes([lo, hi]);
     }
+
+	fn brk(&mut self, _mode: AddrMode) {
+		self.push_word(self.pc.wrapping_add(1));
+		self.push_byte((self.p | Flags::B).bits);
+		self.p.insert(Flags::I);
+		self.pc = self.mem_read_word(IRQ_VECTOR);
+	}
 
     fn pha(&mut self, _mode: AddrMode) {
         self.push_byte(self.a);
