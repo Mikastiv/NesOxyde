@@ -18,7 +18,7 @@ pub struct PpuBus {
 }
 
 impl Interface for PpuBus {
-    fn read(&mut self, addr: u16) -> u8 {
+    fn read(&self, addr: u16) -> u8 {
         let addr = addr & 0x3FFF;
         match addr {
             ROM_START..=ROM_END => self.cartridge.borrow_mut().read_chr(addr),

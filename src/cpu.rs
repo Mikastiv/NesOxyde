@@ -1,5 +1,5 @@
-use self::addr_modes::AddrMode;
-use self::instructions::OPTABLE;
+pub use self::addr_modes::AddrMode;
+pub use self::instructions::OPTABLE;
 
 mod addr_modes;
 mod instructions;
@@ -11,7 +11,7 @@ const RESET_VECTOR: u16 = 0xFFFC;
 const IRQ_VECTOR: u16 = 0xFFFE;
 
 pub trait Interface {
-    fn read(&mut self, addr: u16) -> u8;
+    fn read(&self, addr: u16) -> u8;
     fn write(&mut self, addr: u16, data: u8);
 }
 
@@ -38,6 +38,7 @@ pub struct Cpu {
 
     bus: Box<dyn Interface>,
     ins_cycles: u32,
+    cycles: u64,
 }
 
 impl Cpu {
@@ -53,7 +54,40 @@ impl Cpu {
             bus,
 
             ins_cycles: 0,
+            cycles: 0,
         }
+    }
+
+    pub fn pc(&self) -> u16 {
+        self.pc
+    }
+
+    pub fn a(&self) -> u8 {
+        self.a
+    }
+
+    pub fn x(&self) -> u8 {
+        self.x
+    }
+
+    pub fn y(&self) -> u8 {
+        self.y
+    }
+
+    pub fn s(&self) -> u8 {
+        self.s
+    }
+
+    pub fn p(&self) -> u8 {
+        self.p.bits
+    }
+
+    pub fn cycles(&self) -> u64 {
+        self.cycles
+    }
+
+    pub fn add_cycle(&mut self) {
+        self.ins_cycles += 1;
     }
 
     pub fn reset(&mut self) {
@@ -62,7 +96,10 @@ impl Cpu {
         self.y = 0;
         self.s = STACK_RESET;
         self.p = Flags::from_bits_truncate(STATUS_RESET);
-        self.pc = self.mem_read_word(RESET_VECTOR);
+        // self.pc = self.mem_read_word(RESET_VECTOR);
+        self.pc = 0xC000;
+        self.ins_cycles = 0;
+        self.cycles = 7;
     }
 
     pub fn run(&mut self) {
@@ -83,14 +120,15 @@ impl Cpu {
         self.ins_cycles = ins.cycles;
         (ins.cpu_fn)(self, ins.mode);
 
+        self.cycles += self.ins_cycles as u64;
         self.ins_cycles
     }
 
-    pub fn mem_read(&mut self, addr: u16) -> u8 {
+    pub fn mem_read(&self, addr: u16) -> u8 {
         self.bus.read(addr)
     }
 
-    fn mem_read_word(&mut self, addr: u16) -> u16 {
+    pub fn mem_read_word(&self, addr: u16) -> u16 {
         let lo = self.mem_read(addr);
         let hi = self.mem_read(addr.wrapping_add(1));
         u16::from_le_bytes([lo, hi])

@@ -10,6 +10,7 @@ const CHR_PAGE_SIZE: usize = 0x2000;
 const HEADER_SIZE: usize = 16;
 const NES_TAG: [u8; 4] = [b'N', b'E', b'S', 0x1A];
 
+#[derive(Clone, Copy)]
 pub struct INesHeader {
     bytes: [u8; 16],
 }
@@ -48,8 +49,9 @@ impl INesHeader {
 }
 
 pub struct Rom {
-    prg: Vec<u8>,
-    chr: Vec<u8>,
+    pub header: INesHeader,
+    pub prg: Vec<u8>,
+    pub chr: Vec<u8>,
 }
 
 impl Rom {
@@ -68,7 +70,7 @@ impl Rom {
         }
 
         let prg_size = PRG_PAGE_SIZE * header.prg_count();
-        let prg_start = HEADER_SIZE + if header.has_trainer() { 512 } else { 0 };
+        let prg_start = if header.has_trainer() { 512 } else { 0 };
         let chr_size = CHR_PAGE_SIZE * header.chr_count();
         let chr_start = prg_start + prg_size;
 
@@ -77,6 +79,7 @@ impl Rom {
 
         Ok((
             Self {
+                header,
                 prg: rom_bytes[prg_start..(prg_start + prg_size)].to_vec(),
                 chr: rom_bytes[chr_start..(chr_start + chr_size)].to_vec(),
             },

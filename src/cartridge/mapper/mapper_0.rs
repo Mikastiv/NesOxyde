@@ -1,3 +1,5 @@
+use std::usize;
+
 use super::super::Rom;
 use super::Mapper;
 
@@ -13,7 +15,13 @@ impl Mapper0 {
 
 impl Mapper for Mapper0 {
     fn read_prg(&mut self, addr: u16) -> u8 {
-        todo!()
+        let mask = if self.rom.header.prg_count() > 1 {
+            0x7FFF
+        } else {
+            0x3FFF
+        };
+        let index = addr & mask;
+        self.rom.prg[index as usize]
     }
 
     fn write_prg(&mut self, addr: u16, data: u8) {

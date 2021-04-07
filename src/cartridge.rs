@@ -3,8 +3,8 @@ use std::fmt::Display;
 use std::io;
 use std::path::Path;
 
-use mapper::{Mapper, Mapper0};
-use rom::{INesHeader, Rom};
+use self::mapper::{Mapper, Mapper0};
+use self::rom::{INesHeader, Rom};
 
 mod mapper;
 mod rom;

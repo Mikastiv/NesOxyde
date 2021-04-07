@@ -24,5 +24,6 @@ fn main() {
             std::process::exit(-1);
         }
     };
-    let nes = Nes::new(cartridge);
+    let mut nes = Nes::new(cartridge);
+    nes.run();
 }

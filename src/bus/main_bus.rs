@@ -25,10 +25,10 @@ pub struct MainBus {
 }
 
 impl Interface for MainBus {
-    fn read(&mut self, addr: u16) -> u8 {
+    fn read(&self, addr: u16) -> u8 {
         match addr {
             RAM_START..=RAM_END => self.ram[(addr & RAM_MASK) as usize],
-            PPU_REG_START..=PPU_REG_END => todo!(),
+            PPU_REG_START..=PPU_REG_END => 0,
             ROM_START..=ROM_END => self.cartridge.borrow_mut().read_prg(addr),
             _ => {
                 println!("Ignored read at {:#04X}", addr);

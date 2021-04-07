@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-
 use lazy_static::lazy_static;
 
 use super::{AddrMode, Cpu};
@@ -44,9 +43,9 @@ lazy_static! {
 
         Instruction::new(0xA0, LDY, |cpu, mode| cpu.ldy(mode), AddrMode::Imm, 2),
         Instruction::new(0xA4, LDY, |cpu, mode| cpu.ldy(mode), AddrMode::Zp0, 3),
-        Instruction::new(0xB4, LDY, |cpu, mode| cpu.ldy(mode), AddrMode::Zpy, 4),
+        Instruction::new(0xB4, LDY, |cpu, mode| cpu.ldy(mode), AddrMode::Zpx, 4),
         Instruction::new(0xAC, LDY, |cpu, mode| cpu.ldy(mode), AddrMode::Abs, 4),
-        Instruction::new(0xBC, LDY, |cpu, mode| cpu.ldy(mode), AddrMode::Aby, 4),
+        Instruction::new(0xBC, LDY, |cpu, mode| cpu.ldy(mode), AddrMode::Abx, 4),
 
         Instruction::new(0x85, STA, |cpu, mode| cpu.sta(mode), AddrMode::Zp0, 3),
         Instruction::new(0x95, STA, |cpu, mode| cpu.sta(mode), AddrMode::Zpx, 4),
@@ -61,7 +60,7 @@ lazy_static! {
         Instruction::new(0x8E, STX, |cpu, mode| cpu.stx(mode), AddrMode::Abs, 4),
 
         Instruction::new(0x84, STY, |cpu, mode| cpu.sty(mode), AddrMode::Zp0, 3),
-        Instruction::new(0x94, STY, |cpu, mode| cpu.sty(mode), AddrMode::Zpy, 4),
+        Instruction::new(0x94, STY, |cpu, mode| cpu.sty(mode), AddrMode::Zpx, 4),
         Instruction::new(0x8C, STY, |cpu, mode| cpu.sty(mode), AddrMode::Abs, 4),
 
         Instruction::new(0xAA, TAX, |cpu, mode| cpu.tax(mode), AddrMode::Imp, 2),

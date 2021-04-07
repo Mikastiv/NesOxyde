@@ -4,6 +4,9 @@ use std::rc::Rc;
 use crate::bus::MainBus;
 use crate::cartridge::Cartridge;
 use crate::cpu::Cpu;
+use self::trace::trace;
+
+mod trace;
 
 pub struct Nes {
     cpu: Cpu,
@@ -14,6 +17,15 @@ impl Nes {
         let bus = MainBus::new(Rc::new(RefCell::new(cartridge)));
         Self {
             cpu: Cpu::new(Box::new(bus)),
+        }
+    }
+
+    pub fn run(&mut self) {
+        self.cpu.reset();
+        loop {
+            self.cpu.run_with_callback(move |cpu| {
+                println!("{}", trace(cpu));
+            });
         }
     }
 }

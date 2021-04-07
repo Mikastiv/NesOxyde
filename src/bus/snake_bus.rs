@@ -10,7 +10,7 @@ pub struct SnakeBus {
 }
 
 impl Interface for SnakeBus {
-    fn read(&mut self, addr: u16) -> u8 {
+    fn read(&self, addr: u16) -> u8 {
         self.memory[addr as usize]
     }
 
