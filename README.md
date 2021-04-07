@@ -1,3 +1,3 @@
 # NesOxyde
 
-An NES emulator 100% written in Rust
+A NES emulator 100% written in Rust
