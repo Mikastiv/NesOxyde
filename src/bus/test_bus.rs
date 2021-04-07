@@ -6,7 +6,7 @@ pub struct TestBus {
 }
 
 impl Interface for TestBus {
-    fn read(&self, addr: u16) -> u8 {
+    fn read(&mut self, addr: u16) -> u8 {
         match addr {
             0x0000..=0x1FFF => self.ram[(addr & 0x7FF) as usize],
             _ => self.program[(addr - 0x2000) as usize],

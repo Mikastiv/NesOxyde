@@ -4,12 +4,13 @@ use crate::cpu::Interface;
 
 const RESET_VECTOR: u16 = 0xFFFC;
 
+// Bus only used with the snake game
 pub struct SnakeBus {
     memory: [u8; 0xFFFF],
 }
 
 impl Interface for SnakeBus {
-    fn read(&self, addr: u16) -> u8 {
+    fn read(&mut self, addr: u16) -> u8 {
         self.memory[addr as usize]
     }
 

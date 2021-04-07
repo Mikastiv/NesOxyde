@@ -11,7 +11,7 @@ const RESET_VECTOR: u16 = 0xFFFC;
 const IRQ_VECTOR: u16 = 0xFFFE;
 
 pub trait Interface {
-    fn read(&self, addr: u16) -> u8;
+    fn read(&mut self, addr: u16) -> u8;
     fn write(&mut self, addr: u16, data: u8);
 }
 
@@ -623,7 +623,7 @@ impl Cpu {
     }
 
     fn sub(&mut self, v: u8) {
-        self.add(((v as i8).wrapping_neg().wrapping_sub(1)) as u8);
+        self.add(v ^ 0xFF);
     }
 
     fn adc(&mut self, mode: AddrMode) {

@@ -8,8 +8,9 @@ extern crate lazy_static;
 mod bus;
 mod cpu;
 mod ppu;
+mod cartridge;
 mod snake_game;
 
 fn main() {
-    snake_game::play();
+    snake_game::run();
 }
