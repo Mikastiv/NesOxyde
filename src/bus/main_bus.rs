@@ -1,5 +1,10 @@
+use std::cell::RefCell;
+use std::rc::Rc;
+
+use super::PpuBus;
 use crate::cartridge::Cartridge;
-use crate::cpu;
+use crate::cpu::Interface;
+use crate::ppu::Ppu;
 
 const RAM_SIZE: usize = 0x800;
 const RAM_MASK: u16 = 0x7FF;
@@ -15,17 +20,18 @@ const ROM_END: u16 = 0xFFFF;
 
 pub struct MainBus {
     ram: [u8; RAM_SIZE],
-    cartridge: Cartridge,
+    cartridge: Rc<RefCell<Cartridge>>,
+    ppu: Ppu,
 }
 
-impl cpu::Interface for MainBus {
+impl Interface for MainBus {
     fn read(&mut self, addr: u16) -> u8 {
         match addr {
             RAM_START..=RAM_END => self.ram[(addr & RAM_MASK) as usize],
             PPU_REG_START..=PPU_REG_END => todo!(),
-            ROM_START..=ROM_END => self.cartridge.read_prg(addr),
+            ROM_START..=ROM_END => self.cartridge.borrow_mut().read_prg(addr),
             _ => {
-                println!("Ignored read at 0x{:04X}", addr);
+                println!("Ignored read at {:#04X}", addr);
                 0
             }
         }
@@ -35,17 +41,19 @@ impl cpu::Interface for MainBus {
         match addr {
             RAM_START..=RAM_END => self.ram[(addr & RAM_MASK) as usize] = data,
             PPU_REG_START..=PPU_REG_END => todo!(),
-            ROM_START..=ROM_END => self.cartridge.write_prg(addr, data),
+            ROM_START..=ROM_END => self.cartridge.borrow_mut().write_prg(addr, data),
             _ => println!("Ignored read at 0x{:04X}", addr),
         }
     }
 }
 
 impl MainBus {
-    pub fn new(cartridge: Cartridge) -> Self {
+    pub fn new(cartridge: Rc<RefCell<Cartridge>>) -> Self {
+        let ppu_bus = PpuBus::new(Rc::clone(&cartridge));
         Self {
             ram: [0; RAM_SIZE],
             cartridge,
+            ppu: Ppu::new(Box::new(ppu_bus)),
         }
     }
 }
