@@ -137,19 +137,19 @@ impl Cpu {
 
     fn operand_addr(&mut self, mode: AddrMode) -> u16 {
         match mode {
-            AddrMode::None | AddrMode::IMP => panic!("Not supported"),
-            AddrMode::IMM | AddrMode::REL => self.pc,
-            AddrMode::ZP0 => self.read_byte() as u16,
-            AddrMode::ZPX => {
+            AddrMode::None | AddrMode::Imp => panic!("Not supported"),
+            AddrMode::Imm | AddrMode::Rel => self.pc,
+            AddrMode::Zp0 => self.read_byte() as u16,
+            AddrMode::Zpx => {
                 let base = self.read_byte();
                 base.wrapping_add(self.x) as u16
             }
-            AddrMode::ZPY => {
+            AddrMode::Zpy => {
                 let base = self.read_byte();
                 base.wrapping_add(self.y) as u16
             }
-            AddrMode::ABS | AddrMode::IND => self.read_word(),
-            AddrMode::ABX => {
+            AddrMode::Abs | AddrMode::Ind => self.read_word(),
+            AddrMode::Abx => {
                 let base = self.read_word();
                 let addr = base.wrapping_add(self.x as u16);
 
@@ -159,11 +159,11 @@ impl Cpu {
 
                 addr
             }
-            AddrMode::ABXW => {
+            AddrMode::AbxW => {
                 let base = self.read_word();
                 base.wrapping_add(self.x as u16)
             }
-            AddrMode::ABY => {
+            AddrMode::Aby => {
                 let base = self.read_word();
                 let addr = base.wrapping_add(self.y as u16);
 
@@ -173,18 +173,18 @@ impl Cpu {
 
                 addr
             }
-            AddrMode::ABYW => {
+            AddrMode::AbyW => {
                 let base = self.read_word();
                 base.wrapping_add(self.y as u16)
             }
-            AddrMode::IZX => {
+            AddrMode::Izx => {
                 let base = self.read_byte();
                 let ptr = base.wrapping_add(self.x);
                 let lo = self.mem_read(ptr as u16);
                 let hi = self.mem_read(ptr.wrapping_add(1) as u16);
                 u16::from_le_bytes([lo, hi])
             }
-            AddrMode::IZY => {
+            AddrMode::Izy => {
                 let ptr = self.read_byte();
                 let lo = self.mem_read(ptr as u16);
                 let hi = self.mem_read(ptr.wrapping_add(1) as u16);
@@ -196,7 +196,7 @@ impl Cpu {
 
                 addr
             }
-            AddrMode::IZYW => {
+            AddrMode::IzyW => {
                 let ptr = self.read_byte();
                 let lo = self.mem_read(ptr as u16);
                 let hi = self.mem_read(ptr.wrapping_add(1) as u16);
@@ -207,8 +207,8 @@ impl Cpu {
 
     fn fetch_operand(&mut self, addr: u16, mode: AddrMode) -> u8 {
         match mode {
-            AddrMode::None | AddrMode::IMP | AddrMode::IND => panic!("Not supported"),
-            AddrMode::IMM | AddrMode::REL => self.read_byte(),
+            AddrMode::None | AddrMode::Imp | AddrMode::Ind => panic!("Not supported"),
+            AddrMode::Imm | AddrMode::Rel => self.read_byte(),
             _ => self.mem_read(addr),
         }
     }
@@ -496,7 +496,7 @@ impl Cpu {
 
     fn nop(&mut self, mode: AddrMode) {
         match mode {
-            AddrMode::IMP => {}
+            AddrMode::Imp => {}
             _ => {
                 let addr = self.operand_addr(mode);
                 self.fetch_operand(addr, mode);
