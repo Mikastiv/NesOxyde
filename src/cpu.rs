@@ -679,6 +679,156 @@ impl Cpu {
     fn kil(&mut self, _mode: AddrMode) {
         panic!("KIL opcode called");
     }
+
+    // ----------- Illegal opcodes -----------
+
+    fn slo(&mut self, mode: AddrMode) {
+        let addr = self.operand_addr(mode);
+        let v = self.fetch_operand(addr, mode);
+
+        let result = self.asl(v);
+        self.set_a(self.a | result);
+        self.mem_write(addr, result);
+    }
+
+    fn rla(&mut self, mode: AddrMode) {
+        let addr = self.operand_addr(mode);
+        let v = self.fetch_operand(addr, mode);
+
+        let result = self.rol(v);
+        self.set_a(self.a & result);
+        self.mem_write(addr, result);
+    }
+
+    fn sre(&mut self, mode: AddrMode) {
+        let addr = self.operand_addr(mode);
+        let v = self.fetch_operand(addr, mode);
+
+        let result = self.lsr(v);
+        self.set_a(self.a ^ result);
+        self.mem_write(addr, result);
+    }
+
+    fn rra(&mut self, mode: AddrMode) {
+        let addr = self.operand_addr(mode);
+        let v = self.fetch_operand(addr, mode);
+
+        let result = self.ror(v);
+        self.add(result);
+        self.mem_write(addr, result);
+    }
+
+    fn sax(&mut self, mode: AddrMode) {
+        let addr = self.operand_addr(mode);
+        self.mem_write(addr, self.a & self.x);
+    }
+
+    fn ahx(&mut self, mode: AddrMode) {
+        let addr = self.operand_addr(mode);
+        let hi = ((addr >> 8) as u8).wrapping_add(1);
+        self.mem_write(addr, hi & self.a & self.x);
+    }
+
+    fn lax(&mut self, mode: AddrMode) {
+        let addr = self.operand_addr(mode);
+        let v = self.fetch_operand(addr, mode);
+
+        self.set_x(v);
+        self.set_a(v);
+    }
+
+    fn dcp(&mut self, mode: AddrMode) {
+        let addr = self.operand_addr(mode);
+        let v = self.fetch_operand(addr, mode).wrapping_sub(1);
+
+        self.cmp(self.a, v);
+        self.mem_write(addr, v);
+    }
+
+    fn isb(&mut self, mode: AddrMode) {
+        let addr = self.operand_addr(mode);
+        let v = self.fetch_operand(addr, mode).wrapping_add(1);
+
+        self.sub(v);
+        self.mem_write(addr, v);
+    }
+
+    fn anc(&mut self, mode: AddrMode) {
+        let addr = self.operand_addr(mode);
+        let v = self.fetch_operand(addr, mode);
+
+        self.set_a(self.a & v);
+        self.p.set(Flags::C, self.p.contains(Flags::N));
+    }
+
+    fn alr(&mut self, mode: AddrMode) {
+        let addr = self.operand_addr(mode);
+        let v = self.fetch_operand(addr, mode);
+
+        self.set_a(self.a & v);
+        self.p.set(Flags::C, self.a & 0x01 != 0);
+        self.set_a(self.a >> 1);
+    }
+
+    fn arr(&mut self, mode: AddrMode) {
+        let addr = self.operand_addr(mode);
+        let v = self.fetch_operand(addr, mode);
+
+        let c = (self.p.contains(Flags::C) as u8) << 7;
+        self.set_a(((self.a & v) >> 1) | c);
+        self.p.set(Flags::C, self.a & 0x40 != 0);
+
+        let c = self.p.contains(Flags::C) as u8;
+        self.p.set(Flags::V, (c ^ ((self.a >> 5) & 0x01)) != 0);
+    }
+
+    fn xxa(&mut self, mode: AddrMode) {
+        let addr = self.operand_addr(mode);
+        let v = self.fetch_operand(addr, mode);
+
+        self.set_a(self.x & v);
+    }
+
+    fn tas(&mut self, mode: AddrMode) {
+        let addr = self.operand_addr(mode);
+
+        self.s = self.x & self.a;
+        let hi = ((addr >> 8) as u8).wrapping_add(1);
+        self.mem_write(addr, self.s & hi);
+    }
+
+    fn shy(&mut self, mode: AddrMode) {
+        let addr = self.operand_addr(mode);
+        let hi = ((addr >> 8) as u8).wrapping_add(1);
+        let lo = addr as u8;
+        let v = self.y & hi;
+        self.mem_write(u16::from_le_bytes([lo, self.y & hi]), v);
+    }
+
+    fn shx(&mut self, mode: AddrMode) {
+        let addr = self.operand_addr(mode);
+        let hi = ((addr >> 8) as u8).wrapping_add(1);
+        let lo = addr as u8;
+        let v = self.x & hi;
+        self.mem_write(u16::from_le_bytes([lo, self.x & hi]), v);
+    }
+
+    fn las(&mut self, mode: AddrMode) {
+        let addr = self.operand_addr(mode);
+        let v = self.fetch_operand(addr, mode);
+        self.set_a(v & self.s);
+        self.set_x(self.a);
+        self.s = self.a;
+    }
+
+    fn axs(&mut self, mode: AddrMode) {
+        let addr = self.operand_addr(mode);
+        let v = self.fetch_operand(addr, mode);
+
+        let result = (self.a & self.x).wrapping_sub(v);
+        self.p.set(Flags::C, (self.a & self.x) >= v);
+        self.set_x(v);
+    }
 }
 
 #[cfg(test)]
