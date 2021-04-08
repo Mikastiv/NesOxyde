@@ -20,8 +20,8 @@ fn main() {
     let cartridge = match Cartridge::new(&args[1]) {
         Ok(cart) => cart,
         Err(e) => {
-            eprintln!("Problem while loading NES rom: {}", e);
-            std::process::exit(-1);
+            eprintln!("Problem while loading ROM \"{}\" -> {}", args[1], e);
+            std::process::exit(0);
         }
     };
     let mut nes = Nes::new(cartridge);

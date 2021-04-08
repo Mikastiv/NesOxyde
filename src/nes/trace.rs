@@ -56,21 +56,21 @@ impl Cpu {
 
 pub fn trace(cpu: &mut Cpu) -> String {
     let code = cpu.mem_read(cpu.pc());
-    let ops = *OPTABLE.get(&code).unwrap();
+    let ins = *OPTABLE.get(&code).unwrap();
 
     let begin = cpu.pc();
     let mut hex_dump = vec![code];
 
-    let (mem_addr, stored_value) = match ops.mode {
+    let (mem_addr, stored_value) = match ins.mode {
         AddrMode::Imm | AddrMode::None | AddrMode::Imp => (0, 0),
         _ => {
-            let addr = cpu.operand_addr_peek(ops.mode, begin + 1);
+            let addr = cpu.operand_addr_peek(ins.mode, begin + 1);
             (addr, cpu.mem_read(addr))
         }
     };
 
-    let tmp = match ops.mode {
-        AddrMode::None | AddrMode::Imp => match ops.opcode {
+    let tmp = match ins.mode {
+        AddrMode::None | AddrMode::Imp => match ins.opcode {
             0x0a | 0x4a | 0x2a | 0x6a => "A ".to_string(),
             _ => String::from(""),
         },
@@ -85,7 +85,7 @@ pub fn trace(cpu: &mut Cpu) -> String {
             let address: u8 = cpu.mem_read(begin + 1);
             hex_dump.push(address);
 
-            match ops.mode {
+            match ins.mode {
                 AddrMode::Imm => format!("#${:02x}", address),
                 AddrMode::Zp0 => format!("${:02x} = {:02x}", mem_addr, stored_value),
                 AddrMode::Zpx => format!(
@@ -119,7 +119,7 @@ pub fn trace(cpu: &mut Cpu) -> String {
 
                 _ => panic!(
                     "unexpected addressing mode {:?} has ops-len 2. code {:02x}",
-                    ops.mode, ops.opcode
+                    ins.mode, ins.opcode
                 ),
             }
         }
@@ -136,11 +136,11 @@ pub fn trace(cpu: &mut Cpu) -> String {
 
             let address = cpu.mem_read_word(begin + 1);
 
-            match ops.mode {
+            match ins.mode {
                 AddrMode::Ind | AddrMode::Abs
-                    if (ops.opcode == 0x4C) | (ops.opcode == 0x20) | (ops.opcode == 0x6C) =>
+                    if (ins.opcode == 0x4C) | (ins.opcode == 0x20) | (ins.opcode == 0x6C) =>
                 {
-                    if ops.opcode == 0x6C {
+                    if ins.opcode == 0x6C {
                         //jmp indirect
                         let jmp_addr = if address & 0x00FF == 0x00FF {
                             let lo = cpu.mem_read(address);
@@ -166,7 +166,7 @@ pub fn trace(cpu: &mut Cpu) -> String {
                 ),
                 _ => panic!(
                     "unexpected addressing mode {:?} has ops-len 3. code {:02x}",
-                    ops.mode, ops.opcode
+                    ins.mode, ins.opcode
                 ),
             }
         }
@@ -174,10 +174,10 @@ pub fn trace(cpu: &mut Cpu) -> String {
 
     let hex_str = hex_dump
         .iter()
-        .map(|z| format!("{:02x}", z))
+        .map(|x| format!("{:02x}", x))
         .collect::<Vec<String>>()
         .join(" ");
-    let asm_str = format!("{:04x}  {:8} {: >4} {}", begin, hex_str, ops.mnemonic, tmp)
+    let asm_str = format!("{:04x}  {:8} {: >4} {}", begin, hex_str, ins.mnemonic, tmp)
         .trim()
         .to_string();
 

@@ -20,8 +20,7 @@ impl Mapper for Mapper0 {
         } else {
             0x3FFF
         };
-        let index = addr & mask;
-        self.rom.prg[index as usize]
+        self.rom.prg[(addr & mask) as usize]
     }
 
     fn write_prg(&mut self, addr: u16, data: u8) {
@@ -29,7 +28,7 @@ impl Mapper for Mapper0 {
     }
 
     fn read_chr(&mut self, addr: u16) -> u8 {
-        todo!()
+        self.rom.chr[addr as usize]
     }
 
     fn write_chr(&mut self, addr: u16, data: u8) {

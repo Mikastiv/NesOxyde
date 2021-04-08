@@ -675,6 +675,10 @@ impl Cpu {
         let v = self.fetch_operand(addr, mode);
         self.sub(v);
     }
+
+    fn kil(&mut self, _mode: AddrMode) {
+        panic!("KIL opcode called");
+    }
 }
 
 #[cfg(test)]

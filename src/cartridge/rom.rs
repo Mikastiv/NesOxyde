@@ -65,7 +65,7 @@ impl Rom {
         if !header.is_valid() {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
-                format!("Not iNES file format: {}", romfile),
+                "Not iNES file format",
             ));
         }
 
