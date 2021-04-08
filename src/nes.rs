@@ -4,7 +4,6 @@ use std::rc::Rc;
 use crate::bus::MainBus;
 use crate::cartridge::Cartridge;
 use crate::cpu::Cpu;
-use self::trace::trace;
 
 mod trace;
 
@@ -23,9 +22,7 @@ impl Nes {
     pub fn run(&mut self) {
         self.cpu.reset();
         loop {
-            self.cpu.run_with_callback(move |cpu| {
-                println!("{}", trace(cpu));
-            });
+            self.cpu.run_with_callback(move |cpu| {});
         }
     }
 }

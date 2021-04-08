@@ -140,33 +140,6 @@ lazy_static! {
         Instruction::new(0x40, RTI, |cpu, mode| cpu.rti(mode), AddrMode::Imp, 6),
 
         Instruction::new(0xEA, NOP, |cpu, mode| cpu.nop(mode), AddrMode::Imp, 2),
-        Instruction::new(0x80, NOP_U, |cpu, mode| cpu.nop(mode), AddrMode::Imm, 2),
-        Instruction::new(0x82, NOP_U, |cpu, mode| cpu.nop(mode), AddrMode::Imm, 2),
-        Instruction::new(0xC2, NOP_U, |cpu, mode| cpu.nop(mode), AddrMode::Imm, 2),
-        Instruction::new(0xE2, NOP_U, |cpu, mode| cpu.nop(mode), AddrMode::Imm, 2),
-        Instruction::new(0x04, NOP_U, |cpu, mode| cpu.nop(mode), AddrMode::Zp0, 3),
-        Instruction::new(0x14, NOP_U, |cpu, mode| cpu.nop(mode), AddrMode::Zpx, 4),
-        Instruction::new(0x34, NOP_U, |cpu, mode| cpu.nop(mode), AddrMode::Zpx, 4),
-        Instruction::new(0x44, NOP_U, |cpu, mode| cpu.nop(mode), AddrMode::Zp0, 3),
-        Instruction::new(0x54, NOP_U, |cpu, mode| cpu.nop(mode), AddrMode::Zpx, 4),
-        Instruction::new(0x64, NOP_U, |cpu, mode| cpu.nop(mode), AddrMode::Zp0, 3),
-        Instruction::new(0x74, NOP_U, |cpu, mode| cpu.nop(mode), AddrMode::Zpx, 4),
-        Instruction::new(0xD4, NOP_U, |cpu, mode| cpu.nop(mode), AddrMode::Zpx, 4),
-        Instruction::new(0xF4, NOP_U, |cpu, mode| cpu.nop(mode), AddrMode::Zpx, 4),
-        Instruction::new(0x89, NOP_U, |cpu, mode| cpu.nop(mode), AddrMode::Imm, 2),
-        Instruction::new(0x1A, NOP_U, |cpu, mode| cpu.nop(mode), AddrMode::Imp, 2),
-        Instruction::new(0x3A, NOP_U, |cpu, mode| cpu.nop(mode), AddrMode::Imp, 2),
-        Instruction::new(0x5A, NOP_U, |cpu, mode| cpu.nop(mode), AddrMode::Imp, 2),
-        Instruction::new(0x7A, NOP_U, |cpu, mode| cpu.nop(mode), AddrMode::Imp, 2),
-        Instruction::new(0xDA, NOP_U, |cpu, mode| cpu.nop(mode), AddrMode::Imp, 2),
-        Instruction::new(0xFA, NOP_U, |cpu, mode| cpu.nop(mode), AddrMode::Imp, 2),
-        Instruction::new(0x0C, NOP_U, |cpu, mode| cpu.nop(mode), AddrMode::Abs, 4),
-        Instruction::new(0x1C, NOP_U, |cpu, mode| cpu.nop(mode), AddrMode::Abx, 4),
-        Instruction::new(0x3C, NOP_U, |cpu, mode| cpu.nop(mode), AddrMode::Abx, 4),
-        Instruction::new(0x5C, NOP_U, |cpu, mode| cpu.nop(mode), AddrMode::Abx, 4),
-        Instruction::new(0x7C, NOP_U, |cpu, mode| cpu.nop(mode), AddrMode::Abx, 4),
-        Instruction::new(0xDC, NOP_U, |cpu, mode| cpu.nop(mode), AddrMode::Abx, 4),
-        Instruction::new(0xFC, NOP_U, |cpu, mode| cpu.nop(mode), AddrMode::Abx, 4),
 
         Instruction::new(0x24, BIT, |cpu, mode| cpu.bit(mode), AddrMode::Zp0, 3),
         Instruction::new(0x2C, BIT, |cpu, mode| cpu.bit(mode), AddrMode::Abs, 4),
@@ -239,7 +212,6 @@ lazy_static! {
         Instruction::new(0xF9, SBC, |cpu, mode| cpu.sbc(mode), AddrMode::Aby, 4),
         Instruction::new(0xE1, SBC, |cpu, mode| cpu.sbc(mode), AddrMode::Izx, 6),
         Instruction::new(0xF1, SBC, |cpu, mode| cpu.sbc(mode), AddrMode::Izy, 5),
-        Instruction::new(0xEB, SBC_U, |cpu, mode| cpu.sbc(mode), AddrMode::Imm, 2),
 
         Instruction::new(0x02, KIL, |cpu, mode| cpu.kil(mode), AddrMode::Imp, 0),
         Instruction::new(0x12, KIL, |cpu, mode| cpu.kil(mode), AddrMode::Imp, 0),
@@ -256,6 +228,34 @@ lazy_static! {
 
         // --------------------------- Illegal opcodes ---------------------------
 
+        Instruction::new(0x80, NOP_U, |cpu, mode| cpu.nop(mode), AddrMode::Imm, 2),
+        Instruction::new(0x82, NOP_U, |cpu, mode| cpu.nop(mode), AddrMode::Imm, 2),
+        Instruction::new(0xC2, NOP_U, |cpu, mode| cpu.nop(mode), AddrMode::Imm, 2),
+        Instruction::new(0xE2, NOP_U, |cpu, mode| cpu.nop(mode), AddrMode::Imm, 2),
+        Instruction::new(0x04, NOP_U, |cpu, mode| cpu.nop(mode), AddrMode::Zp0, 3),
+        Instruction::new(0x14, NOP_U, |cpu, mode| cpu.nop(mode), AddrMode::Zpx, 4),
+        Instruction::new(0x34, NOP_U, |cpu, mode| cpu.nop(mode), AddrMode::Zpx, 4),
+        Instruction::new(0x44, NOP_U, |cpu, mode| cpu.nop(mode), AddrMode::Zp0, 3),
+        Instruction::new(0x54, NOP_U, |cpu, mode| cpu.nop(mode), AddrMode::Zpx, 4),
+        Instruction::new(0x64, NOP_U, |cpu, mode| cpu.nop(mode), AddrMode::Zp0, 3),
+        Instruction::new(0x74, NOP_U, |cpu, mode| cpu.nop(mode), AddrMode::Zpx, 4),
+        Instruction::new(0xD4, NOP_U, |cpu, mode| cpu.nop(mode), AddrMode::Zpx, 4),
+        Instruction::new(0xF4, NOP_U, |cpu, mode| cpu.nop(mode), AddrMode::Zpx, 4),
+        Instruction::new(0x89, NOP_U, |cpu, mode| cpu.nop(mode), AddrMode::Imm, 2),
+        Instruction::new(0x1A, NOP_U, |cpu, mode| cpu.nop(mode), AddrMode::Imp, 2),
+        Instruction::new(0x3A, NOP_U, |cpu, mode| cpu.nop(mode), AddrMode::Imp, 2),
+        Instruction::new(0x5A, NOP_U, |cpu, mode| cpu.nop(mode), AddrMode::Imp, 2),
+        Instruction::new(0x7A, NOP_U, |cpu, mode| cpu.nop(mode), AddrMode::Imp, 2),
+        Instruction::new(0xDA, NOP_U, |cpu, mode| cpu.nop(mode), AddrMode::Imp, 2),
+        Instruction::new(0xFA, NOP_U, |cpu, mode| cpu.nop(mode), AddrMode::Imp, 2),
+        Instruction::new(0x0C, NOP_U, |cpu, mode| cpu.nop(mode), AddrMode::Abs, 4),
+        Instruction::new(0x1C, NOP_U, |cpu, mode| cpu.nop(mode), AddrMode::Abx, 4),
+        Instruction::new(0x3C, NOP_U, |cpu, mode| cpu.nop(mode), AddrMode::Abx, 4),
+        Instruction::new(0x5C, NOP_U, |cpu, mode| cpu.nop(mode), AddrMode::Abx, 4),
+        Instruction::new(0x7C, NOP_U, |cpu, mode| cpu.nop(mode), AddrMode::Abx, 4),
+        Instruction::new(0xDC, NOP_U, |cpu, mode| cpu.nop(mode), AddrMode::Abx, 4),
+        Instruction::new(0xFC, NOP_U, |cpu, mode| cpu.nop(mode), AddrMode::Abx, 4),
+
         Instruction::new(0x03, SLO, |cpu, mode| cpu.slo(mode), AddrMode::Izx, 8),
         Instruction::new(0x13, SLO, |cpu, mode| cpu.slo(mode), AddrMode::IzyW, 8),
         Instruction::new(0x07, SLO, |cpu, mode| cpu.slo(mode), AddrMode::Zp0, 5),
@@ -263,7 +263,7 @@ lazy_static! {
         Instruction::new(0x1B, SLO, |cpu, mode| cpu.slo(mode), AddrMode::AbyW, 7),
         Instruction::new(0x0F, SLO, |cpu, mode| cpu.slo(mode), AddrMode::Abs, 6),
         Instruction::new(0x1F, SLO, |cpu, mode| cpu.slo(mode), AddrMode::AbxW, 7),
-        
+
         Instruction::new(0x23, RLA, |cpu, mode| cpu.rla(mode), AddrMode::Izx, 8),
         Instruction::new(0x33, RLA, |cpu, mode| cpu.rla(mode), AddrMode::IzyW, 8),
         Instruction::new(0x27, RLA, |cpu, mode| cpu.rla(mode), AddrMode::Zp0, 5),
@@ -271,7 +271,7 @@ lazy_static! {
         Instruction::new(0x3B, RLA, |cpu, mode| cpu.rla(mode), AddrMode::AbyW, 7),
         Instruction::new(0x2F, RLA, |cpu, mode| cpu.rla(mode), AddrMode::Abs, 6),
         Instruction::new(0x3F, RLA, |cpu, mode| cpu.rla(mode), AddrMode::AbxW, 7),
-        
+
         Instruction::new(0x43, SRE, |cpu, mode| cpu.sre(mode), AddrMode::Izx, 8),
         Instruction::new(0x53, SRE, |cpu, mode| cpu.sre(mode), AddrMode::IzyW, 8),
         Instruction::new(0x47, SRE, |cpu, mode| cpu.sre(mode), AddrMode::Zp0, 5),
@@ -279,7 +279,7 @@ lazy_static! {
         Instruction::new(0x5B, SRE, |cpu, mode| cpu.sre(mode), AddrMode::AbyW, 7),
         Instruction::new(0x4F, SRE, |cpu, mode| cpu.sre(mode), AddrMode::Abs, 6),
         Instruction::new(0x5F, SRE, |cpu, mode| cpu.sre(mode), AddrMode::AbxW, 7),
-        
+
         Instruction::new(0x63, RRA, |cpu, mode| cpu.rra(mode), AddrMode::Izx, 8),
         Instruction::new(0x73, RRA, |cpu, mode| cpu.rra(mode), AddrMode::IzyW, 8),
         Instruction::new(0x67, RRA, |cpu, mode| cpu.rra(mode), AddrMode::Zp0, 5),
@@ -331,12 +331,13 @@ lazy_static! {
 
         Instruction::new(0x9B, TAS, |cpu, mode| cpu.tas(mode), AddrMode::AbyW, 5),
 
-
         Instruction::new(0x9C, SHY, |cpu, mode| cpu.shy(mode), AddrMode::AbxW, 5),
 
         Instruction::new(0xBB, LAS, |cpu, mode| cpu.las(mode), AddrMode::Aby, 4),
 
         Instruction::new(0xCB, AXS, |cpu, mode| cpu.axs(mode), AddrMode::Imm, 2),
+
+        Instruction::new(0xEB, SBC_U, |cpu, mode| cpu.sbc(mode), AddrMode::Imm, 2),
 
         Instruction::new(0x9E, SHX, |cpu, mode| cpu.shx(mode), AddrMode::AbyW, 5),
     ];

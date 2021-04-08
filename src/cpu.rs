@@ -96,8 +96,7 @@ impl Cpu {
         self.y = 0;
         self.s = STACK_RESET;
         self.p = Flags::from_bits_truncate(STATUS_RESET);
-        // self.pc = self.mem_read_word(RESET_VECTOR);
-        self.pc = 0xC000;
+        self.pc = self.mem_read_word(RESET_VECTOR);
         self.ins_cycles = 0;
         self.cycles = 7;
     }
