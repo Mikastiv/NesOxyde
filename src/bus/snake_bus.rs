@@ -17,6 +17,12 @@ impl Interface for SnakeBus {
     fn write(&mut self, addr: u16, data: u8) {
         self.memory[addr as usize] = data
     }
+
+    fn poll_nmi(&mut self) -> bool {
+        false
+    }
+
+    fn tick(&mut self, cycles: u64) {}
 }
 
 impl SnakeBus {

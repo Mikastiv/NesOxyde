@@ -19,6 +19,12 @@ impl Interface for TestBus {
             _ => self.program[(addr - 0x2000) as usize] = data,
         }
     }
+
+    fn poll_nmi(&mut self) -> bool {
+        false
+    }
+
+    fn tick(&mut self, cycles: u64) {}
 }
 
 impl TestBus {

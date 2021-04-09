@@ -18,6 +18,9 @@ const PPU_REG_END: u16 = 0x3FFF;
 const ROM_START: u16 = 0x8000;
 const ROM_END: u16 = 0xFFFF;
 
+const JOY1: u16 = 0x4016;
+const JOY2: u16 = 0x4017;
+
 pub struct MainBus {
     ram: [u8; RAM_SIZE],
     cartridge: Rc<RefCell<Cartridge>>,
@@ -32,6 +35,8 @@ impl Interface for MainBus {
                 let addr = addr & PPU_MASK;
                 self.ppu.read(addr)
             }
+            JOY1 => todo!(),
+            JOY2 => todo!(),
             ROM_START..=ROM_END => self.cartridge.borrow_mut().read_prg(addr),
             _ => {
                 println!("Ignored read at {:#04X}", addr);
@@ -47,8 +52,19 @@ impl Interface for MainBus {
                 let addr = addr & PPU_MASK;
                 self.ppu.write(addr, data);
             }
+            JOY1 => todo!(),
             ROM_START..=ROM_END => self.cartridge.borrow_mut().write_prg(addr, data),
             _ => println!("Ignored read at 0x{:04X}", addr),
+        }
+    }
+
+    fn poll_nmi(&mut self) -> bool {
+        self.ppu.poll_nmi()
+    }
+
+    fn tick(&mut self, cycles: u64) {
+        for _ in 0..(cycles * 3) {
+            self.ppu.clock();
         }
     }
 }

@@ -7,12 +7,15 @@ mod instructions;
 const STACK_PAGE: u16 = 0x0100;
 const STACK_RESET: u8 = 0xFD;
 const STATUS_RESET: u8 = Flags::U.bits() | Flags::I.bits();
+const NMI_VECTOR: u16 = 0xFFFA;
 const RESET_VECTOR: u16 = 0xFFFC;
 const IRQ_VECTOR: u16 = 0xFFFE;
 
 pub trait Interface {
     fn read(&mut self, addr: u16) -> u8;
     fn write(&mut self, addr: u16, data: u8);
+    fn poll_nmi(&mut self) -> bool;
+    fn tick(&mut self, cycles: u64);
 }
 
 bitflags! {
@@ -37,7 +40,7 @@ pub struct Cpu {
     pc: u16,
 
     bus: Box<dyn Interface>,
-    ins_cycles: u32,
+    ins_cycles: u64,
     cycles: u64,
 }
 
@@ -86,6 +89,10 @@ impl Cpu {
         self.cycles
     }
 
+    pub fn ins_cycles(&self) -> u64 {
+        self.ins_cycles
+    }
+
     pub fn add_cycle(&mut self) {
         self.ins_cycles += 1;
     }
@@ -101,6 +108,26 @@ impl Cpu {
         self.cycles = 7;
     }
 
+    fn nmi(&mut self) {
+        self.push_word(self.pc);
+        self.push_byte((self.p & !Flags::B).bits());
+        self.p.insert(Flags::I);
+        self.pc = self.mem_read_word(NMI_VECTOR);
+        self.cycles += 7;
+        self.ins_cycles = 7;
+    }
+
+    fn irq(&mut self) {
+        if !self.p.contains(Flags::I) {
+            self.push_word(self.pc);
+            self.push_byte((self.p & !Flags::B).bits());
+            self.p.insert(Flags::I);
+            self.pc = self.mem_read_word(IRQ_VECTOR);
+            self.cycles += 7;
+            self.ins_cycles = 7;
+        }
+    }
+
     pub fn run(&mut self) {
         self.run_with_callback(|_| {});
     }
@@ -108,18 +135,23 @@ impl Cpu {
     pub fn run_with_callback<F: FnMut(&mut Self)>(&mut self, mut callback: F) {
         loop {
             callback(self);
+            if self.bus.poll_nmi() {
+                self.nmi();
+                self.bus.tick(self.ins_cycles);
+            }
             self.execute();
         }
     }
 
-    pub fn execute(&mut self) -> u32 {
+    pub fn execute(&mut self) -> u64 {
         let opcode = self.read_byte();
 
         let ins = *OPTABLE.get(&opcode).unwrap();
         self.ins_cycles = ins.cycles;
         (ins.cpu_fn)(self, ins.mode);
 
-        self.cycles += self.ins_cycles as u64;
+        self.cycles += self.ins_cycles;
+        self.bus.tick(self.ins_cycles);
         self.ins_cycles
     }
 
@@ -486,8 +518,8 @@ impl Cpu {
     }
 
     fn brk(&mut self, _mode: AddrMode) {
-        self.increment_pc();
         if !self.p.contains(Flags::I) {
+            self.increment_pc();
             self.push_word(self.pc);
             self.push_byte((self.p | Flags::B).bits());
             self.p.insert(Flags::I);
@@ -793,7 +825,7 @@ impl Cpu {
 
         self.s = self.x() & self.a();
         let hi = ((addr >> 8) as u8).wrapping_add(1);
-        self.mem_write(addr, self.s()& hi);
+        self.mem_write(addr, self.s() & hi);
     }
 
     fn shy(&mut self, mode: AddrMode) {

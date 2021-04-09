@@ -24,6 +24,7 @@ pub struct Ppu {
     status: Status,
 
     bus: Box<dyn Interface>,
+    pending_nmi: bool,
     open_bus: u8,
     oam: [u8; OAM_SIZE],
 
@@ -42,6 +43,7 @@ impl Ppu {
             status: Status::from_bits_truncate(0),
 
             bus,
+            pending_nmi: false,
             open_bus: 0,
             oam: [0; OAM_SIZE],
 
@@ -123,6 +125,14 @@ impl Ppu {
             _ => {}
         }
     }
+
+    pub fn poll_nmi(&mut self) -> bool {
+        let nmi = self.pending_nmi;
+        self.pending_nmi = false;
+        nmi
+    }
+
+    pub fn clock(&mut self) {}
 
     fn increment_addr(&mut self) {
         let new_addr = self.v_addr.raw().wrapping_add(self.ctrl.increment());

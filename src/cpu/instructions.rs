@@ -9,7 +9,7 @@ pub struct Instruction {
     pub mnemonic: &'static str,
     pub cpu_fn: fn(&mut Cpu, AddrMode),
     pub mode: AddrMode,
-    pub cycles: u32,
+    pub cycles: u64,
 }
 
 impl Instruction {
@@ -18,7 +18,7 @@ impl Instruction {
         mnemonic: &'static str,
         cpu_fn: fn(&mut Cpu, AddrMode),
         mode: AddrMode,
-        cycles: u32,
+        cycles: u64,
     ) -> Self {
         Self {
             opcode,
