@@ -1,4 +1,4 @@
-use registers::{Controller, Mask, Status};
+use registers::{Controller, Loopy, Mask, Status};
 
 mod registers;
 
@@ -25,8 +25,13 @@ pub struct Ppu {
 
     bus: Box<dyn Interface>,
     open_bus: u8,
-    addr_toggle: bool,
     oam: [u8; OAM_SIZE],
+
+    addr_toggle: bool,
+    read_buffer: u8,
+    xfine: u8,
+    v_addr: Loopy,
+    scroll: Loopy,
 }
 
 impl Ppu {
@@ -38,27 +43,40 @@ impl Ppu {
 
             bus,
             open_bus: 0,
-            addr_toggle: false,
             oam: [0; OAM_SIZE],
+
+            addr_toggle: false,
+            read_buffer: 0,
+            xfine: 0,
+            v_addr: Loopy::new(),
+            scroll: Loopy::new(),
         }
     }
 
     pub fn read(&mut self, addr: u16) -> u8 {
         let mut data = self.open_bus;
         match addr {
-            PPU_CTRL => {},
-            PPU_MASK => {},
+            PPU_CTRL => {}
+            PPU_MASK => {}
             PPU_STATUS => {
                 data = self.status.bits() | (self.open_bus & 0x1F);
                 self.status.remove(Status::IN_VBLANK);
                 self.addr_toggle = false;
-            },
-            OAM_ADDR => {},
-            OAM_DATA => {},
-            PPU_SCROLL => {},
-            PPU_ADDR => {},
-            PPU_DATA => {},
-            _ => {},
+            }
+            OAM_ADDR => {}
+            OAM_DATA => {}
+            PPU_SCROLL => {}
+            PPU_ADDR => {}
+            PPU_DATA => {
+                data = self.read_buffer;
+                self.read_buffer = self.mem_read(self.v_addr.raw());
+                if (self.v_addr.raw() & 0x3F00) == 0x3F00 {
+                    data = (self.open_bus & 0xC0) | (self.read_buffer & 0x3F);
+                }
+                self.open_bus = data;
+                self.increment_addr();
+            }
+            _ => {}
         }
         data
     }
@@ -68,18 +86,47 @@ impl Ppu {
         match addr {
             PPU_CTRL => {
                 self.ctrl.set_raw(data);
-            },
+            }
             PPU_MASK => {
                 self.mask.set_raw(data);
-            },
-            PPU_STATUS => {},
-            OAM_ADDR => {},
-            OAM_DATA => {},
-            PPU_SCROLL => {},
-            PPU_ADDR => {},
-            PPU_DATA => {},
-            _ => {},
+            }
+            PPU_STATUS => {}
+            OAM_ADDR => {}
+            OAM_DATA => {}
+            PPU_SCROLL => {
+                match self.addr_toggle {
+                    true => {
+                        self.scroll.set_yfine(data & 0x3);
+                        self.scroll.set_ycoarse(data >> 3);
+                    }
+                    false => {
+                        self.xfine = data & 0x3;
+                        self.scroll.set_xcoarse(data >> 3);
+                    }
+                }
+                self.addr_toggle = !self.addr_toggle;
+            }
+            PPU_ADDR => {
+                match self.addr_toggle {
+                    true => {
+                        self.scroll.set_addr_lo(data);
+                        self.v_addr = self.scroll;
+                    }
+                    false => self.scroll.set_addr_hi(data & 0x3F),
+                }
+                self.addr_toggle = !self.addr_toggle;
+            }
+            PPU_DATA => {
+                self.mem_write(self.v_addr.raw(), data);
+                self.increment_addr();
+            }
+            _ => {}
         }
+    }
+
+    fn increment_addr(&mut self) {
+        let new_addr = self.v_addr.raw().wrapping_add(self.ctrl.increment());
+        self.v_addr.set_raw(new_addr);
     }
 
     fn mem_read(&mut self, addr: u16) -> u8 {
