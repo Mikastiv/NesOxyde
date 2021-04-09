@@ -6,12 +6,12 @@ mod instructions;
 
 const STACK_PAGE: u16 = 0x0100;
 const STACK_RESET: u8 = 0xFD;
-const STATUS_RESET: u8 = Flags::U.bits | Flags::I.bits;
+const STATUS_RESET: u8 = Flags::U.bits() | Flags::I.bits();
 const RESET_VECTOR: u16 = 0xFFFC;
 const IRQ_VECTOR: u16 = 0xFFFE;
 
 pub trait Interface {
-    fn read(&self, addr: u16) -> u8;
+    fn read(&mut self, addr: u16) -> u8;
     fn write(&mut self, addr: u16, data: u8);
 }
 
@@ -79,7 +79,7 @@ impl Cpu {
     }
 
     pub fn p(&self) -> u8 {
-        self.p.bits
+        self.p.bits()
     }
 
     pub fn cycles(&self) -> u64 {
@@ -123,11 +123,11 @@ impl Cpu {
         self.ins_cycles
     }
 
-    pub fn mem_read(&self, addr: u16) -> u8 {
+    pub fn mem_read(&mut self, addr: u16) -> u8 {
         self.bus.read(addr)
     }
 
-    pub fn mem_read_word(&self, addr: u16) -> u16 {
+    pub fn mem_read_word(&mut self, addr: u16) -> u16 {
         let lo = self.mem_read(addr);
         let hi = self.mem_read(addr.wrapping_add(1));
         u16::from_le_bytes([lo, hi])
@@ -150,8 +150,8 @@ impl Cpu {
     }
 
     fn push_byte(&mut self, data: u8) {
-        self.mem_write(STACK_PAGE + self.s as u16, data);
-        self.s = self.s.wrapping_sub(1);
+        self.mem_write(STACK_PAGE + self.s() as u16, data);
+        self.s = self.s().wrapping_sub(1);
     }
 
     fn push_word(&mut self, data: u16) {
@@ -162,8 +162,8 @@ impl Cpu {
     }
 
     fn pop_byte(&mut self) -> u8 {
-        self.s = self.s.wrapping_add(1);
-        self.mem_read(STACK_PAGE + self.s as u16)
+        self.s = self.s().wrapping_add(1);
+        self.mem_read(STACK_PAGE + self.s() as u16)
     }
 
     fn pop_word(&mut self) -> u16 {
@@ -179,16 +179,16 @@ impl Cpu {
             AddrMode::Zp0 => self.read_byte() as u16,
             AddrMode::Zpx => {
                 let base = self.read_byte();
-                base.wrapping_add(self.x) as u16
+                base.wrapping_add(self.x()) as u16
             }
             AddrMode::Zpy => {
                 let base = self.read_byte();
-                base.wrapping_add(self.y) as u16
+                base.wrapping_add(self.y()) as u16
             }
             AddrMode::Abs | AddrMode::Ind => self.read_word(),
             AddrMode::Abx => {
                 let base = self.read_word();
-                let addr = base.wrapping_add(self.x as u16);
+                let addr = base.wrapping_add(self.x() as u16);
 
                 if Self::page_crossed(base, addr) {
                     self.ins_cycles += 1;
@@ -198,11 +198,11 @@ impl Cpu {
             }
             AddrMode::AbxW => {
                 let base = self.read_word();
-                base.wrapping_add(self.x as u16)
+                base.wrapping_add(self.x() as u16)
             }
             AddrMode::Aby => {
                 let base = self.read_word();
-                let addr = base.wrapping_add(self.y as u16);
+                let addr = base.wrapping_add(self.y() as u16);
 
                 if Self::page_crossed(base, addr) {
                     self.ins_cycles += 1;
@@ -212,11 +212,11 @@ impl Cpu {
             }
             AddrMode::AbyW => {
                 let base = self.read_word();
-                base.wrapping_add(self.y as u16)
+                base.wrapping_add(self.y() as u16)
             }
             AddrMode::Izx => {
                 let base = self.read_byte();
-                let ptr = base.wrapping_add(self.x);
+                let ptr = base.wrapping_add(self.x());
                 let lo = self.mem_read(ptr as u16);
                 let hi = self.mem_read(ptr.wrapping_add(1) as u16);
                 u16::from_le_bytes([lo, hi])
@@ -225,7 +225,7 @@ impl Cpu {
                 let ptr = self.read_byte();
                 let lo = self.mem_read(ptr as u16);
                 let hi = self.mem_read(ptr.wrapping_add(1) as u16);
-                let addr = u16::from_le_bytes([lo, hi]).wrapping_add(self.y as u16);
+                let addr = u16::from_le_bytes([lo, hi]).wrapping_add(self.y() as u16);
 
                 if Self::page_crossed(u16::from_le_bytes([lo, hi]), addr) {
                     self.ins_cycles += 1;
@@ -237,7 +237,7 @@ impl Cpu {
                 let ptr = self.read_byte();
                 let lo = self.mem_read(ptr as u16);
                 let hi = self.mem_read(ptr.wrapping_add(1) as u16);
-                u16::from_le_bytes([lo, hi]).wrapping_add(self.y as u16)
+                u16::from_le_bytes([lo, hi]).wrapping_add(self.y() as u16)
             }
         }
     }
@@ -291,7 +291,7 @@ impl Cpu {
     }
 
     fn set_p(&mut self, v: u8) {
-        self.p.bits = (v | Flags::U.bits) & !Flags::B.bits;
+        self.p.bits = (v | Flags::U.bits()) & !Flags::B.bits();
     }
 
     fn page_crossed(old: u16, new: u16) -> bool {
@@ -322,41 +322,41 @@ impl Cpu {
 
     fn sta(&mut self, mode: AddrMode) {
         let addr = self.operand_addr(mode);
-        self.mem_write(addr, self.a);
+        self.mem_write(addr, self.a());
     }
 
     fn stx(&mut self, mode: AddrMode) {
         let addr = self.operand_addr(mode);
-        self.mem_write(addr, self.x);
+        self.mem_write(addr, self.x());
     }
 
     fn sty(&mut self, mode: AddrMode) {
         let addr = self.operand_addr(mode);
-        self.mem_write(addr, self.y);
+        self.mem_write(addr, self.y());
     }
 
     fn tax(&mut self, _mode: AddrMode) {
-        self.set_x(self.a);
+        self.set_x(self.a());
     }
 
     fn tay(&mut self, _mode: AddrMode) {
-        self.set_y(self.a);
+        self.set_y(self.a());
     }
 
     fn tsx(&mut self, _mode: AddrMode) {
-        self.set_x(self.s);
+        self.set_x(self.s());
     }
 
     fn txa(&mut self, _mode: AddrMode) {
-        self.set_a(self.x);
+        self.set_a(self.x());
     }
 
     fn txs(&mut self, _mode: AddrMode) {
-        self.s = self.x;
+        self.s = self.x();
     }
 
     fn tya(&mut self, _mode: AddrMode) {
-        self.set_a(self.y);
+        self.set_a(self.y());
     }
 
     fn clc(&mut self, _mode: AddrMode) {
@@ -395,11 +395,11 @@ impl Cpu {
     }
 
     fn inx(&mut self, mode: AddrMode) {
-        self.set_x(self.x.wrapping_add(1));
+        self.set_x(self.x().wrapping_add(1));
     }
 
     fn iny(&mut self, mode: AddrMode) {
-        self.set_y(self.y.wrapping_add(1));
+        self.set_y(self.y().wrapping_add(1));
     }
 
     fn dec(&mut self, mode: AddrMode) {
@@ -410,11 +410,11 @@ impl Cpu {
     }
 
     fn dex(&mut self, mode: AddrMode) {
-        self.set_x(self.x.wrapping_sub(1));
+        self.set_x(self.x().wrapping_sub(1));
     }
 
     fn dey(&mut self, mode: AddrMode) {
-        self.set_y(self.y.wrapping_sub(1));
+        self.set_y(self.y().wrapping_sub(1));
     }
 
     fn cmp(&mut self, v1: u8, v2: u8) {
@@ -426,19 +426,19 @@ impl Cpu {
     fn cpa(&mut self, mode: AddrMode) {
         let addr = self.operand_addr(mode);
         let v = self.fetch_operand(addr, mode);
-        self.cmp(self.a, v);
+        self.cmp(self.a(), v);
     }
 
     fn cpx(&mut self, mode: AddrMode) {
         let addr = self.operand_addr(mode);
         let v = self.fetch_operand(addr, mode);
-        self.cmp(self.x, v);
+        self.cmp(self.x(), v);
     }
 
     fn cpy(&mut self, mode: AddrMode) {
         let addr = self.operand_addr(mode);
         let v = self.fetch_operand(addr, mode);
-        self.cmp(self.y, v);
+        self.cmp(self.y(), v);
     }
 
     fn bcs(&mut self, mode: AddrMode) {
@@ -489,18 +489,18 @@ impl Cpu {
         self.increment_pc();
         if !self.p.contains(Flags::I) {
             self.push_word(self.pc);
-            self.push_byte((self.p | Flags::B).bits);
+            self.push_byte((self.p | Flags::B).bits());
             self.p.insert(Flags::I);
             self.pc = self.mem_read_word(IRQ_VECTOR);
         }
     }
 
     fn pha(&mut self, _mode: AddrMode) {
-        self.push_byte(self.a);
+        self.push_byte(self.a());
     }
 
     fn php(&mut self, _mode: AddrMode) {
-        self.push_byte(self.p.bits | Flags::B.bits);
+        self.push_byte((self.p | Flags::B).bits());
     }
 
     fn pla(&mut self, _mode: AddrMode) {
@@ -545,7 +545,7 @@ impl Cpu {
         let addr = self.operand_addr(mode);
         let v = self.fetch_operand(addr, mode);
 
-        self.p.set(Flags::Z, self.a & v == 0);
+        self.p.set(Flags::Z, self.a() & v == 0);
         self.p.set(Flags::V, v & 0x40 != 0);
         self.p.set(Flags::N, v & 0x80 != 0);
     }
@@ -553,19 +553,19 @@ impl Cpu {
     fn and(&mut self, mode: AddrMode) {
         let addr = self.operand_addr(mode);
         let v = self.fetch_operand(addr, mode);
-        self.set_a(self.a & v);
+        self.set_a(self.a() & v);
     }
 
     fn eor(&mut self, mode: AddrMode) {
         let addr = self.operand_addr(mode);
         let v = self.fetch_operand(addr, mode);
-        self.set_a(self.a ^ v);
+        self.set_a(self.a() ^ v);
     }
 
     fn ora(&mut self, mode: AddrMode) {
         let addr = self.operand_addr(mode);
         let v = self.fetch_operand(addr, mode);
-        self.set_a(self.a | v);
+        self.set_a(self.a() | v);
     }
 
     fn asl(&mut self, v: u8) -> u8 {
@@ -576,7 +576,7 @@ impl Cpu {
     }
 
     fn asl_acc(&mut self, _mode: AddrMode) {
-        let v = self.asl(self.a);
+        let v = self.asl(self.a());
         self.set_a(v);
     }
 
@@ -595,7 +595,7 @@ impl Cpu {
     }
 
     fn lsr_acc(&mut self, _mode: AddrMode) {
-        let v = self.lsr(self.a);
+        let v = self.lsr(self.a());
         self.set_a(v);
     }
 
@@ -616,7 +616,7 @@ impl Cpu {
     }
 
     fn rol_acc(&mut self, _mode: AddrMode) {
-        let v = self.rol(self.a);
+        let v = self.rol(self.a());
         self.set_a(v);
     }
 
@@ -637,7 +637,7 @@ impl Cpu {
     }
 
     fn ror_acc(&mut self, _mode: AddrMode) {
-        let v = self.ror(self.a);
+        let v = self.ror(self.a());
         self.set_a(v);
     }
 
@@ -650,11 +650,11 @@ impl Cpu {
 
     fn add(&mut self, v: u8) {
         let c = self.p.contains(Flags::C);
-        let sum = self.a as u16 + v as u16 + c as u16;
+        let sum = self.a() as u16 + v as u16 + c as u16;
         let result = sum as u8;
 
         self.p
-            .set(Flags::V, (v ^ result) & (result ^ self.a) & 0x80 != 0);
+            .set(Flags::V, (v ^ result) & (result ^ self.a()) & 0x80 != 0);
         self.p.set(Flags::C, sum > 0xFF);
         self.set_a(result);
     }
@@ -686,7 +686,7 @@ impl Cpu {
         let v = self.fetch_operand(addr, mode);
 
         let result = self.asl(v);
-        self.set_a(self.a | result);
+        self.set_a(self.a() | result);
         self.mem_write(addr, result);
     }
 
@@ -695,7 +695,7 @@ impl Cpu {
         let v = self.fetch_operand(addr, mode);
 
         let result = self.rol(v);
-        self.set_a(self.a & result);
+        self.set_a(self.a() & result);
         self.mem_write(addr, result);
     }
 
@@ -704,7 +704,7 @@ impl Cpu {
         let v = self.fetch_operand(addr, mode);
 
         let result = self.lsr(v);
-        self.set_a(self.a ^ result);
+        self.set_a(self.a() ^ result);
         self.mem_write(addr, result);
     }
 
@@ -719,13 +719,13 @@ impl Cpu {
 
     fn sax(&mut self, mode: AddrMode) {
         let addr = self.operand_addr(mode);
-        self.mem_write(addr, self.a & self.x);
+        self.mem_write(addr, self.a() & self.x());
     }
 
     fn ahx(&mut self, mode: AddrMode) {
         let addr = self.operand_addr(mode);
         let hi = ((addr >> 8) as u8).wrapping_add(1);
-        self.mem_write(addr, hi & self.a & self.x);
+        self.mem_write(addr, hi & self.a() & self.x());
     }
 
     fn lax(&mut self, mode: AddrMode) {
@@ -740,7 +740,7 @@ impl Cpu {
         let addr = self.operand_addr(mode);
         let v = self.fetch_operand(addr, mode).wrapping_sub(1);
 
-        self.cmp(self.a, v);
+        self.cmp(self.a(), v);
         self.mem_write(addr, v);
     }
 
@@ -756,7 +756,7 @@ impl Cpu {
         let addr = self.operand_addr(mode);
         let v = self.fetch_operand(addr, mode);
 
-        self.set_a(self.a & v);
+        self.set_a(self.a() & v);
         self.p.set(Flags::C, self.p.contains(Flags::N));
     }
 
@@ -764,9 +764,9 @@ impl Cpu {
         let addr = self.operand_addr(mode);
         let v = self.fetch_operand(addr, mode);
 
-        self.set_a(self.a & v);
-        self.p.set(Flags::C, self.a & 0x01 != 0);
-        self.set_a(self.a >> 1);
+        self.set_a(self.a() & v);
+        self.p.set(Flags::C, self.a() & 0x01 != 0);
+        self.set_a(self.a() >> 1);
     }
 
     fn arr(&mut self, mode: AddrMode) {
@@ -774,58 +774,58 @@ impl Cpu {
         let v = self.fetch_operand(addr, mode);
 
         let c = (self.p.contains(Flags::C) as u8) << 7;
-        self.set_a(((self.a & v) >> 1) | c);
-        self.p.set(Flags::C, self.a & 0x40 != 0);
+        self.set_a(((self.a() & v) >> 1) | c);
+        self.p.set(Flags::C, self.a() & 0x40 != 0);
 
         let c = self.p.contains(Flags::C) as u8;
-        self.p.set(Flags::V, (c ^ ((self.a >> 5) & 0x01)) != 0);
+        self.p.set(Flags::V, (c ^ ((self.a() >> 5) & 0x01)) != 0);
     }
 
     fn xxa(&mut self, mode: AddrMode) {
         let addr = self.operand_addr(mode);
         let v = self.fetch_operand(addr, mode);
 
-        self.set_a(self.x & v);
+        self.set_a(self.x() & v);
     }
 
     fn tas(&mut self, mode: AddrMode) {
         let addr = self.operand_addr(mode);
 
-        self.s = self.x & self.a;
+        self.s = self.x() & self.a();
         let hi = ((addr >> 8) as u8).wrapping_add(1);
-        self.mem_write(addr, self.s & hi);
+        self.mem_write(addr, self.s()& hi);
     }
 
     fn shy(&mut self, mode: AddrMode) {
         let addr = self.operand_addr(mode);
         let hi = ((addr >> 8) as u8).wrapping_add(1);
         let lo = addr as u8;
-        let v = self.y & hi;
-        self.mem_write(u16::from_le_bytes([lo, self.y & hi]), v);
+        let v = self.y() & hi;
+        self.mem_write(u16::from_le_bytes([lo, self.y() & hi]), v);
     }
 
     fn shx(&mut self, mode: AddrMode) {
         let addr = self.operand_addr(mode);
         let hi = ((addr >> 8) as u8).wrapping_add(1);
         let lo = addr as u8;
-        let v = self.x & hi;
-        self.mem_write(u16::from_le_bytes([lo, self.x & hi]), v);
+        let v = self.x() & hi;
+        self.mem_write(u16::from_le_bytes([lo, self.x() & hi]), v);
     }
 
     fn las(&mut self, mode: AddrMode) {
         let addr = self.operand_addr(mode);
         let v = self.fetch_operand(addr, mode);
-        self.set_a(v & self.s);
-        self.set_x(self.a);
-        self.s = self.a;
+        self.set_a(v & self.s());
+        self.set_x(self.a());
+        self.s = self.a();
     }
 
     fn axs(&mut self, mode: AddrMode) {
         let addr = self.operand_addr(mode);
         let v = self.fetch_operand(addr, mode);
 
-        let result = (self.a & self.x).wrapping_sub(v);
-        self.p.set(Flags::C, (self.a & self.x) >= v);
+        let result = (self.a() & self.x()).wrapping_sub(v);
+        self.p.set(Flags::C, (self.a() & self.x()) >= v);
         self.set_x(v);
     }
 }
@@ -1684,7 +1684,7 @@ mod tests {
 
         assert_eq!(
             cpu.mem_read(STACK_PAGE + cpu.s.wrapping_add(1) as u16),
-            (Flags::N | Flags::V | Flags::U | Flags::B | Flags::C | Flags::I).bits
+            (Flags::N | Flags::V | Flags::U | Flags::B | Flags::C | Flags::I).bits()
         );
         assert_eq!(cpu.ins_cycles, 3);
     }
@@ -1711,7 +1711,7 @@ mod tests {
     #[test]
     fn test_28() {
         let mut bus = TestBus::new(vec![0x28]);
-        bus.set_ram(STACK_PAGE + 0xA5, (Flags::N | Flags::B | Flags::I).bits);
+        bus.set_ram(STACK_PAGE + 0xA5, (Flags::N | Flags::B | Flags::I).bits());
         let mut cpu = get_test_cpu_from_bus(bus);
         cpu.s = 0xA4;
         cpu.execute();
@@ -1745,7 +1745,7 @@ mod tests {
     #[test]
     fn test_40() {
         let mut bus = TestBus::new(vec![0x40]);
-        bus.set_ram(STACK_PAGE + 0xFE, Flags::V.bits | Flags::C.bits);
+        bus.set_ram(STACK_PAGE + 0xFE, (Flags::V | Flags::C).bits());
         bus.set_ram(STACK_PAGE + 0xFF, 0xEF);
         bus.set_ram(STACK_PAGE, 0xBE);
         let mut cpu = get_test_cpu_from_bus(bus);

@@ -7,14 +7,18 @@ use crate::ppu::Interface;
 const ROM_START: u16 = 0x0000;
 const ROM_END: u16 = 0x1FFF;
 
+const VRAM_SIZE: usize = 0x800;
 const VRAM_START: u16 = 0x2000;
 const VRAM_END: u16 = 0x3EFF;
 
+const PALETTE_RAM_SIZE: usize = 0x20;
 const PALETTE_START: u16 = 0x3F00;
 const PALETTE_END: u16 = 0x3FFF;
 
 pub struct PpuBus {
     cartridge: Rc<RefCell<Cartridge>>,
+    pal_ram: [u8; PALETTE_RAM_SIZE],
+    vram: [u8; VRAM_SIZE],
 }
 
 impl Interface for PpuBus {
@@ -41,6 +45,10 @@ impl Interface for PpuBus {
 
 impl PpuBus {
     pub fn new(cartridge: Rc<RefCell<Cartridge>>) -> Self {
-        Self { cartridge }
+        Self {
+            cartridge,
+            pal_ram: [0; PALETTE_RAM_SIZE],
+            vram: [0; VRAM_SIZE],
+        }
     }
 }

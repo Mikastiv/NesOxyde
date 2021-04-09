@@ -11,6 +11,20 @@ bitflags! {
     }
 }
 
+impl Controller {
+    pub fn set_raw(&mut self, v: u8) {
+        self.bits = v;
+    }
+
+    pub fn increment(&self) -> u16 {
+        if self.contains(Self::VRAM_INCREMENT) {
+            32
+        } else {
+            1
+        }
+    }     
+}
+
 bitflags! {
     pub struct Mask: u8 {
         const EMPH_BLUE  = 0b10000000;
@@ -24,11 +38,23 @@ bitflags! {
     }
 }
 
+impl Mask {
+    pub fn set_raw(&mut self, v: u8) {
+        self.bits = v;
+    }
+}
+
 bitflags! {
     pub struct Status: u8 {
         const IN_VBLANK   = 0b10000000;
         const SP_0_HIT    = 0b01000000;
         const SP_OVERFLOW = 0b00100000;
         const UNUSED      = 0b00011111;
+    }
+}
+
+impl Status {
+    pub fn set_raw(&mut self, v: u8) {
+        self.bits = v;
     }
 }
