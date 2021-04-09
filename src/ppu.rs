@@ -137,3 +137,20 @@ impl Ppu {
         self.bus.write(addr, data);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::cell::RefCell;
+    use std::rc::Rc;
+
+    use crate::bus::PpuBus;
+    use crate::cartridge::Cartridge;
+
+    use super::*;
+
+    fn get_ppu() -> Ppu {
+        let cart = Cartridge::new("roms/nestest.nes").unwrap();
+        let bus = PpuBus::new(Rc::new(RefCell::new(cart)));
+        Ppu::new(Box::new(bus))
+    }
+}

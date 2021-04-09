@@ -110,18 +110,18 @@ impl Loopy {
     }
 
     pub fn set_addr_lo(&mut self, v: u8) {
-        self.xcoarse = v & 0b00011111;
-        self.ycoarse &= 0b00011000;
+        self.xcoarse = v & 0b0001_1111;
+        self.ycoarse &= 0b0001_1000;
         self.ycoarse |= v >> 5;
     }
 
     pub fn set_addr_hi(&mut self, v: u8) {
-        self.ycoarse &= 0b00000111;
-        self.ycoarse |= (v & 0b00000011) << 3;
-        self.nta_h = v & 0b00000100 != 0;
-        self.nta_v = v & 0b00001000 != 0;
+        self.ycoarse &= 0b0000_0111;
+        self.ycoarse |= (v & 0b0000_0011) << 3;
+        self.nta_h = v & 0b0000_0100 != 0;
+        self.nta_v = v & 0b0000_1000 != 0;
         self.yfine = v >> 4;
-        self.yfine &= 0b00000111;
+        self.yfine &= 0b0000_0111;
     }
 
     pub fn raw(&self) -> u16 {
@@ -138,5 +138,69 @@ impl Loopy {
         self.nta_h = (v & (NTA_H_MASK << NTA_H_SHIFT)) != 0;
         self.nta_v = (v & (NTA_V_MASK << NTA_V_SHIFT)) != 0;
         self.yfine = ((v & (YFINE_MASK << YFINE_SHIFT)) >> YFINE_SHIFT) as u8;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_loopy_raw() {
+        let mut loopy = Loopy::new();
+        
+        loopy.set_raw(0b0110_0000_0001_0001);
+        assert_eq!(loopy.raw(), 0b0110_0000_0001_0001);
+        assert_eq!(loopy.xcoarse(), 0b10001);
+        assert_eq!(loopy.ycoarse(), 0);
+        assert_eq!(loopy.nta_h, false);
+        assert_eq!(loopy.nta_v, false);
+        assert_eq!(loopy.yfine(), 0b110);
+        
+        loopy.set_raw(0b0101_1010_1101_0111);
+        assert_eq!(loopy.raw(), 0b0101_1010_1101_0111);
+        assert_eq!(loopy.xcoarse(), 0b10111);
+        assert_eq!(loopy.ycoarse(), 0b10110);
+        assert_eq!(loopy.nta_h, false);
+        assert_eq!(loopy.nta_v, true);
+        assert_eq!(loopy.yfine(), 0b101);
+    }
+
+    #[test]
+    fn test_loopy_addr() {
+        let mut loopy = Loopy::new();
+
+        loopy.set_addr_lo(0b1001_1011);
+        assert_eq!(loopy.raw(), 0b0000_0000_1001_1011);
+        assert_eq!(loopy.xcoarse(), 0b11011);
+        assert_eq!(loopy.ycoarse(), 0b00100);
+        assert_eq!(loopy.nta_h, false);
+        assert_eq!(loopy.nta_v, false);
+        assert_eq!(loopy.yfine(), 0);
+
+        loopy.set_addr_lo(0);
+        loopy.set_addr_hi(0b1011_0111);
+        assert_eq!(loopy.raw(), 0b0011_0111_0000_0000);
+        assert_eq!(loopy.xcoarse(), 0);
+        assert_eq!(loopy.ycoarse(), 0b11000);
+        assert_eq!(loopy.nta_h, true);
+        assert_eq!(loopy.nta_v, false);
+        assert_eq!(loopy.yfine(), 0b011);
+    }
+
+    #[test]
+    fn test_loopy_setters() {
+        let mut loopy = Loopy::new();
+
+        loopy.set_xcoarse(0b1111_1111);
+        assert_eq!(loopy.xcoarse(), 0b11111);
+        loopy.set_xcoarse(0);
+
+        loopy.set_ycoarse(0b1111_1111);
+        assert_eq!(loopy.ycoarse(), 0b11111);
+        loopy.set_ycoarse(0);
+        
+        loopy.set_yfine(0b1111_1111);
+        assert_eq!(loopy.yfine(), 0b111);
     }
 }
