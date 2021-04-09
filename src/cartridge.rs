@@ -48,4 +48,8 @@ impl Cartridge {
     pub fn write_chr(&mut self, addr: u16, data: u8) {
         self.mapper.write_chr(addr, data);
     }
+
+    pub fn mirror_mode(&self) -> MirrorMode {
+        self.mapper.mirror_mode()
+    }
 }

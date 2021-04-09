@@ -1,7 +1,7 @@
 use std::usize;
 
-use super::super::Rom;
 use super::Mapper;
+use crate::cartridge::{MirrorMode, Rom};
 
 pub struct Mapper0 {
     rom: Rom,
@@ -33,5 +33,9 @@ impl Mapper for Mapper0 {
 
     fn write_chr(&mut self, addr: u16, data: u8) {
         todo!()
+    }
+
+    fn mirror_mode(&self) -> MirrorMode {
+        self.rom.header.mirror_mode()
     }
 }
