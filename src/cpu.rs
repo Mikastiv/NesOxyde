@@ -55,7 +55,6 @@ impl Cpu {
             pc: 0,
 
             bus,
-
             ins_cycles: 0,
             cycles: 0,
         }

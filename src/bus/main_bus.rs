@@ -54,7 +54,7 @@ impl Interface for MainBus {
             }
             JOY1 => todo!(),
             ROM_START..=ROM_END => self.cartridge.borrow_mut().write_prg(addr, data),
-            _ => println!("Ignored read at 0x{:04X}", addr),
+            _ => println!("Ignored write at 0x{:04X}", addr),
         }
     }
 
