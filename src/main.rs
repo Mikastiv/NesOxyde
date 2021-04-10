@@ -9,7 +9,7 @@ use cartridge::Cartridge;
 
 mod bus;
 mod cartridge;
-mod controller;
+mod joypad;
 mod cpu;
 mod nes;
 mod ppu;

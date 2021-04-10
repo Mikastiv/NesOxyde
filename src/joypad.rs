@@ -28,13 +28,13 @@ pub enum Button {
 }
 
 #[derive(Clone, Copy)]
-pub struct Controller {
+pub struct JoyPad {
     strobe: bool,
     state: State,
     snapshot: u8,
 }
 
-impl Controller {
+impl JoyPad {
     pub fn new() -> Self {
         Self {
             strobe: false,
@@ -72,5 +72,6 @@ impl Controller {
             Button::Left => self.state.set(State::LEFT, pressed),
             Button::Right => self.state.set(State::RIGHT, pressed),
         }
+        println!("{:08b}", self.state.bits());
     }
 }

@@ -1,8 +1,6 @@
 pub use self::addr_modes::AddrMode;
 pub use self::instructions::OPTABLE;
 
-use crate::controller::{Button, JoyPort};
-
 mod addr_modes;
 mod instructions;
 
@@ -18,7 +16,7 @@ pub trait Interface {
     fn write(&mut self, addr: u16, data: u8);
     fn poll_nmi(&mut self) -> bool;
     fn tick(&mut self, cycles: u64);
-    fn update_controller(&mut self, button: Button, pressed: bool, port: JoyPort);
+    fn poll_joy_input(&mut self);
 }
 
 bitflags! {
@@ -145,6 +143,7 @@ impl<'a> Cpu<'a> {
                 self.bus.tick(self.ins_cycles);
             }
             self.execute();
+            self.bus.poll_joy_input();
         }
     }
 

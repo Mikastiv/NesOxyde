@@ -3,8 +3,8 @@ use std::rc::Rc;
 
 use super::PpuBus;
 use crate::cartridge::Cartridge;
-use crate::controller::{Button, Controller, JoyPort};
 use crate::cpu::Interface;
+use crate::joypad::{Button, JoyPad, JoyPort};
 use crate::ppu::Ppu;
 
 const RAM_SIZE: usize = 0x800;
@@ -26,7 +26,8 @@ pub struct MainBus<'a> {
     ram: [u8; RAM_SIZE],
     cartridge: Rc<RefCell<Cartridge>>,
     ppu: Ppu<'a>,
-    controllers: [Controller; 2],
+    joypads: [JoyPad; 2],
+    update_joy_fn: Box<dyn FnMut(&mut MainBus) + 'a>,
 }
 
 impl Interface for MainBus<'_> {
@@ -37,8 +38,8 @@ impl Interface for MainBus<'_> {
                 let addr = addr & PPU_MASK;
                 self.ppu.read(addr)
             }
-            JOY1 => self.controllers[0].read(),
-            JOY2 => self.controllers[1].read(),
+            JOY1 => self.joypads[0].read(),
+            JOY2 => self.joypads[1].read(),
             ROM_START..=ROM_END => self.cartridge.borrow_mut().read_prg(addr),
             _ => {
                 println!("Ignored read at {:#04X}", addr);
@@ -55,8 +56,8 @@ impl Interface for MainBus<'_> {
                 self.ppu.write(addr, data);
             }
             JOY1 => {
-                self.controllers[0].strobe(data);
-                self.controllers[1].strobe(data);
+                self.joypads[0].strobe(data);
+                self.joypads[1].strobe(data);
             }
             ROM_START..=ROM_END => self.cartridge.borrow_mut().write_prg(addr, data),
             _ => println!("Ignored write at 0x{:04X}", addr),
@@ -73,25 +74,36 @@ impl Interface for MainBus<'_> {
         }
     }
 
-    fn update_controller(&mut self, button: Button, pressed: bool, port: JoyPort) {
-        match port {
-            JoyPort::Port1 => self.controllers[0].update(button, pressed),
-            JoyPort::Port2 => self.controllers[1].update(button, pressed),
-        }
+    fn poll_joy_input(&mut self) {
+        let ptr = self as *mut MainBus;
+        unsafe { (self.update_joy_fn)(ptr.as_mut().unwrap()) };
     }
 }
 
 impl<'a> MainBus<'a> {
-    pub fn new<F>(cartridge: Rc<RefCell<Cartridge>>, sdl_render_fn: F) -> Self
+    pub fn new<F1, F2>(
+        cartridge: Rc<RefCell<Cartridge>>,
+        sdl_render_fn: F1,
+        update_joy_fn: F2,
+    ) -> Self
     where
-        F: FnMut(&[u8]) + 'a,
+        F1: FnMut(&[u8]) + 'a,
+        F2: FnMut(&mut MainBus) + 'a,
     {
         let ppu_bus = PpuBus::new(Rc::clone(&cartridge));
         Self {
             ram: [0; RAM_SIZE],
             cartridge,
             ppu: Ppu::new(Box::new(ppu_bus), Box::new(sdl_render_fn)),
-            controllers: [Controller::new(); 2],
+            joypads: [JoyPad::new(); 2],
+            update_joy_fn: Box::new(update_joy_fn),
+        }
+    }
+
+    pub fn update_controller(&mut self, button: Button, pressed: bool, port: JoyPort) {
+        match port {
+            JoyPort::Port1 => self.joypads[0].update(button, pressed),
+            JoyPort::Port2 => self.joypads[1].update(button, pressed),
         }
     }
 }
