@@ -5,6 +5,7 @@ use self::frame::Frame;
 pub mod frame;
 mod registers;
 
+#[derive(Clone, Copy)]
 pub struct Pixel(u8, u8, u8);
 
 #[rustfmt::skip]
@@ -44,7 +45,7 @@ pub struct Ppu<'a> {
     status: Status,
 
     bus: Box<dyn Interface>,
-    pending_nmi: bool,
+    pending_nmi: Option<bool>,
     open_bus: u8,
     oam: [u8; OAM_SIZE],
 
@@ -72,7 +73,7 @@ impl<'a> Ppu<'a> {
             status: Status::from_bits_truncate(0),
 
             bus,
-            pending_nmi: false,
+            pending_nmi: None,
             open_bus: 0,
             oam: [0; OAM_SIZE],
 
@@ -87,6 +88,56 @@ impl<'a> Ppu<'a> {
 
             frame: Frame::new(),
             render_fn,
+        }
+    }
+
+    pub fn render_chr_pattern(&mut self) {
+        for tile_y in 0..16 {
+            for tile_x in 0..16 {
+                let offset = tile_y * 256 + tile_x * 16;
+
+                for row in 0..8 {
+                    let mut lo_sp = self.mem_read(offset + row);
+                    let mut hi_sp = self.mem_read(offset + row + 0x8);
+                    let mut lo_bg = self.mem_read(0x1000 + offset + row);
+                    let mut hi_bg = self.mem_read(0x1000 + offset + row + 0x8);
+
+                    for col in (0..8).rev() {
+                        let pixel_sp = (hi_sp & 0x1) << 1 | (lo_sp & 0x1);
+                        let pixel_bg = (hi_bg & 0x1) << 1 | (lo_bg & 0x1);
+                        lo_sp >>= 1;
+                        hi_sp >>= 1;
+                        lo_bg >>= 1;
+                        hi_bg >>= 1;
+
+                        let rgb_sp = match pixel_sp {
+                            0 => NES_PALETTE[0x01],
+                            1 => NES_PALETTE[0x23],
+                            2 => NES_PALETTE[0x27],
+                            3 => NES_PALETTE[0x30],
+                            _ => unreachable!(),
+                        };
+                        let rgb_bg = match pixel_bg {
+                            0 => NES_PALETTE[0x01],
+                            1 => NES_PALETTE[0x23],
+                            2 => NES_PALETTE[0x27],
+                            3 => NES_PALETTE[0x30],
+                            _ => unreachable!(),
+                        };
+
+                        self.frame.set_pixel(
+                            (tile_x * 8 + col) as usize,
+                            (tile_y * 8 + row) as usize,
+                            rgb_sp,
+                        );
+                        self.frame.set_pixel(
+                            (tile_x * 8 + col + 128) as usize,
+                            (tile_y * 8 + row) as usize,
+                            rgb_bg,
+                        );
+                    }
+                }
+            }
         }
     }
 
@@ -161,21 +212,31 @@ impl<'a> Ppu<'a> {
         }
     }
 
-    pub fn poll_nmi(&mut self) -> bool {
-        let nmi = self.pending_nmi;
-        self.pending_nmi = false;
-        nmi
+    pub fn poll_nmi(&mut self) -> Option<bool> {
+        self.pending_nmi.take()
     }
 
     pub fn clock(&mut self) {
         self.cycle += 1;
-        if self.cycle >= 256 {
-            self.scanline += 1;
+        if self.cycle >= 341 {
             self.cycle = 0;
-        }
-        if self.scanline >= 240 {
-            self.scanline = 0;
-            (self.render_fn)(self.frame.pixels());
+            self.scanline += 1;
+
+            if self.scanline == 241 {
+                self.status.set_vblank(true);
+                self.status.set_sp_0_hit(false);
+                if self.ctrl.nmi_enabled() {
+                    self.pending_nmi = Some(true);
+                }
+                (self.render_fn)(self.frame.pixels());
+            }
+
+            if self.scanline >= 262 {
+                self.scanline = 0;
+                self.pending_nmi = None;
+                self.status.set_sp_0_hit(false);
+                self.status.set_vblank(false);
+            }
         }
     }
 

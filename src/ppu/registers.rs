@@ -23,6 +23,17 @@ impl Controller {
             1
         }
     }
+
+    pub fn bg_base_addr(&self) -> u16 {
+        match self.contains(Self::BG_ADDRESS) {
+            true => 0x1000,
+            false => 0x0000,
+        }
+    }
+
+    pub fn nmi_enabled(&self) -> bool {
+        self.contains(Self::NMI_ENABLED)
+    }
 }
 
 bitflags! {
@@ -56,6 +67,14 @@ bitflags! {
 impl Status {
     pub fn set_raw(&mut self, v: u8) {
         self.bits = v;
+    }
+
+    pub fn set_vblank(&mut self, v: bool) {
+        self.set(Self::IN_VBLANK, v);
+    }
+
+    pub fn set_sp_0_hit(&mut self, v: bool) {
+        self.set(Self::SP_0_HIT, v);
     }
 }
 
@@ -148,7 +167,7 @@ mod tests {
     #[test]
     fn test_loopy_raw() {
         let mut loopy = Loopy::new();
-        
+
         loopy.set_raw(0b0110_0000_0001_0001);
         assert_eq!(loopy.raw(), 0b0110_0000_0001_0001);
         assert_eq!(loopy.xcoarse(), 0b10001);
@@ -156,7 +175,7 @@ mod tests {
         assert_eq!(loopy.nta_h, false);
         assert_eq!(loopy.nta_v, false);
         assert_eq!(loopy.yfine(), 0b110);
-        
+
         loopy.set_raw(0b0101_1010_1101_0111);
         assert_eq!(loopy.raw(), 0b0101_1010_1101_0111);
         assert_eq!(loopy.xcoarse(), 0b10111);
@@ -199,7 +218,7 @@ mod tests {
         loopy.set_ycoarse(0b1111_1111);
         assert_eq!(loopy.ycoarse(), 0b11111);
         loopy.set_ycoarse(0);
-        
+
         loopy.set_yfine(0b1111_1111);
         assert_eq!(loopy.yfine(), 0b111);
     }

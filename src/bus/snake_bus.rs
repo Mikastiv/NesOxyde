@@ -19,8 +19,8 @@ impl Interface for SnakeBus {
         self.memory[addr as usize] = data
     }
 
-    fn poll_nmi(&mut self) -> bool {
-        false
+    fn poll_nmi(&mut self) -> Option<bool> {
+        None
     }
 
     fn tick(&mut self, cycles: u64) {}

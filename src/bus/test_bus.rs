@@ -21,8 +21,8 @@ impl Interface for TestBus {
         }
     }
 
-    fn poll_nmi(&mut self) -> bool {
-        false
+    fn poll_nmi(&mut self) -> Option<bool> {
+        None
     }
 
     fn tick(&mut self, cycles: u64) {}

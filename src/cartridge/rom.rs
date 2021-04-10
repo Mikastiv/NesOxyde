@@ -73,6 +73,9 @@ impl Rom {
         let prg_start = if header.has_trainer() { 512 } else { 0 };
         let chr_size = CHR_PAGE_SIZE * header.chr_count();
         let chr_start = prg_start + prg_size;
+        println!("PRG Start: {:#06X}", prg_start + HEADER_SIZE);
+        println!("CHR Start: {:#06X}", chr_start + HEADER_SIZE);
+        println!("Mapper ID: {}", header.mapper_id());
 
         let mut rom_bytes = Vec::new();
         file.read_to_end(&mut rom_bytes)?;

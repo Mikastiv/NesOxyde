@@ -16,7 +16,7 @@ const IRQ_VECTOR: u16 = 0xFFFE;
 pub trait Interface {
     fn read(&mut self, addr: u16) -> u8;
     fn write(&mut self, addr: u16, data: u8);
-    fn poll_nmi(&mut self) -> bool;
+    fn poll_nmi(&mut self) -> Option<bool>;
     fn tick(&mut self, cycles: u64);
     fn update_joypad(&mut self, button: Button, pressed: bool, port: JoyPort);
 }
@@ -148,7 +148,7 @@ impl<'a> Cpu<'a> {
     }
 
     pub fn execute(&mut self) -> u64 {
-        if self.bus.poll_nmi() {
+        if self.bus.poll_nmi().is_some() {
             self.nmi();
             self.bus.tick(self.ins_cycles);
         }
