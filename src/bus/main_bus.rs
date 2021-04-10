@@ -41,7 +41,7 @@ impl Interface for MainBus<'_> {
             JOY2 => self.joypads[1].read(),
             ROM_START..=ROM_END => self.cartridge.borrow_mut().read_prg(addr),
             _ => {
-                //println!("Ignored read at {:#04X}", addr);
+                println!("Ignored read at {:#04X}", addr);
                 0
             }
         }
@@ -59,9 +59,7 @@ impl Interface for MainBus<'_> {
                 self.joypads[1].strobe(data);
             }
             ROM_START..=ROM_END => self.cartridge.borrow_mut().write_prg(addr, data),
-            _ => {
-                //println!("Ignored write at 0x{:04X}", addr),
-            }
+            _ => println!("Ignored write at 0x{:04X}", addr),
         }
     }
 
@@ -73,7 +71,7 @@ impl Interface for MainBus<'_> {
         for _ in 0..(cycles * 3) {
             self.ppu.clock();
         }
-        self.ppu.render_chr_pattern();
+        // self.ppu.render_chr_pattern();
     }
 
     fn update_joypad(&mut self, button: Button, pressed: bool, port: JoyPort) {

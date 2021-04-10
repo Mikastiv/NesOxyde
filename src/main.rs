@@ -5,7 +5,10 @@
 extern crate bitflags;
 extern crate lazy_static;
 
+use sdl2::keyboard::Keycode;
+
 use cartridge::Cartridge;
+use joypad::Button;
 
 mod bus;
 mod cartridge;
@@ -24,5 +27,18 @@ fn main() {
             std::process::exit(0);
         }
     };
-    nes::run(cartridge);
+
+    let convert_key = |key: Keycode| match key {
+        Keycode::A => Some(Button::A),
+        Keycode::S => Some(Button::B),
+        Keycode::Z => Some(Button::Select),
+        Keycode::X => Some(Button::Start),
+        Keycode::Up => Some(Button::Up),
+        Keycode::Down => Some(Button::Down),
+        Keycode::Left => Some(Button::Left),
+        Keycode::Right => Some(Button::Right),
+        _ => None,
+    };
+
+    nes::run(cartridge, convert_key);
 }

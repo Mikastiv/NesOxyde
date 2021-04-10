@@ -1,6 +1,5 @@
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
-use sdl2::pixels::Color;
 use sdl2::pixels::PixelFormatEnum;
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -11,13 +10,19 @@ use crate::cpu::Cpu;
 use crate::joypad::{Button, JoyPort};
 use crate::ppu::frame::{HEIGHT, WIDTH};
 
+const WINDOW_TITLE: &str = "NesOxyde v0.1.0";
+
 mod trace;
 
-pub fn run(cartridge: Cartridge) {
+pub fn run<KeyMap>(cartridge: Cartridge, map_key: KeyMap)
+where
+    KeyMap: Fn(Keycode) -> Option<Button>,
+{
+    // SDL2 init ----------------->
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
     let window = video_subsystem
-        .window("NesOxyde v0.1.0", (WIDTH * 2) as u32, (HEIGHT * 2) as u32)
+        .window(WINDOW_TITLE, (WIDTH * 2) as u32, (HEIGHT * 2) as u32)
         .position_centered()
         .resizable()
         .build()
@@ -30,24 +35,13 @@ pub fn run(cartridge: Cartridge) {
     let mut texture = creator
         .create_texture_target(PixelFormatEnum::RGB24, WIDTH as u32, HEIGHT as u32)
         .unwrap();
+    // >----------------- SDL2 init
 
     let bus = MainBus::new(Rc::new(RefCell::new(cartridge)), move |frame| {
         texture.update(None, frame, WIDTH * 3).unwrap();
         canvas.copy(&texture, None, None).unwrap();
         canvas.present();
     });
-
-    let convert_key = |key: Keycode| match key {
-        Keycode::A => Some(Button::A),
-        Keycode::S => Some(Button::B),
-        Keycode::Z => Some(Button::Select),
-        Keycode::X => Some(Button::Start),
-        Keycode::Up => Some(Button::Up),
-        Keycode::Down => Some(Button::Down),
-        Keycode::Left => Some(Button::Left),
-        Keycode::Right => Some(Button::Right),
-        _ => None,
-    };
 
     let mut cpu = Cpu::new(bus);
     cpu.reset();
@@ -64,14 +58,14 @@ pub fn run(cartridge: Cartridge) {
                 Event::KeyDown {
                     keycode: Some(key), ..
                 } => {
-                    if let Some(button) = convert_key(key) {
+                    if let Some(button) = map_key(key) {
                         cpu.update_joypad(button, true, JoyPort::Port1)
                     }
                 }
                 Event::KeyUp {
                     keycode: Some(key), ..
                 } => {
-                    if let Some(button) = convert_key(key) {
+                    if let Some(button) = map_key(key) {
                         cpu.update_joypad(button, false, JoyPort::Port1)
                     }
                 }
