@@ -16,17 +16,17 @@ pub fn run(cartridge: Cartridge) {
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
     let window = video_subsystem
-        .window("NesOxyde v0.1.0", (WIDTH * 2) as u32, (HEIGHT * 2) as u32)
+        .window("NesOxyde v0.1.0", WIDTH as u32, HEIGHT as u32)
         .position_centered()
+        .resizable()
         .build()
         .unwrap();
 
     let mut canvas = window.into_canvas().build().unwrap();
     let mut event_pump = sdl_context.event_pump().unwrap();
-    canvas.set_scale(2.0, 2.0).unwrap();
     let creator = canvas.texture_creator();
     let mut texture = creator
-        .create_texture_target(PixelFormatEnum::RGB24, 32, 32)
+        .create_texture_target(PixelFormatEnum::RGB24, WIDTH as u32, HEIGHT as u32)
         .unwrap();
 
     let bus = MainBus::new(Rc::new(RefCell::new(cartridge)), move |frame| {
