@@ -1,5 +1,6 @@
 use std::usize;
 
+use crate::controller::{Button, JoyPort};
 use crate::cpu::Interface;
 
 const RESET_VECTOR: u16 = 0xFFFC;
@@ -23,6 +24,8 @@ impl Interface for SnakeBus {
     }
 
     fn tick(&mut self, cycles: u64) {}
+
+    fn update_controller(&mut self, button: Button, pressed: bool, port: JoyPort) {}
 }
 
 impl SnakeBus {

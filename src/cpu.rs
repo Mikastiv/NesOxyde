@@ -1,6 +1,8 @@
 pub use self::addr_modes::AddrMode;
 pub use self::instructions::OPTABLE;
 
+use crate::controller::{Button, JoyPort};
+
 mod addr_modes;
 mod instructions;
 
@@ -16,6 +18,7 @@ pub trait Interface {
     fn write(&mut self, addr: u16, data: u8);
     fn poll_nmi(&mut self) -> bool;
     fn tick(&mut self, cycles: u64);
+    fn update_controller(&mut self, button: Button, pressed: bool, port: JoyPort);
 }
 
 bitflags! {
@@ -31,7 +34,7 @@ bitflags! {
     }
 }
 
-pub struct Cpu {
+pub struct Cpu<'a> {
     a: u8,
     x: u8,
     y: u8,
@@ -39,13 +42,16 @@ pub struct Cpu {
     p: Flags,
     pc: u16,
 
-    bus: Box<dyn Interface>,
+    bus: Box<dyn Interface + 'a>,
     ins_cycles: u64,
     cycles: u64,
 }
 
-impl Cpu {
-    pub fn new(bus: Box<dyn Interface>) -> Self {
+impl<'a> Cpu<'a> {
+    pub fn new<I>(bus: I) -> Self
+    where
+        I: Interface + 'a,
+    {
         Self {
             a: 0,
             x: 0,
@@ -54,7 +60,7 @@ impl Cpu {
             p: Flags::from_bits_truncate(STATUS_RESET),
             pc: 0,
 
-            bus,
+            bus: Box::new(bus),
             ins_cycles: 0,
             cycles: 0,
         }
@@ -149,8 +155,8 @@ impl Cpu {
         self.ins_cycles = ins.cycles;
         (ins.cpu_fn)(self, ins.mode);
 
-        self.cycles += self.ins_cycles;
         self.bus.tick(self.ins_cycles);
+        self.cycles += self.ins_cycles;
         self.ins_cycles
     }
 
@@ -867,8 +873,8 @@ mod tests {
 
     use crate::bus::TestBus;
 
-    fn get_test_cpu(program: Vec<u8>, ram: Vec<u8>) -> Cpu {
-        let mut bus = Box::new(TestBus::new(program));
+    fn get_test_cpu(program: Vec<u8>, ram: Vec<u8>) -> Cpu<'static> {
+        let mut bus = TestBus::new(program);
         for (addr, data) in ram.iter().enumerate() {
             bus.set_ram(addr as u16, *data);
         }
@@ -877,8 +883,8 @@ mod tests {
         cpu
     }
 
-    fn get_test_cpu_from_bus(bus: TestBus) -> Cpu {
-        let mut cpu = Cpu::new(Box::new(bus));
+    fn get_test_cpu_from_bus(bus: TestBus) -> Cpu<'static> {
+        let mut cpu = Cpu::new(bus);
         cpu.pc = 0x2000;
         cpu
     }

@@ -1,6 +1,6 @@
 use crate::cpu::{AddrMode, Cpu, OPTABLE};
 
-impl Cpu {
+impl<'a> Cpu<'a> {
     fn operand_addr_peek(&mut self, mode: AddrMode, pc: u16) -> u16 {
         match mode {
             AddrMode::None | AddrMode::Imp => 0,

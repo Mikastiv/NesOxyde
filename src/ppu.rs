@@ -1,8 +1,11 @@
 use registers::{Controller, Loopy, Mask, Status};
 
+use self::frame::Frame;
+
+pub mod frame;
 mod registers;
 
-struct Pixel(u8, u8, u8);
+pub struct Pixel(u8, u8, u8);
 
 #[rustfmt::skip]
 static NES_PALETTE: [Pixel; 0x40] = [
@@ -35,7 +38,7 @@ pub trait Interface {
     fn write(&mut self, addr: u16, data: u8);
 }
 
-pub struct Ppu {
+pub struct Ppu<'a> {
     ctrl: Controller,
     mask: Mask,
     status: Status,
@@ -50,10 +53,19 @@ pub struct Ppu {
     xfine: u8,
     v_addr: Loopy,
     scroll: Loopy,
+
+    scanline: i32,
+    cycle: i32,
+
+    frame: Frame,
+    render_fn: Box<dyn FnMut(&[u8]) + 'a>,
 }
 
-impl Ppu {
-    pub fn new(bus: Box<dyn Interface>) -> Self {
+impl<'a> Ppu<'a> {
+    pub fn new<F>(bus: Box<dyn Interface>, render_fn: Box<F>) -> Self
+    where
+        F: FnMut(&[u8]) + 'a,
+    {
         Self {
             ctrl: Controller::from_bits_truncate(0),
             mask: Mask::from_bits_truncate(0),
@@ -69,6 +81,12 @@ impl Ppu {
             xfine: 0,
             v_addr: Loopy::new(),
             scroll: Loopy::new(),
+
+            scanline: 0,
+            cycle: 0,
+
+            frame: Frame::new(),
+            render_fn,
         }
     }
 
@@ -149,7 +167,17 @@ impl Ppu {
         nmi
     }
 
-    pub fn clock(&mut self) {}
+    pub fn clock(&mut self) {
+        self.cycle += 1;
+        if self.cycle >= 256 {
+            self.scanline += 1;
+            self.cycle = 0;
+        }
+        if self.scanline >= 240 {
+            self.scanline = 0;
+            (self.render_fn)(self.frame.pixels());
+        }
+    }
 
     fn increment_addr(&mut self) {
         let new_addr = self.v_addr.raw().wrapping_add(self.ctrl.increment());
@@ -162,22 +190,5 @@ impl Ppu {
 
     fn mem_write(&mut self, addr: u16, data: u8) {
         self.bus.write(addr, data);
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use std::cell::RefCell;
-    use std::rc::Rc;
-
-    use crate::bus::PpuBus;
-    use crate::cartridge::Cartridge;
-
-    use super::*;
-
-    fn get_ppu() -> Ppu {
-        let cart = Cartridge::new("roms/nestest.nes").unwrap();
-        let bus = PpuBus::new(Rc::new(RefCell::new(cart)));
-        Ppu::new(Box::new(bus))
     }
 }

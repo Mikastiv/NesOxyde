@@ -1,3 +1,4 @@
+use crate::controller::{Button, JoyPort};
 use crate::cpu::Interface;
 
 pub struct TestBus {
@@ -25,6 +26,8 @@ impl Interface for TestBus {
     }
 
     fn tick(&mut self, cycles: u64) {}
+
+    fn update_controller(&mut self, button: Button, pressed: bool, port: JoyPort) {}
 }
 
 impl TestBus {

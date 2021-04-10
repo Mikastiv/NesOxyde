@@ -5,11 +5,11 @@
 extern crate bitflags;
 extern crate lazy_static;
 
-use nes::Nes;
 use cartridge::Cartridge;
 
 mod bus;
 mod cartridge;
+mod controller;
 mod cpu;
 mod nes;
 mod ppu;
@@ -24,6 +24,5 @@ fn main() {
             std::process::exit(0);
         }
     };
-    let mut nes = Nes::new(cartridge);
-    nes.run();
+    nes::run(cartridge);
 }

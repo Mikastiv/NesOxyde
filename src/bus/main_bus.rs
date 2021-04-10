@@ -3,6 +3,7 @@ use std::rc::Rc;
 
 use super::PpuBus;
 use crate::cartridge::Cartridge;
+use crate::controller::{Button, Controller, JoyPort};
 use crate::cpu::Interface;
 use crate::ppu::Ppu;
 
@@ -21,13 +22,14 @@ const ROM_END: u16 = 0xFFFF;
 const JOY1: u16 = 0x4016;
 const JOY2: u16 = 0x4017;
 
-pub struct MainBus {
+pub struct MainBus<'a> {
     ram: [u8; RAM_SIZE],
     cartridge: Rc<RefCell<Cartridge>>,
-    ppu: Ppu,
+    ppu: Ppu<'a>,
+    controllers: [Controller; 2],
 }
 
-impl Interface for MainBus {
+impl Interface for MainBus<'_> {
     fn read(&mut self, addr: u16) -> u8 {
         match addr {
             RAM_START..=RAM_END => self.ram[(addr & RAM_MASK) as usize],
@@ -35,8 +37,8 @@ impl Interface for MainBus {
                 let addr = addr & PPU_MASK;
                 self.ppu.read(addr)
             }
-            JOY1 => todo!(),
-            JOY2 => todo!(),
+            JOY1 => self.controllers[0].read(),
+            JOY2 => self.controllers[1].read(),
             ROM_START..=ROM_END => self.cartridge.borrow_mut().read_prg(addr),
             _ => {
                 println!("Ignored read at {:#04X}", addr);
@@ -52,7 +54,10 @@ impl Interface for MainBus {
                 let addr = addr & PPU_MASK;
                 self.ppu.write(addr, data);
             }
-            JOY1 => todo!(),
+            JOY1 => {
+                self.controllers[0].strobe(data);
+                self.controllers[1].strobe(data);
+            }
             ROM_START..=ROM_END => self.cartridge.borrow_mut().write_prg(addr, data),
             _ => println!("Ignored write at 0x{:04X}", addr),
         }
@@ -67,15 +72,26 @@ impl Interface for MainBus {
             self.ppu.clock();
         }
     }
+
+    fn update_controller(&mut self, button: Button, pressed: bool, port: JoyPort) {
+        match port {
+            JoyPort::Port1 => self.controllers[0].update(button, pressed),
+            JoyPort::Port2 => self.controllers[1].update(button, pressed),
+        }
+    }
 }
 
-impl MainBus {
-    pub fn new(cartridge: Rc<RefCell<Cartridge>>) -> Self {
+impl<'a> MainBus<'a> {
+    pub fn new<F>(cartridge: Rc<RefCell<Cartridge>>, sdl_render_fn: F) -> Self
+    where
+        F: FnMut(&[u8]) + 'a,
+    {
         let ppu_bus = PpuBus::new(Rc::clone(&cartridge));
         Self {
             ram: [0; RAM_SIZE],
             cartridge,
-            ppu: Ppu::new(Box::new(ppu_bus)),
+            ppu: Ppu::new(Box::new(ppu_bus), Box::new(sdl_render_fn)),
+            controllers: [Controller::new(); 2],
         }
     }
 }

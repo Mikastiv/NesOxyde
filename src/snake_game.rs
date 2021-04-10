@@ -122,7 +122,7 @@ pub fn run() {
 
     let mut bus = SnakeBus::new();
     bus.load(game_code);
-    let mut cpu = Cpu::new(Box::new(bus));
+    let mut cpu = Cpu::new(bus);
     let mut screen_state = [0; 32 * 3 * 32];
     let mut rng = rand::thread_rng();
 
