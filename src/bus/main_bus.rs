@@ -27,7 +27,6 @@ pub struct MainBus<'a> {
     cartridge: Rc<RefCell<Cartridge>>,
     ppu: Ppu<'a>,
     joypads: [JoyPad; 2],
-    update_joy_fn: Box<dyn FnMut(&mut MainBus) + 'a>,
 }
 
 impl Interface for MainBus<'_> {
@@ -74,21 +73,18 @@ impl Interface for MainBus<'_> {
         }
     }
 
-    fn poll_joy_input(&mut self) {
-        let ptr = self as *mut MainBus;
-        unsafe { (self.update_joy_fn)(&mut *ptr) };
+    fn update_joypad(&mut self, button: Button, pressed: bool, port: JoyPort) {
+        match port {
+            JoyPort::Port1 => self.joypads[0].update(button, pressed),
+            JoyPort::Port2 => self.joypads[1].update(button, pressed),
+        }
     }
 }
 
 impl<'a> MainBus<'a> {
-    pub fn new<F1, F2>(
-        cartridge: Rc<RefCell<Cartridge>>,
-        sdl_render_fn: F1,
-        update_joy_fn: F2,
-    ) -> Self
+    pub fn new<F>(cartridge: Rc<RefCell<Cartridge>>, sdl_render_fn: F) -> Self
     where
-        F1: FnMut(&[u8]) + 'a,
-        F2: FnMut(&mut MainBus) + 'a,
+        F: FnMut(&[u8]) + 'a,
     {
         let ppu_bus = PpuBus::new(Rc::clone(&cartridge));
         Self {
@@ -96,14 +92,6 @@ impl<'a> MainBus<'a> {
             cartridge,
             ppu: Ppu::new(Box::new(ppu_bus), Box::new(sdl_render_fn)),
             joypads: [JoyPad::new(); 2],
-            update_joy_fn: Box::new(update_joy_fn),
-        }
-    }
-
-    pub fn update_controller(&mut self, button: Button, pressed: bool, port: JoyPort) {
-        match port {
-            JoyPort::Port1 => self.joypads[0].update(button, pressed),
-            JoyPort::Port2 => self.joypads[1].update(button, pressed),
         }
     }
 }

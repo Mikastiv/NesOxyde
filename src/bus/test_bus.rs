@@ -1,4 +1,5 @@
 use crate::cpu::Interface;
+use crate::joypad::{Button, JoyPort};
 
 pub struct TestBus {
     ram: [u8; 0x800],
@@ -25,8 +26,8 @@ impl Interface for TestBus {
     }
 
     fn tick(&mut self, cycles: u64) {}
-
-    fn poll_joy_input(&mut self) {}
+    
+    fn update_joypad(&mut self, button: Button, pressed: bool, port: JoyPort) {}
 }
 
 impl TestBus {

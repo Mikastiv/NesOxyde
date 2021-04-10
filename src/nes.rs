@@ -30,57 +30,54 @@ pub fn run(cartridge: Cartridge) {
         .create_texture_target(PixelFormatEnum::RGB24, WIDTH as u32, HEIGHT as u32)
         .unwrap();
 
-    let bus = MainBus::new(
-        Rc::new(RefCell::new(cartridge)),
-        move |frame| {
-            canvas.set_draw_color(Color::BLACK);
-            canvas.clear();
+    let bus = MainBus::new(Rc::new(RefCell::new(cartridge)), move |frame| {
+        canvas.set_draw_color(Color::BLACK);
+        canvas.clear();
+        texture.update(None, frame, 256 * 3).unwrap();
+        canvas.copy(&texture, None, None).unwrap();
+        canvas.present();
+    });
 
-            texture.update(None, frame, 256 * 3).unwrap();
-            canvas.copy(&texture, None, None).unwrap();
-            canvas.present();
-        },
-        move |bus| {
-            let convert_key = |key: Keycode| match key {
-                Keycode::A => Some(Button::A),
-                Keycode::S => Some(Button::B),
-                Keycode::Z => Some(Button::Select),
-                Keycode::X => Some(Button::Start),
-                Keycode::Up => Some(Button::Up),
-                Keycode::Down => Some(Button::Down),
-                Keycode::Left => Some(Button::Left),
-                Keycode::Right => Some(Button::Right),
-                _ => None,
-            };
-
-            for event in event_pump.poll_iter() {
-                match event {
-                    Event::Quit { .. }
-                    | Event::KeyDown {
-                        keycode: Some(Keycode::Escape),
-                        ..
-                    } => std::process::exit(0),
-                    Event::KeyDown {
-                        keycode: Some(key), ..
-                    } => {
-                        if let Some(button) = convert_key(key) {
-                            bus.update_controller(button, true, JoyPort::Port1)
-                        }
-                    }
-                    Event::KeyUp {
-                        keycode: Some(key), ..
-                    } => {
-                        if let Some(button) = convert_key(key) {
-                            bus.update_controller(button, false, JoyPort::Port1)
-                        }
-                    }
-                    _ => {}
-                }
-            }
-        },
-    );
+    let convert_key = |key: Keycode| match key {
+        Keycode::A => Some(Button::A),
+        Keycode::S => Some(Button::B),
+        Keycode::Z => Some(Button::Select),
+        Keycode::X => Some(Button::Start),
+        Keycode::Up => Some(Button::Up),
+        Keycode::Down => Some(Button::Down),
+        Keycode::Left => Some(Button::Left),
+        Keycode::Right => Some(Button::Right),
+        _ => None,
+    };
 
     let mut cpu = Cpu::new(bus);
     cpu.reset();
-    cpu.run();
+
+    'nes: loop {
+        for event in event_pump.poll_iter() {
+            match event {
+                Event::Quit { .. }
+                | Event::KeyDown {
+                    keycode: Some(Keycode::Escape),
+                    ..
+                } => break 'nes,
+                Event::KeyDown {
+                    keycode: Some(key), ..
+                } => {
+                    if let Some(button) = convert_key(key) {
+                        cpu.update_joypad(button, true, JoyPort::Port1)
+                    }
+                }
+                Event::KeyUp {
+                    keycode: Some(key), ..
+                } => {
+                    if let Some(button) = convert_key(key) {
+                        cpu.update_joypad(button, false, JoyPort::Port1)
+                    }
+                }
+                _ => {}
+            }
+        }
+        cpu.execute();
+    }
 }

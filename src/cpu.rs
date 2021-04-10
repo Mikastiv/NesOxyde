@@ -1,3 +1,5 @@
+use crate::joypad::{Button, JoyPort};
+
 pub use self::addr_modes::AddrMode;
 pub use self::instructions::OPTABLE;
 
@@ -16,7 +18,7 @@ pub trait Interface {
     fn write(&mut self, addr: u16, data: u8);
     fn poll_nmi(&mut self) -> bool;
     fn tick(&mut self, cycles: u64);
-    fn poll_joy_input(&mut self);
+    fn update_joypad(&mut self, button: Button, pressed: bool, port: JoyPort);
 }
 
 bitflags! {
@@ -135,19 +137,22 @@ impl<'a> Cpu<'a> {
         self.run_with_callback(|_| {});
     }
 
-    pub fn run_with_callback<F: FnMut(&mut Self)>(&mut self, mut callback: F) {
+    pub fn run_with_callback<F>(&mut self, mut callback: F)
+    where
+        F: FnMut(&mut Self),
+    {
         loop {
             callback(self);
-            if self.bus.poll_nmi() {
-                self.nmi();
-                self.bus.tick(self.ins_cycles);
-            }
             self.execute();
-            self.bus.poll_joy_input();
         }
     }
 
     pub fn execute(&mut self) -> u64 {
+        if self.bus.poll_nmi() {
+            self.nmi();
+            self.bus.tick(self.ins_cycles);
+        }
+
         let opcode = self.read_byte();
 
         let ins = *OPTABLE.get(&opcode).unwrap();
@@ -157,6 +162,10 @@ impl<'a> Cpu<'a> {
         self.bus.tick(self.ins_cycles);
         self.cycles += self.ins_cycles;
         self.ins_cycles
+    }
+
+    pub fn update_joypad(&mut self, button: Button, pressed: bool, port: JoyPort) {
+        self.bus.update_joypad(button, pressed, port);
     }
 
     pub fn mem_read(&mut self, addr: u16) -> u8 {

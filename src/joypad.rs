@@ -72,6 +72,5 @@ impl JoyPad {
             Button::Left => self.state.set(State::LEFT, pressed),
             Button::Right => self.state.set(State::RIGHT, pressed),
         }
-        println!("{:08b}", self.state.bits());
     }
 }
