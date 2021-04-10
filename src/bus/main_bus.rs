@@ -76,7 +76,7 @@ impl Interface for MainBus<'_> {
 
     fn poll_joy_input(&mut self) {
         let ptr = self as *mut MainBus;
-        unsafe { (self.update_joy_fn)(ptr.as_mut().unwrap()) };
+        unsafe { (self.update_joy_fn)(&mut *ptr) };
     }
 }
 
