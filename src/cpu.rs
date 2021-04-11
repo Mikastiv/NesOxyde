@@ -148,9 +148,11 @@ impl<'a> Cpu<'a> {
     }
 
     pub fn execute(&mut self) -> u64 {
+        let mut nmi_cycles = 0;
         if self.bus.poll_nmi().is_some() {
             self.nmi();
             self.bus.tick(self.ins_cycles);
+            nmi_cycles = self.ins_cycles;
         }
 
         let opcode = self.read_byte();
@@ -161,7 +163,7 @@ impl<'a> Cpu<'a> {
 
         self.bus.tick(self.ins_cycles);
         self.cycles += self.ins_cycles;
-        self.ins_cycles
+        nmi_cycles + self.ins_cycles
     }
 
     pub fn update_joypad(&mut self, button: Button, pressed: bool, port: JoyPort) {

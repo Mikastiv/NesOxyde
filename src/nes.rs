@@ -8,9 +8,10 @@ use crate::bus::MainBus;
 use crate::cartridge::Cartridge;
 use crate::cpu::Cpu;
 use crate::joypad::{Button, JoyPort};
-use crate::ppu::frame::{HEIGHT, WIDTH};
 
 const WINDOW_TITLE: &str = "NesOxyde v0.1.0";
+pub const WIDTH: u32 = 256;
+pub const HEIGHT: u32 = 240;
 
 mod trace;
 
@@ -22,14 +23,13 @@ where
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
     let window = video_subsystem
-        .window(WINDOW_TITLE, (WIDTH * 2) as u32, (HEIGHT * 2) as u32)
+        .window(WINDOW_TITLE, WIDTH * 2, HEIGHT * 2)
         .position_centered()
         .resizable()
         .build()
         .unwrap();
 
     let mut canvas = window.into_canvas().build().unwrap();
-    canvas.set_scale(2.0, 2.0).unwrap();
     let mut event_pump = sdl_context.event_pump().unwrap();
     let creator = canvas.texture_creator();
     let mut texture = creator
@@ -38,7 +38,7 @@ where
     // >----------------- SDL2 init
 
     let bus = MainBus::new(Rc::new(RefCell::new(cartridge)), move |frame| {
-        texture.update(None, frame, WIDTH * 3).unwrap();
+        texture.update(None, frame, (WIDTH * 3) as usize).unwrap();
         canvas.copy(&texture, None, None).unwrap();
         canvas.present();
     });
