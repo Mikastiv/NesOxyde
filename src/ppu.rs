@@ -147,6 +147,7 @@ impl<'a> Ppu<'a> {
             let tile_addr = self.ctrl.bg_base_addr() + (tile_id as u16) * 16;
             let tile_x = addr % 32;
             let tile_y = addr / 32;
+            let palette = self.get_bg_palette(tile_x, tile_y);
 
             for row in 0..8 {
                 let mut lo = self.mem_read(tile_addr + row);
@@ -158,10 +159,10 @@ impl<'a> Ppu<'a> {
                     hi >>= 1;
 
                     let rgb = match pixel {
-                        0 => NES_PALETTE[0x01],
-                        1 => NES_PALETTE[0x22],
-                        2 => NES_PALETTE[0x2A],
-                        3 => NES_PALETTE[0x30],
+                        0 => NES_PALETTE[palette[0] as usize],
+                        1 => NES_PALETTE[palette[1] as usize],
+                        2 => NES_PALETTE[palette[2] as usize],
+                        3 => NES_PALETTE[palette[3] as usize],
                         _ => unreachable!(),
                     };
 
@@ -173,6 +174,27 @@ impl<'a> Ppu<'a> {
                 }
             }
         }
+    }
+
+    fn get_bg_palette(&mut self, tile_x: u16, tile_y: u16) -> [u8; 4] {
+        let attr_index = tile_y / 4 * 8 + tile_x / 4;
+        let attr_byte = self.mem_read(0x23C0 + attr_index);
+
+        let palettte_idx = match (tile_x % 4 / 2, tile_y % 4 / 2) {
+            (0, 0) => attr_byte & 0b11,
+            (1, 0) => (attr_byte >> 2) & 0b11,
+            (0, 1) => (attr_byte >> 4) & 0b11,
+            (1, 1) => (attr_byte >> 6) & 0b11,
+            _ => unreachable!(),
+        };
+
+        let start = 1 + palettte_idx as u16 * 4;
+        [
+            self.mem_read(0x3F00),
+            self.mem_read(0x3F00 + start),
+            self.mem_read(0x3F00 + start + 1),
+            self.mem_read(0x3F00 + start + 2),
+        ]
     }
 
     pub fn read(&mut self, addr: u16) -> u8 {
