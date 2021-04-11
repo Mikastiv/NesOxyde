@@ -16,6 +16,7 @@ pub enum JoyPort {
     Port2,
 }
 
+#[derive(Debug)]
 pub enum Button {
     A,
     B,
@@ -44,10 +45,10 @@ impl JoyPad {
     }
 
     pub fn strobe(&mut self, v: u8) {
-        if self.strobe && v == 0 {
+        if self.strobe && (v & 0x1 == 0) {
             self.snapshot = self.state.bits();
         }
-        self.strobe = v != 0;
+        self.strobe = v & 0x1 != 0;
     }
 
     pub fn read(&mut self) -> u8 {

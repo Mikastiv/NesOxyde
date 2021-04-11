@@ -74,7 +74,9 @@ impl Rom {
         let chr_size = CHR_PAGE_SIZE * header.chr_count();
         let chr_start = prg_start + prg_size;
         println!("PRG Start: {:#06X}", prg_start + HEADER_SIZE);
+        println!("PRG Size: {:#06X}", prg_size);
         println!("CHR Start: {:#06X}", chr_start + HEADER_SIZE);
+        println!("CHR Size: {:#06X}", chr_size);
         println!("Mapper ID: {}", header.mapper_id());
 
         let mut rom_bytes = Vec::new();

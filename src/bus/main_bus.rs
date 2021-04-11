@@ -71,7 +71,6 @@ impl Interface for MainBus<'_> {
         for _ in 0..(cycles * 3) {
             self.ppu.clock();
         }
-        // self.ppu.render_chr_pattern();
     }
 
     fn update_joypad(&mut self, button: Button, pressed: bool, port: JoyPort) {

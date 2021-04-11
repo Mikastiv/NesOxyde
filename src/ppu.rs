@@ -91,7 +91,7 @@ impl<'a> Ppu<'a> {
         }
     }
 
-    pub fn render_chr_pattern(&mut self) {
+    fn render_chr_pattern(&mut self) {
         for tile_y in 0..16 {
             for tile_x in 0..16 {
                 let offset = tile_y * 256 + tile_x * 16;
@@ -136,6 +136,40 @@ impl<'a> Ppu<'a> {
                             rgb_bg,
                         );
                     }
+                }
+            }
+        }
+    }
+
+    fn render_nametable_0(&mut self) {
+        for addr in 0..0x3C0 {
+            let tile_id = self.mem_read(0x2000 | addr);
+            let tile_addr = self.ctrl.bg_base_addr() + (tile_id as u16) * 16;
+            let tile_x = addr % 32;
+            let tile_y = addr / 32;
+
+            for row in 0..8 {
+                let mut lo = self.mem_read(tile_addr + row);
+                let mut hi = self.mem_read(tile_addr + row + 0x8);
+
+                for col in (0..8).rev() {
+                    let pixel = (hi & 0x1) << 1 | (lo & 0x1);
+                    lo >>= 1;
+                    hi >>= 1;
+
+                    let rgb = match pixel {
+                        0 => NES_PALETTE[0x01],
+                        1 => NES_PALETTE[0x22],
+                        2 => NES_PALETTE[0x2A],
+                        3 => NES_PALETTE[0x30],
+                        _ => unreachable!(),
+                    };
+
+                    self.frame.set_pixel(
+                        (tile_x * 8 + col) as usize,
+                        (tile_y * 8 + row) as usize,
+                        rgb,
+                    );
                 }
             }
         }
@@ -228,6 +262,7 @@ impl<'a> Ppu<'a> {
                 if self.ctrl.nmi_enabled() {
                     self.pending_nmi = Some(true);
                 }
+                self.render_nametable_0();
                 (self.render_fn)(self.frame.pixels());
             }
 
