@@ -34,6 +34,14 @@ impl Controller {
     pub fn nmi_enabled(&self) -> bool {
         self.contains(Self::NMI_ENABLED)
     }
+
+    pub fn nta_h(&self) -> bool {
+        self.contains(Self::NAMETABLE_H)
+    }
+
+    pub fn nta_v(&self) -> bool {
+        self.contains(Self::NAMETABLE_V)
+    }
 }
 
 bitflags! {

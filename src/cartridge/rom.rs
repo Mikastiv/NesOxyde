@@ -78,6 +78,7 @@ impl Rom {
         println!("CHR Start: {:#06X}", chr_start + HEADER_SIZE);
         println!("CHR Size: {:#06X}", chr_size);
         println!("Mapper ID: {}", header.mapper_id());
+        println!("Mirror mode: {:?}", header.mirror_mode());
 
         let mut rom_bytes = Vec::new();
         file.read_to_end(&mut rom_bytes)?;

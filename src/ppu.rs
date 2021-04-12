@@ -246,6 +246,8 @@ impl<'a> Ppu<'a> {
         match addr {
             PPU_CTRL => {
                 self.ctrl.set_raw(data);
+                self.scroll.set_nta_h(self.ctrl.nta_h());
+                self.scroll.set_nta_v(self.ctrl.nta_v());
             }
             PPU_MASK => {
                 self.mask.set_raw(data);

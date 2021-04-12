@@ -9,6 +9,7 @@ use self::rom::{INesHeader, Rom};
 mod mapper;
 mod rom;
 
+#[derive(Debug)]
 pub enum MirrorMode {
     Vertical,
     Horizontal,
