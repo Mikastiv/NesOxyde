@@ -1,9 +1,11 @@
 use registers::{Controller, Loopy, Mask, Status};
 
 use self::frame::Frame;
+use self::tile::Tile;
 
 pub mod frame;
 mod registers;
+mod tile;
 
 #[derive(Clone, Copy)]
 pub struct Pixel(u8, u8, u8);
@@ -56,9 +58,16 @@ pub struct Ppu<'a> {
     scroll: Loopy,
 
     scanline: i32,
-    cycle: i32,
+    cycle: usize,
+    curr_tile: Tile,
+    next_tile: Tile,
+    bg_lo_shift: u16,
+    bg_hi_shift: u16,
+    bg_attr_lo_shift: u16,
+    bg_attr_hi_shift: u16,
 
     frame: Frame,
+    odd_frame: bool,
     render_fn: Box<dyn FnMut(&[u8]) + 'a>,
 }
 
@@ -85,8 +94,15 @@ impl<'a> Ppu<'a> {
 
             scanline: 0,
             cycle: 0,
+            curr_tile: Tile::new(),
+            next_tile: Tile::new(),
+            bg_lo_shift: 0,
+            bg_hi_shift: 0,
+            bg_attr_lo_shift: 0,
+            bg_attr_hi_shift: 0,
 
             frame: Frame::new(),
+            odd_frame: false,
             render_fn,
         }
     }
@@ -180,7 +196,7 @@ impl<'a> Ppu<'a> {
         let attr_index = tile_y / 4 * 8 + tile_x / 4;
         let attr_byte = self.mem_read(0x23C0 + attr_index);
 
-        let palettte_idx = match (tile_x % 4 / 2, tile_y % 4 / 2) {
+        let palette_idx = match (tile_x % 4 / 2, tile_y % 4 / 2) {
             (0, 0) => attr_byte & 0b11,
             (1, 0) => (attr_byte >> 2) & 0b11,
             (0, 1) => (attr_byte >> 4) & 0b11,
@@ -188,7 +204,7 @@ impl<'a> Ppu<'a> {
             _ => unreachable!(),
         };
 
-        let start = 1 + palettte_idx as u16 * 4;
+        let start = 1 + palette_idx as u16 * 4;
         [
             self.mem_read(0x3F00),
             self.mem_read(0x3F00 + start),
@@ -218,7 +234,7 @@ impl<'a> Ppu<'a> {
                     data = (self.open_bus & 0xC0) | (self.read_buffer & 0x3F);
                 }
                 self.open_bus = data;
-                self.increment_addr();
+                self.increment_vaddr();
             }
             _ => {}
         }
@@ -240,11 +256,11 @@ impl<'a> Ppu<'a> {
             PPU_SCROLL => {
                 match self.addr_toggle {
                     true => {
-                        self.scroll.set_yfine(data & 0x3);
+                        self.scroll.set_yfine(data & 0x7);
                         self.scroll.set_ycoarse(data >> 3);
                     }
                     false => {
-                        self.xfine = data & 0x3;
+                        self.xfine = data & 0x7;
                         self.scroll.set_xcoarse(data >> 3);
                     }
                 }
@@ -262,7 +278,7 @@ impl<'a> Ppu<'a> {
             }
             PPU_DATA => {
                 self.mem_write(self.v_addr.raw(), data);
-                self.increment_addr();
+                self.increment_vaddr();
             }
             _ => {}
         }
@@ -273,31 +289,190 @@ impl<'a> Ppu<'a> {
     }
 
     pub fn clock(&mut self) {
-        self.cycle += 1;
-        if self.cycle >= 341 {
-            self.cycle = 0;
-            self.scanline += 1;
-
-            if self.scanline == 241 {
-                self.status.set_vblank(true);
-                self.status.set_sp_0_hit(false);
-                if self.ctrl.nmi_enabled() {
-                    self.pending_nmi = Some(true);
-                }
-                self.render_nametable_0();
-                (self.render_fn)(self.frame.pixels());
+        if self.scanline >= -1 && self.scanline < 240 {
+            if self.odd_frame && self.scanline == 0 && self.cycle == 0 && self.rendering_enabled() {
+                self.cycle = 1;
             }
 
-            if self.scanline >= 262 {
-                self.scanline = 0;
+            if self.scanline == -1 && self.cycle == 1 {
                 self.pending_nmi = None;
                 self.status.set_sp_0_hit(false);
+                self.status.set_sp_overflow(false);
                 self.status.set_vblank(false);
+            }
+
+            if (self.cycle >= 2 && self.cycle < 258) || (self.cycle >= 321 && self.cycle < 338) {
+                self.shift_bg();
+
+                match (self.cycle - 1) % 8 {
+                    0 => {
+                        self.load_tile();
+                        self.next_tile.id = self.mem_read(0x2000 | (self.v_addr.raw() & 0xFFF));
+                    }
+                    2 => {
+                        self.next_tile.attr = self.mem_read(
+                            0x23C0
+                                | self.v_addr.nta_addr()
+                                | ((self.v_addr.ycoarse() >> 2) << 3) as u16
+                                | (self.v_addr.xcoarse() >> 2) as u16,
+                        );
+
+                        if self.v_addr.ycoarse() & 0x2 != 0 {
+                            self.next_tile.attr >>= 4;
+                        }
+                        if self.v_addr.xcoarse() & 0x2 != 0 {
+                            self.next_tile.attr >>= 2;
+                        }
+                        self.next_tile.attr &= 0x3;
+                    }
+                    4 => {
+                        self.next_tile.lo = self.mem_read(
+                            self.ctrl.bg_base_addr()
+                                + ((self.next_tile.id as u16) << 4)
+                                + self.v_addr.yfine() as u16,
+                        );
+                    }
+                    6 => {
+                        self.next_tile.hi = self.mem_read(
+                            self.ctrl.bg_base_addr()
+                                + ((self.next_tile.id as u16) << 4)
+                                + self.v_addr.yfine() as u16
+                                + 8,
+                        )
+                    }
+                    7 => self.increment_xscroll(),
+                    _ => {}
+                }
+            }
+
+            if self.cycle == 256 {
+                self.increment_yscroll();
+            }
+
+            if self.cycle == 257 {
+                self.load_tile();
+                if self.rendering_enabled() {
+                    self.v_addr.set_nta_h(self.scroll.nta_h());
+                    self.v_addr.set_xcoarse(self.scroll.xcoarse());
+                }
+            }
+
+            if self.cycle == 338 || self.cycle == 340 {
+                self.next_tile.id = self.mem_read(0x2000 | (self.v_addr.raw() & 0xFFF));
+            }
+
+            if self.scanline == -1 && self.cycle == 304 && self.rendering_enabled() {
+                self.v_addr = self.scroll;
+            }
+        }
+
+        if self.scanline == 241 && self.cycle == 1 {
+            self.status.set_vblank(true);
+            if self.ctrl.nmi_enabled() {
+                self.pending_nmi = Some(true)
+            }
+            // self.render_nametable_0();
+            (self.render_fn)(self.frame.pixels());
+        }
+
+        if (self.scanline >= 0 && self.scanline < 240) && (self.cycle >= 1 && self.cycle <= 256) {
+            let mut bg_pixel = 0;
+            let mut bg_palette = 0;
+
+            if self.mask.render_bg() && (self.mask.render_bg8() || self.cycle >= 9) {
+                let mux = 0x8000 >> self.xfine;
+
+                let p0_pixel = ((self.bg_lo_shift & mux) != 0) as u8;
+                let p1_pixel = ((self.bg_hi_shift & mux) != 0) as u8;
+                bg_pixel = (p1_pixel << 1) | p0_pixel;
+
+                let p0_pal = ((self.bg_attr_lo_shift & mux) != 0) as u8;
+                let p1_pal = ((self.bg_attr_hi_shift & mux) != 0) as u8;
+                bg_palette = (p1_pal << 1) | p0_pal;
+            }
+
+            let color = self.get_color(bg_palette as u16, bg_pixel);
+            self.frame
+                .set_pixel(self.cycle - 1, self.scanline as usize, color);
+        }
+
+        self.cycle += 1;
+        if self.cycle > 340 {
+            self.cycle = 0;
+            self.scanline += 1;
+            if self.scanline > 260 {
+                self.scanline = -1;
+                self.odd_frame = !self.odd_frame;
             }
         }
     }
 
-    fn increment_addr(&mut self) {
+    fn get_color(&mut self, palette: u16, pixel: u8) -> Pixel {
+        let index = self.mem_read(0x3F00 + (palette << 2) + pixel as u16) as usize;
+        NES_PALETTE[index & 0x3F]
+    }
+
+    fn increment_xscroll(&mut self) {
+        if self.rendering_enabled() {
+            let xcoarse = self.v_addr.xcoarse();
+            let nta_h = self.v_addr.nta_h();
+            if xcoarse == 31 {
+                self.v_addr.set_xcoarse(0);
+                self.v_addr.set_nta_h(!nta_h);
+            } else {
+                self.v_addr.set_xcoarse(xcoarse + 1);
+            }
+        }
+    }
+
+    fn increment_yscroll(&mut self) {
+        if self.rendering_enabled() {
+            let yfine = self.v_addr.yfine();
+            let ycoarse = self.v_addr.ycoarse();
+            let nta_v = self.v_addr.nta_v();
+            if yfine < 7 {
+                self.v_addr.set_yfine(yfine + 1);
+            } else {
+                self.v_addr.set_yfine(0);
+                if ycoarse == 29 {
+                    self.v_addr.set_ycoarse(0);
+                    self.v_addr.set_nta_v(!nta_v);
+                } else if ycoarse == 31 {
+                    self.v_addr.set_ycoarse(0);
+                } else {
+                    self.v_addr.set_ycoarse(ycoarse + 1);
+                }
+            }
+        }
+    }
+
+    fn load_tile(&mut self) {
+        if self.rendering_enabled() {
+            self.curr_tile = self.next_tile;
+
+            self.bg_lo_shift |= self.next_tile.lo as u16;
+            self.bg_hi_shift |= self.next_tile.hi as u16;
+
+            let attr = self.next_tile.attr;
+            self.bg_attr_lo_shift |= if attr & 0x1 != 0 { 0xFF } else { 0x00 };
+            self.bg_attr_hi_shift |= if attr & 0x2 != 0 { 0xFF } else { 0x00 };
+        }
+    }
+
+    fn shift_bg(&mut self) {
+        if self.mask.render_bg() {
+            self.bg_lo_shift <<= 1;
+            self.bg_hi_shift <<= 1;
+            self.bg_attr_lo_shift <<= 1;
+            self.bg_attr_hi_shift <<= 1;
+        }
+    }
+
+    fn rendering_enabled(&self) -> bool {
+        self.mask.render_sp() | self.mask.render_bg()
+    }
+
+    fn increment_vaddr(&mut self) {
         let new_addr = self.v_addr.raw().wrapping_add(self.ctrl.increment());
         self.v_addr.set_raw(new_addr);
     }

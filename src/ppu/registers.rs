@@ -53,6 +53,18 @@ impl Mask {
     pub fn set_raw(&mut self, v: u8) {
         self.bits = v;
     }
+
+    pub fn render_bg(&self) -> bool {
+        self.contains(Self::SHOW_BG)
+    }
+
+    pub fn render_sp(&self) -> bool {
+        self.contains(Self::SHOW_SP)
+    }
+
+    pub fn render_bg8(&self) -> bool {
+        self.contains(Self::SHOW_BG8)
+    }
 }
 
 bitflags! {
@@ -75,6 +87,10 @@ impl Status {
 
     pub fn set_sp_0_hit(&mut self, v: bool) {
         self.set(Self::SP_0_HIT, v);
+    }
+
+    pub fn set_sp_overflow(&mut self, v: bool) {
+        self.set(Self::SP_OVERFLOW, v);
     }
 }
 
@@ -126,6 +142,26 @@ impl Loopy {
 
     pub fn set_yfine(&mut self, v: u8) {
         self.yfine = v & YFINE_MASK as u8;
+    }
+
+    pub fn nta_h(&self) -> bool {
+        self.nta_h
+    }
+
+    pub fn set_nta_h(&mut self, v: bool) {
+        self.nta_h = v;
+    }
+
+    pub fn nta_v(&self) -> bool {
+        self.nta_v
+    }
+
+    pub fn set_nta_v(&mut self, v: bool) {
+        self.nta_v = v;
+    }
+
+    pub fn nta_addr(&self) -> u16 {
+        ((self.nta_v as u16) << NTA_V_SHIFT) | ((self.nta_h as u16) << NTA_H_SHIFT)
     }
 
     pub fn set_addr_lo(&mut self, v: u8) {

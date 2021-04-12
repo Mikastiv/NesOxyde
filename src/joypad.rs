@@ -45,7 +45,7 @@ impl JoyPad {
     }
 
     pub fn strobe(&mut self, v: u8) {
-        if self.strobe && (v & 0x1 == 0) {
+        if self.strobe {
             self.snapshot = self.state.bits();
         }
         self.strobe = v & 0x1 != 0;
