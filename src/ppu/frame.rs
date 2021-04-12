@@ -1,4 +1,4 @@
-use super::Pixel;
+use super::Rgb;
 use crate::nes::{HEIGHT, WIDTH};
 
 pub struct Frame {
@@ -16,7 +16,7 @@ impl Frame {
         &self.pixels
     }
 
-    pub fn set_pixel(&mut self, x: usize, y: usize, pixel: Pixel) {
+    pub fn set_pixel(&mut self, x: usize, y: usize, pixel: Rgb) {
         let index = (y * 3 * WIDTH as usize) + (x * 3);
         assert!(index + 2 < self.pixels.len());
         self.pixels[index] = pixel.0;

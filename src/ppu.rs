@@ -8,21 +8,21 @@ mod registers;
 mod tile;
 
 #[derive(Clone, Copy)]
-pub struct Pixel(u8, u8, u8);
+pub struct Rgb(u8, u8, u8);
 
 #[rustfmt::skip]
-static NES_PALETTE: [Pixel; 0x40] = [
-    Pixel(84, 84, 84),    Pixel(0, 30, 116),    Pixel(8, 16, 144),    Pixel(48, 0, 136),    Pixel(68, 0, 100),    Pixel(92, 0, 48),     Pixel(84, 4, 0),      Pixel(60, 24, 0),
-    Pixel(32, 42, 0),     Pixel(8, 58, 0),      Pixel(0, 64, 0),      Pixel(0, 60, 0),      Pixel(0, 50, 60),     Pixel(0, 0, 0),       Pixel(0, 0, 0),       Pixel(0, 0, 0),
+static NES_PALETTE: [Rgb; 0x40] = [
+    Rgb(84, 84, 84),    Rgb(0, 30, 116),    Rgb(8, 16, 144),    Rgb(48, 0, 136),    Rgb(68, 0, 100),    Rgb(92, 0, 48),     Rgb(84, 4, 0),      Rgb(60, 24, 0),
+    Rgb(32, 42, 0),     Rgb(8, 58, 0),      Rgb(0, 64, 0),      Rgb(0, 60, 0),      Rgb(0, 50, 60),     Rgb(0, 0, 0),       Rgb(0, 0, 0),       Rgb(0, 0, 0),
 
-    Pixel(152, 150, 152), Pixel(8, 76, 196),    Pixel(48, 50, 236),   Pixel(92, 30, 228),   Pixel(136, 20, 176),  Pixel(160, 20, 100),  Pixel(152, 34, 32),   Pixel(120, 60, 0),
-    Pixel(84, 90, 0),     Pixel(40, 114, 0),    Pixel(8, 124, 0),     Pixel(0, 118, 40),    Pixel(0, 102, 120),   Pixel(0, 0, 0),       Pixel(0, 0, 0),       Pixel(0, 0, 0),
+    Rgb(152, 150, 152), Rgb(8, 76, 196),    Rgb(48, 50, 236),   Rgb(92, 30, 228),   Rgb(136, 20, 176),  Rgb(160, 20, 100),  Rgb(152, 34, 32),   Rgb(120, 60, 0),
+    Rgb(84, 90, 0),     Rgb(40, 114, 0),    Rgb(8, 124, 0),     Rgb(0, 118, 40),    Rgb(0, 102, 120),   Rgb(0, 0, 0),       Rgb(0, 0, 0),       Rgb(0, 0, 0),
 
-    Pixel(236, 238, 236), Pixel(76, 154, 236),  Pixel(120, 124, 236), Pixel(176, 98, 236),  Pixel(228, 84, 236),  Pixel(236, 88, 180),  Pixel(236, 106, 100), Pixel(212, 136, 32),
-    Pixel(160, 170, 0),   Pixel(116, 196, 0),   Pixel(76, 208, 32),   Pixel(56, 204, 108),  Pixel(56, 180, 204),  Pixel(60, 60, 60),    Pixel(0, 0, 0),       Pixel(0, 0, 0),
+    Rgb(236, 238, 236), Rgb(76, 154, 236),  Rgb(120, 124, 236), Rgb(176, 98, 236),  Rgb(228, 84, 236),  Rgb(236, 88, 180),  Rgb(236, 106, 100), Rgb(212, 136, 32),
+    Rgb(160, 170, 0),   Rgb(116, 196, 0),   Rgb(76, 208, 32),   Rgb(56, 204, 108),  Rgb(56, 180, 204),  Rgb(60, 60, 60),    Rgb(0, 0, 0),       Rgb(0, 0, 0),
 
-    Pixel(236, 238, 236), Pixel(168, 204, 236), Pixel(188, 188, 236), Pixel(212, 178, 236), Pixel(236, 174, 236), Pixel(236, 174, 212), Pixel(236, 180, 176), Pixel(228, 196, 144),
-    Pixel(204, 210, 120), Pixel(180, 222, 120), Pixel(168, 226, 144), Pixel(152, 226, 180), Pixel(160, 214, 228), Pixel(160, 162, 160), Pixel(0, 0, 0),       Pixel(0, 0, 0),
+    Rgb(236, 238, 236), Rgb(168, 204, 236), Rgb(188, 188, 236), Rgb(212, 178, 236), Rgb(236, 174, 236), Rgb(236, 174, 212), Rgb(236, 180, 176), Rgb(228, 196, 144),
+    Rgb(204, 210, 120), Rgb(180, 222, 120), Rgb(168, 226, 144), Rgb(152, 226, 180), Rgb(160, 214, 228), Rgb(160, 162, 160), Rgb(0, 0, 0),       Rgb(0, 0, 0),
 ];
 
 const PPU_CTRL: u16 = 0x0;
@@ -163,7 +163,16 @@ impl<'a> Ppu<'a> {
             let tile_addr = self.ctrl.bg_base_addr() + (tile_id as u16) * 16;
             let tile_x = addr % 32;
             let tile_y = addr / 32;
-            let palette = self.get_bg_palette(tile_x, tile_y);
+            
+            let attr_index = tile_y / 4 * 8 + tile_x / 4;
+            let attr_byte = self.mem_read(0x23C0 + attr_index);
+            let palette = match (tile_x % 4 / 2, tile_y % 4 / 2) {
+                (0, 0) => attr_byte & 0b11,
+                (1, 0) => (attr_byte >> 2) & 0b11,
+                (0, 1) => (attr_byte >> 4) & 0b11,
+                (1, 1) => (attr_byte >> 6) & 0b11,
+                _ => unreachable!(),
+            };
 
             for row in 0..8 {
                 let mut lo = self.mem_read(tile_addr + row);
@@ -174,13 +183,7 @@ impl<'a> Ppu<'a> {
                     lo >>= 1;
                     hi >>= 1;
 
-                    let rgb = match pixel {
-                        0 => NES_PALETTE[palette[0] as usize],
-                        1 => NES_PALETTE[palette[1] as usize],
-                        2 => NES_PALETTE[palette[2] as usize],
-                        3 => NES_PALETTE[palette[3] as usize],
-                        _ => unreachable!(),
-                    };
+                    let rgb = self.get_color(palette as u16, pixel);
 
                     self.frame.set_pixel(
                         (tile_x * 8 + col) as usize,
@@ -190,27 +193,6 @@ impl<'a> Ppu<'a> {
                 }
             }
         }
-    }
-
-    fn get_bg_palette(&mut self, tile_x: u16, tile_y: u16) -> [u8; 4] {
-        let attr_index = tile_y / 4 * 8 + tile_x / 4;
-        let attr_byte = self.mem_read(0x23C0 + attr_index);
-
-        let palette_idx = match (tile_x % 4 / 2, tile_y % 4 / 2) {
-            (0, 0) => attr_byte & 0b11,
-            (1, 0) => (attr_byte >> 2) & 0b11,
-            (0, 1) => (attr_byte >> 4) & 0b11,
-            (1, 1) => (attr_byte >> 6) & 0b11,
-            _ => unreachable!(),
-        };
-
-        let start = 1 + palette_idx as u16 * 4;
-        [
-            self.mem_read(0x3F00),
-            self.mem_read(0x3F00 + start),
-            self.mem_read(0x3F00 + start + 1),
-            self.mem_read(0x3F00 + start + 2),
-        ]
     }
 
     pub fn read(&mut self, addr: u16) -> u8 {
@@ -409,7 +391,7 @@ impl<'a> Ppu<'a> {
         }
     }
 
-    fn get_color(&mut self, palette: u16, pixel: u8) -> Pixel {
+    fn get_color(&mut self, palette: u16, pixel: u8) -> Rgb {
         let index = self.mem_read(0x3F00 + (palette << 2) + pixel as u16) as usize;
         NES_PALETTE[index & 0x3F]
     }
