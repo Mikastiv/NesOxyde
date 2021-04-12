@@ -3,11 +3,15 @@ use sdl2::keyboard::Keycode;
 use sdl2::pixels::PixelFormatEnum;
 use std::cell::RefCell;
 use std::rc::Rc;
+use std::time::Instant;
 
 use crate::bus::MainBus;
 use crate::cartridge::Cartridge;
 use crate::cpu::Cpu;
 use crate::joypad::{Button, JoyPort};
+
+// http://wiki.nesdev.com/w/index.php/CPU
+const NS_PER_CPU_CLOCK: u128 = 559;
 
 const WINDOW_TITLE: &str = "NesOxyde v0.1.0";
 pub const WIDTH: u32 = 256;
@@ -47,7 +51,9 @@ where
     cpu.reset();
 
     'nes: loop {
-        cpu.execute();
+        let start_time = Instant::now();
+        let cycles_passed = cpu.execute();
+        
         for event in event_pump.poll_iter() {
             match event {
                 Event::Quit { .. }
@@ -71,6 +77,12 @@ where
                 }
                 _ => {}
             }
+        }
+
+        let expected_time = cycles_passed as u128 * NS_PER_CPU_CLOCK;
+        let time_passed = (Instant::now() - start_time).as_nanos();
+        if expected_time > time_passed {
+            while expected_time > (Instant::now() - start_time).as_nanos() {}
         }
     }
 }
