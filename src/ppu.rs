@@ -325,7 +325,7 @@ impl<'a> Ppu<'a> {
             self.v_addr = self.scroll;
         }
 
-        if (1..257).contains(&cycle) || (320..337).contains(&cycle) {
+        if (2..258).contains(&cycle) || (321..338).contains(&cycle) {
             self.shift_bg();
 
             match (cycle - 1) % 8 {
