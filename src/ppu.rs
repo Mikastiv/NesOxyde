@@ -59,7 +59,6 @@ pub struct Ppu<'a> {
 
     scanline: i32,
     cycle: usize,
-    curr_tile: Tile,
     next_tile: Tile,
     bg_lo_shift: u16,
     bg_hi_shift: u16,
@@ -94,7 +93,6 @@ impl<'a> Ppu<'a> {
 
             scanline: 0,
             cycle: 0,
-            curr_tile: Tile::new(),
             next_tile: Tile::new(),
             bg_lo_shift: 0,
             bg_hi_shift: 0,
@@ -163,7 +161,7 @@ impl<'a> Ppu<'a> {
             let tile_addr = self.ctrl.bg_base_addr() + (tile_id as u16) * 16;
             let tile_x = addr % 32;
             let tile_y = addr / 32;
-            
+
             let attr_index = tile_y / 4 * 8 + tile_x / 4;
             let attr_byte = self.mem_read(0x23C0 + attr_index);
             let palette = match (tile_x % 4 / 2, tile_y % 4 / 2) {
@@ -183,7 +181,7 @@ impl<'a> Ppu<'a> {
                     lo >>= 1;
                     hi >>= 1;
 
-                    let rgb = self.get_color(palette as u16, pixel);
+                    let rgb = self.get_color(palette, pixel);
 
                     self.frame.set_pixel(
                         (tile_x * 8 + col) as usize,
@@ -273,111 +271,39 @@ impl<'a> Ppu<'a> {
     }
 
     pub fn clock(&mut self) {
-        if self.scanline >= -1 && self.scanline < 240 {
-            if self.odd_frame && self.scanline == 0 && self.cycle == 0 && self.rendering_enabled() {
-                self.cycle = 1;
-            }
-
-            if self.scanline == -1 && self.cycle == 1 {
-                self.pending_nmi = None;
-                self.status.set_sp_0_hit(false);
-                self.status.set_sp_overflow(false);
-                self.status.set_vblank(false);
-            }
-
-            if (self.cycle >= 2 && self.cycle < 258) || (self.cycle >= 321 && self.cycle < 338) {
-                self.shift_bg();
-
-                match (self.cycle - 1) % 8 {
-                    0 => {
-                        self.load_tile();
-                        self.next_tile.id = self.mem_read(0x2000 | (self.v_addr.raw() & 0xFFF));
-                    }
-                    2 => {
-                        self.next_tile.attr = self.mem_read(
-                            0x23C0
-                                | self.v_addr.nta_addr()
-                                | ((self.v_addr.ycoarse() >> 2) << 3) as u16
-                                | (self.v_addr.xcoarse() >> 2) as u16,
-                        );
-
-                        if self.v_addr.ycoarse() & 0x2 != 0 {
-                            self.next_tile.attr >>= 4;
-                        }
-                        if self.v_addr.xcoarse() & 0x2 != 0 {
-                            self.next_tile.attr >>= 2;
-                        }
-                        self.next_tile.attr &= 0x3;
-                    }
-                    4 => {
-                        self.next_tile.lo = self.mem_read(
-                            self.ctrl.bg_base_addr()
-                                + ((self.next_tile.id as u16) << 4)
-                                + self.v_addr.yfine() as u16,
-                        );
-                    }
-                    6 => {
-                        self.next_tile.hi = self.mem_read(
-                            self.ctrl.bg_base_addr()
-                                + ((self.next_tile.id as u16) << 4)
-                                + self.v_addr.yfine() as u16
-                                + 8,
-                        )
-                    }
-                    7 => self.increment_xscroll(),
-                    _ => {}
-                }
-            }
-
-            if self.cycle == 256 {
-                self.increment_yscroll();
-            }
-
-            if self.cycle == 257 {
-                self.load_tile();
-                if self.rendering_enabled() {
-                    self.v_addr.set_nta_h(self.scroll.nta_h());
-                    self.v_addr.set_xcoarse(self.scroll.xcoarse());
-                }
-            }
-
-            if self.cycle == 338 || self.cycle == 340 {
-                self.next_tile.id = self.mem_read(0x2000 | (self.v_addr.raw() & 0xFFF));
-            }
-
-            if self.scanline == -1 && self.cycle == 304 && self.rendering_enabled() {
-                self.v_addr = self.scroll;
-            }
+        if self.odd_frame && self.scanline == 0 && self.cycle == 0 && self.mask.render_bg() {
+            self.cycle = 1;
         }
 
-        if self.scanline == 241 && self.cycle == 1 {
+        let cycle = self.cycle;
+        let scanline = self.scanline;
+
+        if scanline == -1 && cycle == 1 {
+            self.pending_nmi = None;
+            self.status.set_sp_0_hit(false);
+            self.status.set_sp_overflow(false);
+            self.status.set_vblank(false);
+        }
+
+        if scanline < 240 && self.rendering_enabled() {
+            self.process_rendering_scanline();
+        }
+
+        if scanline == 241 && cycle == 1 {
             self.status.set_vblank(true);
             if self.ctrl.nmi_enabled() {
                 self.pending_nmi = Some(true)
             }
-            // self.render_nametable_0();
+
+            // Render in window (in this case, using SDL2)
             (self.render_fn)(self.frame.pixels());
         }
 
-        if (self.scanline >= 0 && self.scanline < 240) && (self.cycle >= 1 && self.cycle <= 256) {
-            let mut bg_pixel = 0;
-            let mut bg_palette = 0;
+        if (0..240).contains(&scanline) && (1..=256).contains(&cycle) {
+            let (bg_pixel, bg_palette) = self.get_bg_pixel_info();
 
-            if self.mask.render_bg() && (self.mask.render_bg8() || self.cycle >= 9) {
-                let mux = 0x8000 >> self.xfine;
-
-                let p0_pixel = ((self.bg_lo_shift & mux) != 0) as u8;
-                let p1_pixel = ((self.bg_hi_shift & mux) != 0) as u8;
-                bg_pixel = (p1_pixel << 1) | p0_pixel;
-
-                let p0_pal = ((self.bg_attr_lo_shift & mux) != 0) as u8;
-                let p1_pal = ((self.bg_attr_hi_shift & mux) != 0) as u8;
-                bg_palette = (p1_pal << 1) | p0_pal;
-            }
-
-            let color = self.get_color(bg_palette as u16, bg_pixel);
-            self.frame
-                .set_pixel(self.cycle - 1, self.scanline as usize, color);
+            let color = self.get_color(bg_palette, bg_pixel);
+            self.frame.set_pixel(cycle - 1, scanline as usize, color);
         }
 
         self.cycle += 1;
@@ -391,49 +317,131 @@ impl<'a> Ppu<'a> {
         }
     }
 
-    fn get_color(&mut self, palette: u16, pixel: u8) -> Rgb {
-        let index = self.mem_read(0x3F00 + (palette << 2) + pixel as u16) as usize;
+    fn process_rendering_scanline(&mut self) {
+        let cycle = self.cycle;
+        let scanline = self.scanline;
+
+        if scanline == -1 && cycle == 304 && self.mask.render_bg() {
+            self.v_addr = self.scroll;
+        }
+
+        if (1..257).contains(&cycle) || (320..337).contains(&cycle) {
+            self.shift_bg();
+
+            match (cycle - 1) % 8 {
+                0 => {
+                    self.load_next_tile();
+                    let vaddr = 0x2000 | (self.v_addr.raw() & 0xFFF);
+                    self.next_tile.id = self.mem_read(vaddr);
+                }
+                2 => {
+                    let vaddr = 0x23C0
+                        | self.v_addr.nta_addr()
+                        | ((self.v_addr.ycoarse() >> 2) << 3) as u16
+                        | (self.v_addr.xcoarse() >> 2) as u16;
+
+                    self.next_tile.attr = self.mem_read(vaddr);
+
+                    if self.v_addr.ycoarse() & 0x2 != 0 {
+                        self.next_tile.attr >>= 4;
+                    }
+                    if self.v_addr.xcoarse() & 0x2 != 0 {
+                        self.next_tile.attr >>= 2;
+                    }
+                    self.next_tile.attr &= 0x3;
+                }
+                4 => {
+                    let vaddr = self.ctrl.bg_base_addr()
+                        + ((self.next_tile.id as u16) << 4)
+                        + self.v_addr.yfine() as u16;
+
+                    self.next_tile.lo = self.mem_read(vaddr);
+                }
+                6 => {
+                    let vaddr = self.ctrl.bg_base_addr()
+                        + ((self.next_tile.id as u16) << 4)
+                        + self.v_addr.yfine() as u16
+                        + 8;
+
+                    self.next_tile.hi = self.mem_read(vaddr);
+                }
+                7 => self.increment_xscroll(),
+                _ => {}
+            }
+        }
+
+        if cycle == 256 {
+            self.increment_yscroll();
+        }
+
+        if cycle == 257 {
+            self.load_next_tile();
+            if self.mask.render_bg() {
+                self.v_addr.set_nta_h(self.scroll.nta_h());
+                self.v_addr.set_xcoarse(self.scroll.xcoarse());
+            }
+        }
+
+        if cycle == 337 || cycle == 339 {
+            self.next_tile.id = self.mem_read(0x2000 | (self.v_addr.raw() & 0xFFF));
+        }
+    }
+
+    fn get_bg_pixel_info(&self) -> (u8, u8) {
+        let mut bg_pixel = 0;
+        let mut bg_palette = 0;
+        if self.mask.render_bg() && (self.mask.render_bg8() || self.cycle >= 9) {
+            let mux = 0x8000 >> self.xfine;
+
+            let p0_pixel = ((self.bg_lo_shift & mux) != 0) as u8;
+            let p1_pixel = ((self.bg_hi_shift & mux) != 0) as u8;
+            bg_pixel = (p1_pixel << 1) | p0_pixel;
+
+            let p0_pal = ((self.bg_attr_lo_shift & mux) != 0) as u8;
+            let p1_pal = ((self.bg_attr_hi_shift & mux) != 0) as u8;
+            bg_palette = (p1_pal << 1) | p0_pal;
+        }
+
+        (bg_pixel, bg_palette)
+    }
+
+    fn get_color(&mut self, palette: u8, pixel: u8) -> Rgb {
+        let index = self.mem_read(0x3F00 + ((palette as u16) << 2) + pixel as u16) as usize;
         NES_PALETTE[index & 0x3F]
     }
 
     fn increment_xscroll(&mut self) {
-        if self.rendering_enabled() {
-            let xcoarse = self.v_addr.xcoarse();
-            let nta_h = self.v_addr.nta_h();
-            if xcoarse == 31 {
-                self.v_addr.set_xcoarse(0);
-                self.v_addr.set_nta_h(!nta_h);
-            } else {
-                self.v_addr.set_xcoarse(xcoarse + 1);
-            }
+        let xcoarse = self.v_addr.xcoarse();
+        let nta_h = self.v_addr.nta_h();
+        if xcoarse == 31 {
+            self.v_addr.set_xcoarse(0);
+            self.v_addr.set_nta_h(!nta_h);
+        } else {
+            self.v_addr.set_xcoarse(xcoarse + 1);
         }
     }
 
     fn increment_yscroll(&mut self) {
-        if self.rendering_enabled() {
-            let yfine = self.v_addr.yfine();
-            let ycoarse = self.v_addr.ycoarse();
-            let nta_v = self.v_addr.nta_v();
-            if yfine < 7 {
-                self.v_addr.set_yfine(yfine + 1);
+        let yfine = self.v_addr.yfine();
+        let ycoarse = self.v_addr.ycoarse();
+        let nta_v = self.v_addr.nta_v();
+        if yfine < 7 {
+            self.v_addr.set_yfine(yfine + 1);
+        } else {
+            self.v_addr.set_yfine(0);
+            if ycoarse == 29 {
+                self.v_addr.set_ycoarse(0);
+                self.v_addr.set_nta_v(!nta_v);
+            } else if ycoarse == 31 {
+                self.v_addr.set_ycoarse(0);
             } else {
-                self.v_addr.set_yfine(0);
-                if ycoarse == 29 {
-                    self.v_addr.set_ycoarse(0);
-                    self.v_addr.set_nta_v(!nta_v);
-                } else if ycoarse == 31 {
-                    self.v_addr.set_ycoarse(0);
-                } else {
-                    self.v_addr.set_ycoarse(ycoarse + 1);
-                }
+                self.v_addr.set_ycoarse(ycoarse + 1);
             }
         }
     }
 
-    fn load_tile(&mut self) {
+    fn load_next_tile(&mut self) {
         if self.rendering_enabled() {
-            self.curr_tile = self.next_tile;
-
             self.bg_lo_shift |= self.next_tile.lo as u16;
             self.bg_hi_shift |= self.next_tile.hi as u16;
 

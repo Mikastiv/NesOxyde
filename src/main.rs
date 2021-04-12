@@ -28,7 +28,7 @@ fn main() {
         }
     };
 
-    let convert_key = |key: Keycode| match key {
+    let map_key = |key: Keycode| match key {
         Keycode::A => Some(Button::A),
         Keycode::S => Some(Button::B),
         Keycode::Z => Some(Button::Select),
@@ -40,5 +40,5 @@ fn main() {
         _ => None,
     };
 
-    nes::run(cartridge, convert_key);
+    nes::run(cartridge, map_key);
 }
