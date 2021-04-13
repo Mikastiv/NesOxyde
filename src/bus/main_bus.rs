@@ -5,7 +5,7 @@ use super::PpuBus;
 use crate::cartridge::Cartridge;
 use crate::cpu::Interface;
 use crate::joypad::{Button, JoyPad, JoyPort};
-use crate::ppu::Ppu;
+use crate::ppu::{Ppu, OAM_DATA};
 
 const RAM_SIZE: usize = 0x800;
 const RAM_MASK: u16 = 0x7FF;
@@ -21,6 +21,8 @@ const ROM_END: u16 = 0xFFFF;
 
 const JOY1: u16 = 0x4016;
 const JOY2: u16 = 0x4017;
+
+const OAM_DMA: u16 = 0x4014;
 
 pub struct MainBus<'a> {
     ram: [u8; RAM_SIZE],
@@ -50,6 +52,15 @@ impl Interface for MainBus<'_> {
             PPU_REG_START..=PPU_REG_END => {
                 let addr = addr & PPU_MASK;
                 self.ppu.write(addr, data);
+            }
+            OAM_DMA => {
+                let page = (data as u16) << 8;
+                for byte in 0..256 {
+                    let v = self.read(page + byte);
+                    self.tick(1);
+                    self.write(0x2000 + OAM_DATA, v);
+                    self.tick(1);
+                }
             }
             JOY1 => {
                 self.joypads[0].strobe(data);

@@ -29,7 +29,7 @@ const PPU_CTRL: u16 = 0x0;
 const PPU_MASK: u16 = 0x1;
 const PPU_STATUS: u16 = 0x2;
 const OAM_ADDR: u16 = 0x3;
-const OAM_DATA: u16 = 0x4;
+pub const OAM_DATA: u16 = 0x4;
 const PPU_SCROLL: u16 = 0x5;
 const PPU_ADDR: u16 = 0x6;
 const PPU_DATA: u16 = 0x7;
@@ -49,7 +49,9 @@ pub struct Ppu<'a> {
     bus: Box<dyn Interface>,
     pending_nmi: Option<bool>,
     open_bus: u8,
-    oam: [u8; OAM_SIZE],
+
+    oam_data: [u8; OAM_SIZE],
+    oam_addr: u8,
 
     addr_toggle: bool,
     read_buffer: u8,
@@ -84,7 +86,9 @@ impl<'a> Ppu<'a> {
             bus,
             pending_nmi: None,
             open_bus: 0,
-            oam: [0; OAM_SIZE],
+
+            oam_data: [0; OAM_SIZE],
+            oam_addr: 0,
 
             addr_toggle: false,
             read_buffer: 0,
@@ -212,7 +216,9 @@ impl<'a> Ppu<'a> {
                 self.addr_toggle = false;
             }
             OAM_ADDR => {}
-            OAM_DATA => {}
+            OAM_DATA => {
+                data = self.oam_data[self.oam_addr as usize];
+            }
             PPU_SCROLL => {}
             PPU_ADDR => {}
             PPU_DATA => {
@@ -241,8 +247,13 @@ impl<'a> Ppu<'a> {
                 self.mask.set_raw(data);
             }
             PPU_STATUS => {}
-            OAM_ADDR => {}
-            OAM_DATA => {}
+            OAM_ADDR => {
+                self.oam_addr = data;
+            }
+            OAM_DATA => {
+                self.oam_data[self.oam_addr as usize] = data;
+                self.oam_addr = self.oam_addr.wrapping_add(1);
+            }
             PPU_SCROLL => {
                 match self.addr_toggle {
                     true => {

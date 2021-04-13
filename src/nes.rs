@@ -52,12 +52,11 @@ where
 
     let mut timer = Timer::new();
     loop {
-        timer.reset();
         let frame_count = cpu.frame_count();
         while cpu.frame_count() == frame_count {
             cpu.execute();
         }
-
+        
         for event in event_pump.poll_iter() {
             match event {
                 Event::Quit { .. }
@@ -92,7 +91,8 @@ where
                 _ => {}
             }
         }
-
+        
         timer.wait(Duration::from_secs_f64(SECS_PER_FRAME));
+        timer.reset();
     }
 }
