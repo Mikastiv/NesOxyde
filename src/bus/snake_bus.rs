@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use std::usize;
 
 use crate::cpu::Interface;
@@ -23,9 +25,9 @@ impl Interface for SnakeBus {
         None
     }
 
-    fn tick(&mut self, cycles: u64) {}
+    fn tick(&mut self, _cycles: u64) {}
 
-    fn update_joypad(&mut self, button: Button, pressed: bool, port: JoyPort) {}
+    fn update_joypad(&mut self, _button: Button, _pressed: bool, _port: JoyPort) {}
 }
 
 impl SnakeBus {

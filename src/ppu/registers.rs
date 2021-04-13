@@ -85,10 +85,6 @@ bitflags! {
 }
 
 impl Status {
-    pub fn set_raw(&mut self, v: u8) {
-        self.bits = v;
-    }
-
     pub fn set_vblank(&mut self, v: bool) {
         self.set(Self::IN_VBLANK, v);
     }

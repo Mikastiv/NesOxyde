@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use rand::prelude::*;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;

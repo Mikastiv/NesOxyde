@@ -55,7 +55,7 @@ pub struct Rom {
 }
 
 impl Rom {
-    pub fn new<P: AsRef<Path> + Display>(romfile: P) -> io::Result<(Self, INesHeader)> {
+    pub fn new<P: AsRef<Path> + Display>(romfile: P) -> io::Result<Self> {
         let mut file = File::open(&romfile)?;
 
         let mut buf = [0; HEADER_SIZE];
@@ -92,13 +92,10 @@ impl Rom {
         let mut rom_bytes = Vec::new();
         file.read_to_end(&mut rom_bytes)?;
 
-        Ok((
-            Self {
-                header,
-                prg: rom_bytes[prg_start..(prg_start + prg_size)].to_vec(),
-                chr: rom_bytes[chr_start..(chr_start + chr_size)].to_vec(),
-            },
+        Ok(Self {
             header,
-        ))
+            prg: rom_bytes[prg_start..(prg_start + prg_size)].to_vec(),
+            chr: rom_bytes[chr_start..(chr_start + chr_size)].to_vec(),
+        })
     }
 }

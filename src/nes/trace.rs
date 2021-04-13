@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use crate::cpu::{AddrMode, Cpu, OPTABLE};
 
 impl<'a> Cpu<'a> {
@@ -54,6 +56,7 @@ impl<'a> Cpu<'a> {
     }
 }
 
+#[allow(dead_code)]
 pub fn trace(cpu: &mut Cpu) -> String {
     let code = cpu.mem_read(cpu.pc());
     let ins = *OPTABLE.get(&code).unwrap();

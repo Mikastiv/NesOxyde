@@ -94,14 +94,6 @@ impl<'a> Cpu<'a> {
         self.cycles
     }
 
-    pub fn ins_cycles(&self) -> u64 {
-        self.ins_cycles
-    }
-
-    pub fn add_cycle(&mut self) {
-        self.ins_cycles += 1;
-    }
-
     pub fn reset(&mut self) {
         self.a = 0;
         self.x = 0;
@@ -131,10 +123,6 @@ impl<'a> Cpu<'a> {
             self.cycles += 7;
             self.ins_cycles = 7;
         }
-    }
-
-    pub fn run(&mut self) {
-        self.run_with_callback(|_| {});
     }
 
     pub fn run_with_callback<F>(&mut self, mut callback: F)
@@ -441,11 +429,11 @@ impl<'a> Cpu<'a> {
         self.mem_write(addr, v);
     }
 
-    fn inx(&mut self, mode: AddrMode) {
+    fn inx(&mut self, _mode: AddrMode) {
         self.set_x(self.x().wrapping_add(1));
     }
 
-    fn iny(&mut self, mode: AddrMode) {
+    fn iny(&mut self, _mode: AddrMode) {
         self.set_y(self.y().wrapping_add(1));
     }
 
@@ -456,11 +444,11 @@ impl<'a> Cpu<'a> {
         self.mem_write(addr, v);
     }
 
-    fn dex(&mut self, mode: AddrMode) {
+    fn dex(&mut self, _mode: AddrMode) {
         self.set_x(self.x().wrapping_sub(1));
     }
 
-    fn dey(&mut self, mode: AddrMode) {
+    fn dey(&mut self, _mode: AddrMode) {
         self.set_y(self.y().wrapping_sub(1));
     }
 
@@ -871,7 +859,6 @@ impl<'a> Cpu<'a> {
         let addr = self.operand_addr(mode);
         let v = self.fetch_operand(addr, mode);
 
-        let result = (self.a() & self.x()).wrapping_sub(v);
         self.p.set(Flags::C, (self.a() & self.x()) >= v);
         self.set_x(v);
     }

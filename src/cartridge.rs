@@ -4,7 +4,7 @@ use std::io;
 use std::path::Path;
 
 use self::mapper::{Mapper, Mapper0};
-use self::rom::{INesHeader, Rom};
+use self::rom::Rom;
 
 mod mapper;
 mod rom;
@@ -16,20 +16,18 @@ pub enum MirrorMode {
 }
 
 pub struct Cartridge {
-    header: INesHeader,
     mapper: Box<dyn Mapper>,
 }
 
 impl Cartridge {
     pub fn new<P: AsRef<Path> + Display>(romfile: P) -> io::Result<Self> {
-        let (rom, header) = Rom::new(romfile)?;
-        let mapper = match header.mapper_id() {
+        let rom = Rom::new(romfile)?;
+        let mapper = match rom.header.mapper_id() {
             0 => Mapper0::new(rom),
-            _ => panic!("Unimplemented mapper: {}", header.mapper_id()),
+            _ => panic!("Unimplemented mapper: {}", rom.header.mapper_id()),
         };
 
         Ok(Self {
-            header,
             mapper: Box::new(mapper),
         })
     }

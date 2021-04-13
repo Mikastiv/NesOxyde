@@ -104,7 +104,8 @@ impl<'a> Ppu<'a> {
             render_fn,
         }
     }
-
+    
+    #[allow(dead_code)]
     fn render_chr_pattern(&mut self) {
         for tile_y in 0..16 {
             for tile_x in 0..16 {
@@ -155,6 +156,7 @@ impl<'a> Ppu<'a> {
         }
     }
 
+    #[allow(dead_code)]
     fn render_nametable_0(&mut self) {
         for addr in 0..0x3C0 {
             let tile_id = self.mem_read(0x2000 | addr);
@@ -401,7 +403,7 @@ impl<'a> Ppu<'a> {
 
             return (bg_pixel, bg_palette);
         }
-        
+
         (0, 0)
     }
 
