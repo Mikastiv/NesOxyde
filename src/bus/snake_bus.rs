@@ -28,6 +28,10 @@ impl Interface for SnakeBus {
     fn tick(&mut self, _cycles: u64) {}
 
     fn update_joypad(&mut self, _button: Button, _pressed: bool, _port: JoyPort) {}
+
+    fn frame_count(&self) -> u128 {
+        0
+    }
 }
 
 impl SnakeBus {

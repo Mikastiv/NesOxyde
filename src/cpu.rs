@@ -19,6 +19,7 @@ pub trait Interface {
     fn poll_nmi(&mut self) -> Option<bool>;
     fn tick(&mut self, cycles: u64);
     fn update_joypad(&mut self, button: Button, pressed: bool, port: JoyPort);
+    fn frame_count(&self) -> u128;
 }
 
 bitflags! {
@@ -92,6 +93,10 @@ impl<'a> Cpu<'a> {
 
     pub fn cycles(&self) -> u64 {
         self.cycles
+    }
+
+    pub fn frame_count(&self) -> u128 {
+        self.bus.frame_count()
     }
 
     pub fn reset(&mut self) {

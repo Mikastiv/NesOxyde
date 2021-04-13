@@ -76,6 +76,10 @@ impl Interface for MainBus<'_> {
             JoyPort::Port2 => self.joypads[1].update(button, pressed),
         }
     }
+
+    fn frame_count(&self) -> u128 {
+        self.ppu.frame_count()
+    }
 }
 
 impl<'a> MainBus<'a> {

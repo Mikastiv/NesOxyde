@@ -14,6 +14,7 @@ mod joypad;
 mod nes;
 mod ppu;
 mod snake_game;
+mod timer;
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();

@@ -66,6 +66,7 @@ pub struct Ppu<'a> {
     bg_attr_hi_shift: u16,
 
     frame: Frame,
+    frame_count: u128,
     odd_frame: bool,
     render_fn: Box<dyn FnMut(&[u8]) + 'a>,
 }
@@ -100,11 +101,12 @@ impl<'a> Ppu<'a> {
             bg_attr_hi_shift: 0,
 
             frame: Frame::new(),
+            frame_count: 0,
             odd_frame: false,
             render_fn,
         }
     }
-    
+
     #[allow(dead_code)]
     fn render_chr_pattern(&mut self) {
         for tile_y in 0..16 {
@@ -133,10 +135,10 @@ impl<'a> Ppu<'a> {
                             _ => unreachable!(),
                         };
                         let rgb_bg = match pixel_bg {
-                            0 => NES_PALETTE[0x01],
-                            1 => NES_PALETTE[0x23],
+                            0 => NES_PALETTE[0x05],
+                            1 => NES_PALETTE[0x2A],
                             2 => NES_PALETTE[0x27],
-                            3 => NES_PALETTE[0x30],
+                            3 => NES_PALETTE[0x3B],
                             _ => unreachable!(),
                         };
 
@@ -193,6 +195,10 @@ impl<'a> Ppu<'a> {
                 }
             }
         }
+    }
+
+    pub fn frame_count(&self) -> u128 {
+        self.frame_count
     }
 
     pub fn read(&mut self, addr: u16) -> u8 {
@@ -297,6 +303,7 @@ impl<'a> Ppu<'a> {
                 self.pending_nmi = Some(true)
             }
 
+            self.frame_count = self.frame_count.wrapping_add(1);
             // Render in window (in this case, using SDL2)
             (self.render_fn)(self.frame.pixels());
         }

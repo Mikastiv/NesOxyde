@@ -3,15 +3,15 @@ use sdl2::keyboard::Keycode;
 use sdl2::pixels::PixelFormatEnum;
 use std::cell::RefCell;
 use std::rc::Rc;
-use std::time::Instant;
+use std::time::Duration;
 
 use crate::bus::MainBus;
 use crate::cartridge::Cartridge;
 use crate::cpu::Cpu;
 use crate::joypad::{Button, JoyPort};
+use crate::timer::Timer;
 
-// http://wiki.nesdev.com/w/index.php/CPU
-const NS_PER_CPU_CLOCK: u128 = 559;
+const SECS_PER_FRAME: f64 = 1.0 / 60.0;
 
 static WINDOW_TITLE: &str = "NesOxyde v0.1.0";
 pub const WIDTH: u32 = 256;
@@ -50,9 +50,13 @@ where
     let mut cpu = Cpu::new(bus);
     cpu.reset();
 
+    let mut timer = Timer::new();
     loop {
-        let start_time = Instant::now();
-        let cycles_passed = cpu.execute();
+        timer.reset();
+        let frame_count = cpu.frame_count();
+        while cpu.frame_count() == frame_count {
+            cpu.execute();
+        }
 
         for event in event_pump.poll_iter() {
             match event {
@@ -89,10 +93,6 @@ where
             }
         }
 
-        let expected_time = cycles_passed as u128 * NS_PER_CPU_CLOCK;
-        let time_passed = (Instant::now() - start_time).as_nanos();
-        if expected_time > time_passed {
-            while expected_time > (Instant::now() - start_time).as_nanos() {}
-        }
+        timer.wait(Duration::from_secs_f64(SECS_PER_FRAME));
     }
 }
