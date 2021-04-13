@@ -16,7 +16,7 @@ const PPU_MASK: u16 = 0x7;
 const PPU_REG_START: u16 = 0x2000;
 const PPU_REG_END: u16 = 0x3FFF;
 
-const ROM_START: u16 = 0x8000;
+const ROM_START: u16 = 0x4020;
 const ROM_END: u16 = 0xFFFF;
 
 const JOY1: u16 = 0x4016;
@@ -40,10 +40,7 @@ impl Interface for MainBus<'_> {
             JOY1 => self.joypads[0].read(),
             JOY2 => self.joypads[1].read(),
             ROM_START..=ROM_END => self.cartridge.borrow_mut().read_prg(addr),
-            _ => {
-                //println!("Ignored read at {:#04X}", addr);
-                0
-            }
+            _ => 0,
         }
     }
 
@@ -59,9 +56,7 @@ impl Interface for MainBus<'_> {
                 self.joypads[1].strobe(data);
             }
             ROM_START..=ROM_END => self.cartridge.borrow_mut().write_prg(addr, data),
-            _ => {
-                //println!("Ignored write at 0x{:04X}", addr);
-            }
+            _ => {}
         }
     }
 

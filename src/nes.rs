@@ -21,7 +21,7 @@ mod trace;
 
 pub fn run<KeyMap>(cartridge: Cartridge, map_key: KeyMap)
 where
-    KeyMap: Fn(Keycode) -> Option<Button>,
+    KeyMap: Fn(Keycode, JoyPort) -> Option<Button>,
 {
     // SDL2 init ----------------->
     let sdl_context = sdl2::init().unwrap();
@@ -68,15 +68,21 @@ where
                 Event::KeyDown {
                     keycode: Some(key), ..
                 } => {
-                    if let Some(button) = map_key(key) {
+                    if let Some(button) = map_key(key, JoyPort::Port1) {
                         cpu.update_joypad(button, true, JoyPort::Port1)
+                    }
+                    if let Some(button) = map_key(key, JoyPort::Port2) {
+                        cpu.update_joypad(button, true, JoyPort::Port2)
                     }
                 }
                 Event::KeyUp {
                     keycode: Some(key), ..
                 } => {
-                    if let Some(button) = map_key(key) {
+                    if let Some(button) = map_key(key, JoyPort::Port1) {
                         cpu.update_joypad(button, false, JoyPort::Port1)
+                    }
+                    if let Some(button) = map_key(key, JoyPort::Port2) {
+                        cpu.update_joypad(button, false, JoyPort::Port2)
                     }
                 }
                 _ => {}

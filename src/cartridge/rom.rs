@@ -73,10 +73,19 @@ impl Rom {
         let prg_start = if header.has_trainer() { 512 } else { 0 };
         let chr_size = CHR_PAGE_SIZE * header.chr_count();
         let chr_start = prg_start + prg_size;
-        println!("PRG Start: {:#06X}", prg_start + HEADER_SIZE);
-        println!("PRG Size: {:#06X}", prg_size);
-        println!("CHR Start: {:#06X}", chr_start + HEADER_SIZE);
-        println!("CHR Size: {:#06X}", chr_size);
+
+        println!(
+            "PRG Size: {} * {:#06X} = {:#06X}",
+            header.prg_count(),
+            PRG_PAGE_SIZE,
+            prg_size
+        );
+        println!(
+            "CHR Size: {} * {:#06X} = {:#06X}",
+            header.chr_count(),
+            CHR_PAGE_SIZE,
+            chr_size
+        );
         println!("Mapper ID: {}", header.mapper_id());
         println!("Mirror mode: {:?}", header.mirror_mode());
 
