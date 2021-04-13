@@ -388,21 +388,21 @@ impl<'a> Ppu<'a> {
     }
 
     fn get_bg_pixel_info(&self) -> (u8, u8) {
-        let mut bg_pixel = 0;
-        let mut bg_palette = 0;
         if self.mask.render_bg() && (self.mask.render_bg8() || self.cycle >= 9) {
             let mux = 0x8000 >> self.xfine;
 
             let p0_pixel = ((self.bg_lo_shift & mux) != 0) as u8;
             let p1_pixel = ((self.bg_hi_shift & mux) != 0) as u8;
-            bg_pixel = (p1_pixel << 1) | p0_pixel;
+            let bg_pixel = (p1_pixel << 1) | p0_pixel;
 
             let p0_pal = ((self.bg_attr_lo_shift & mux) != 0) as u8;
             let p1_pal = ((self.bg_attr_hi_shift & mux) != 0) as u8;
-            bg_palette = (p1_pal << 1) | p0_pal;
-        }
+            let bg_palette = (p1_pal << 1) | p0_pal;
 
-        (bg_pixel, bg_palette)
+            return (bg_pixel, bg_palette);
+        }
+        
+        (0, 0)
     }
 
     fn get_color(&mut self, palette: u8, pixel: u8) -> Rgb {

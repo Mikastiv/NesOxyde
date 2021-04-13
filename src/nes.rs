@@ -13,7 +13,7 @@ use crate::joypad::{Button, JoyPort};
 // http://wiki.nesdev.com/w/index.php/CPU
 const NS_PER_CPU_CLOCK: u128 = 559;
 
-const WINDOW_TITLE: &str = "NesOxyde v0.1.0";
+static WINDOW_TITLE: &str = "NesOxyde v0.1.0";
 pub const WIDTH: u32 = 256;
 pub const HEIGHT: u32 = 240;
 
@@ -50,17 +50,21 @@ where
     let mut cpu = Cpu::new(bus);
     cpu.reset();
 
-    'nes: loop {
+    loop {
         let start_time = Instant::now();
         let cycles_passed = cpu.execute();
-        
+
         for event in event_pump.poll_iter() {
             match event {
                 Event::Quit { .. }
                 | Event::KeyDown {
                     keycode: Some(Keycode::Escape),
                     ..
-                } => break 'nes,
+                } => return,
+                Event::KeyDown {
+                    keycode: Some(Keycode::R),
+                    ..
+                } => cpu.reset(),
                 Event::KeyDown {
                     keycode: Some(key), ..
                 } => {

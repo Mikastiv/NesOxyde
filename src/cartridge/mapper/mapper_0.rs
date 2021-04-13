@@ -23,17 +23,13 @@ impl Mapper for Mapper0 {
         self.rom.prg[(addr & mask) as usize]
     }
 
-    fn write_prg(&mut self, addr: u16, data: u8) {
-        todo!()
-    }
+    fn write_prg(&mut self, addr: u16, data: u8) {}
 
     fn read_chr(&mut self, addr: u16) -> u8 {
         self.rom.chr[addr as usize]
     }
 
-    fn write_chr(&mut self, addr: u16, data: u8) {
-        todo!()
-    }
+    fn write_chr(&mut self, addr: u16, data: u8) {}
 
     fn mirror_mode(&self) -> MirrorMode {
         self.rom.header.mirror_mode()
