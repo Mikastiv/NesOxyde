@@ -64,7 +64,6 @@ pub struct Ppu<'a> {
     oam2_data: [SpriteInfo; OAM2_SIZE],
     oam_addr: u8,
     clearing_oam: bool,
-    sprite_0_on_scanline: bool,
     sprite_0_rendering: bool,
     sprite_count: usize,
     fg_lo_shift: [u8; OAM2_SIZE],
@@ -108,7 +107,6 @@ impl<'a> Ppu<'a> {
             oam2_data: [SpriteInfo::default(); OAM2_SIZE],
             oam_addr: 0,
             clearing_oam: false,
-            sprite_0_on_scanline: false,
             sprite_0_rendering: false,
             sprite_count: 0,
             fg_lo_shift: [0; OAM2_SIZE],
@@ -380,8 +378,7 @@ impl<'a> Ppu<'a> {
     }
 
     fn update_sprite_zero_hit(&mut self) {
-        if self.sprite_0_on_scanline
-            && self.sprite_0_rendering
+        if self.sprite_0_rendering
             && self.mask.render_bg()
             && self.mask.render_sp()
         {
@@ -488,7 +485,6 @@ impl<'a> Ppu<'a> {
             let mut sprite_count = 0;
             let sprite_size = if self.ctrl.sprite_size() { 16 } else { 8 };
 
-            self.sprite_0_on_scanline = false;
             for index in (0..OAM_SIZE).step_by(4) {
                 let diff = scanline as u16 - self.oam_data[index] as u16;
 
@@ -499,10 +495,6 @@ impl<'a> Ppu<'a> {
                         self.oam2_data[sprite_count].attr = self.oam_data[index + 2];
                         self.oam2_data[sprite_count].x = self.oam_data[index + 3];
                         self.oam2_data[sprite_count].index = index as u8;
-                        
-                        if index == 0 {
-                            self.sprite_0_on_scanline = true;
-                        }
                     }
                     sprite_count += 1;
                 }
