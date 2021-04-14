@@ -31,6 +31,7 @@ struct SpriteInfo {
     id: u8,
     attr: u8,
     x: u8,
+    index: u8,
 }
 
 const PPU_CTRL: u16 = 0x0;
@@ -345,16 +346,13 @@ impl<'a> Ppu<'a> {
             (self.render_fn)(self.frame.pixels());
         }
 
-        if (0..240).contains(&scanline) && (1..=256).contains(&cycle) {
+        if (0..240).contains(&scanline) && (1..257).contains(&cycle) {
             let (bg_pixel, bg_palette) = self.get_bg_pixel_info();
             let (fg_pixel, fg_palette, fg_priority) = self.get_fg_pixel_info();
 
             let (pixel, palette) = match bg_pixel {
                 0 if fg_pixel == 0 => (0, 0),
-                0 if fg_pixel > 0 => {
-                    self.update_sprite_zero_hit();
-                    (fg_pixel, fg_palette)
-                }
+                0 if fg_pixel > 0 => (fg_pixel, fg_palette),
                 1..=3 if fg_pixel == 0 => (bg_pixel, bg_palette),
                 _ => {
                     self.update_sprite_zero_hit();
@@ -388,10 +386,10 @@ impl<'a> Ppu<'a> {
             && self.mask.render_sp()
         {
             if !(self.mask.render_bg8() | self.mask.render_sp8()) {
-                if (9..258).contains(&self.cycle) {
+                if (9..256).contains(&self.cycle) {
                     self.status.set_sp_0_hit(true);
                 }
-            } else if (1..258).contains(&self.cycle) {
+            } else if (1..256).contains(&self.cycle) {
                 self.status.set_sp_0_hit(true);
             }
         }
@@ -474,16 +472,14 @@ impl<'a> Ppu<'a> {
             self.clearing_oam = false;
         }
 
-        if cycle > 1 {
-            self.shift_fg();
-        }
-
+        self.shift_fg();
         if cycle == 257 && scanline >= 0 {
             self.oam2_data[..].fill(SpriteInfo {
                 y: 0xFF,
                 id: 0xFF,
                 attr: 0xFF,
                 x: 0xFF,
+                index: 0xFF,
             });
 
             self.fg_lo_shift.fill(0);
@@ -502,7 +498,8 @@ impl<'a> Ppu<'a> {
                         self.oam2_data[sprite_count].id = self.oam_data[index + 1];
                         self.oam2_data[sprite_count].attr = self.oam_data[index + 2];
                         self.oam2_data[sprite_count].x = self.oam_data[index + 3];
-
+                        self.oam2_data[sprite_count].index = index as u8;
+                        
                         if index == 0 {
                             self.sprite_0_on_scanline = true;
                         }
@@ -515,7 +512,7 @@ impl<'a> Ppu<'a> {
             self.sprite_count = if sprite_count > 8 { 8 } else { sprite_count };
         }
 
-        if cycle == 340 {
+        if cycle == 321 {
             self.load_sprites();
         }
     }
@@ -594,7 +591,7 @@ impl<'a> Ppu<'a> {
 
     fn get_fg_pixel_info(&mut self) -> (u8, u8, u8) {
         if self.mask.render_sp() && (self.mask.render_sp8() || self.cycle >= 9) {
-            self.sprite_0_rendering = true;
+            self.sprite_0_rendering = false;
             for i in 0..self.sprite_count {
                 if self.oam2_data[i].x != 0 {
                     continue;
@@ -608,7 +605,7 @@ impl<'a> Ppu<'a> {
                 let fg_priority = ((self.oam2_data[i].attr & 0x20) == 0) as u8;
 
                 if fg_pixel != 0 {
-                    if i == 0 {
+                    if self.oam2_data[i].index == 0 {
                         self.sprite_0_rendering = true;
                     }
                     return (fg_pixel, fg_palette, fg_priority);
@@ -679,7 +676,7 @@ impl<'a> Ppu<'a> {
     }
 
     fn shift_fg(&mut self) {
-        if self.mask.render_sp() && (1..258).contains(&self.cycle) {
+        if self.mask.render_sp() && (2..258).contains(&self.cycle) {
             for (i, sprite) in self
                 .oam2_data
                 .iter_mut()
