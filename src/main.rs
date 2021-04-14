@@ -28,8 +28,8 @@ fn main() {
 
     let map_key = |key: Keycode, port: JoyPort| match port {
         JoyPort::Port1 => match key {
-            Keycode::A => Some(Button::A),
-            Keycode::S => Some(Button::B),
+            Keycode::S => Some(Button::A),
+            Keycode::A => Some(Button::B),
             Keycode::Z => Some(Button::Select),
             Keycode::X => Some(Button::Start),
             Keycode::Up => Some(Button::Up),

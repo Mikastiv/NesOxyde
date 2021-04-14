@@ -63,6 +63,8 @@ pub struct Ppu<'a> {
     oam2_data: [SpriteInfo; OAM2_SIZE],
     oam_addr: u8,
     clearing_oam: bool,
+    sprite_0_on_scanline: bool,
+    sprite_0_rendering: bool,
     sprite_count: usize,
     fg_lo_shift: [u8; OAM2_SIZE],
     fg_hi_shift: [u8; OAM2_SIZE],
@@ -105,6 +107,8 @@ impl<'a> Ppu<'a> {
             oam2_data: [SpriteInfo::default(); OAM2_SIZE],
             oam_addr: 0,
             clearing_oam: false,
+            sprite_0_on_scanline: false,
+            sprite_0_rendering: false,
             sprite_count: 0,
             fg_lo_shift: [0; OAM2_SIZE],
             fg_hi_shift: [0; OAM2_SIZE],
@@ -347,9 +351,13 @@ impl<'a> Ppu<'a> {
 
             let (pixel, palette) = match bg_pixel {
                 0 if fg_pixel == 0 => (0, 0),
-                0 if fg_pixel > 0 => (fg_pixel, fg_palette),
+                0 if fg_pixel > 0 => {
+                    self.update_sprite_zero_hit();
+                    (fg_pixel, fg_palette)
+                }
                 1..=3 if fg_pixel == 0 => (bg_pixel, bg_palette),
                 _ => {
+                    self.update_sprite_zero_hit();
                     if fg_priority != 0 {
                         (fg_pixel, fg_palette)
                     } else {
@@ -369,6 +377,22 @@ impl<'a> Ppu<'a> {
             if self.scanline > 260 {
                 self.scanline = -1;
                 self.odd_frame = !self.odd_frame;
+            }
+        }
+    }
+
+    fn update_sprite_zero_hit(&mut self) {
+        if self.sprite_0_on_scanline
+            && self.sprite_0_rendering
+            && self.mask.render_bg()
+            && self.mask.render_sp()
+        {
+            if !(self.mask.render_bg8() | self.mask.render_sp8()) {
+                if (9..258).contains(&self.cycle) {
+                    self.status.set_sp_0_hit(true);
+                }
+            } else if (1..258).contains(&self.cycle) {
+                self.status.set_sp_0_hit(true);
             }
         }
     }
@@ -450,7 +474,10 @@ impl<'a> Ppu<'a> {
             self.clearing_oam = false;
         }
 
-        self.shift_fg();
+        if cycle > 1 {
+            self.shift_fg();
+        }
+
         if cycle == 257 && scanline >= 0 {
             self.oam2_data[..].fill(SpriteInfo {
                 y: 0xFF,
@@ -465,6 +492,7 @@ impl<'a> Ppu<'a> {
             let mut sprite_count = 0;
             let sprite_size = if self.ctrl.sprite_size() { 16 } else { 8 };
 
+            self.sprite_0_on_scanline = false;
             for index in (0..OAM_SIZE).step_by(4) {
                 let diff = scanline as u16 - self.oam_data[index] as u16;
 
@@ -474,6 +502,10 @@ impl<'a> Ppu<'a> {
                         self.oam2_data[sprite_count].id = self.oam_data[index + 1];
                         self.oam2_data[sprite_count].attr = self.oam_data[index + 2];
                         self.oam2_data[sprite_count].x = self.oam_data[index + 3];
+
+                        if index == 0 {
+                            self.sprite_0_on_scanline = true;
+                        }
                     }
                     sprite_count += 1;
                 }
@@ -560,8 +592,9 @@ impl<'a> Ppu<'a> {
         (0, 0)
     }
 
-    fn get_fg_pixel_info(&self) -> (u8, u8, u8) {
+    fn get_fg_pixel_info(&mut self) -> (u8, u8, u8) {
         if self.mask.render_sp() && (self.mask.render_sp8() || self.cycle >= 9) {
+            self.sprite_0_rendering = true;
             for i in 0..self.sprite_count {
                 if self.oam2_data[i].x != 0 {
                     continue;
@@ -575,6 +608,9 @@ impl<'a> Ppu<'a> {
                 let fg_priority = ((self.oam2_data[i].attr & 0x20) == 0) as u8;
 
                 if fg_pixel != 0 {
+                    if i == 0 {
+                        self.sprite_0_rendering = true;
+                    }
                     return (fg_pixel, fg_palette, fg_priority);
                 }
             }
