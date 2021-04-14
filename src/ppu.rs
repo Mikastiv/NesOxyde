@@ -63,10 +63,7 @@ pub struct Ppu<'a> {
     oam2_data: [SpriteInfo; OAM2_SIZE],
     oam_addr: u8,
     clearing_oam: bool,
-    sprite_n: u8,
     sprite_count: usize,
-    oam2_index: u8,
-    sprite_tmp: u8,
     fg_lo_shift: [u8; OAM2_SIZE],
     fg_hi_shift: [u8; OAM2_SIZE],
 
@@ -108,10 +105,7 @@ impl<'a> Ppu<'a> {
             oam2_data: [SpriteInfo::default(); OAM2_SIZE],
             oam_addr: 0,
             clearing_oam: false,
-            sprite_n: 0,
             sprite_count: 0,
-            oam2_index: 0,
-            sprite_tmp: 0,
             fg_lo_shift: [0; OAM2_SIZE],
             fg_hi_shift: [0; OAM2_SIZE],
 
@@ -363,7 +357,7 @@ impl<'a> Ppu<'a> {
                     }
                 }
             };
-            
+
             let color = self.get_color(palette, pixel);
             self.frame.set_pixel(cycle - 1, scanline as usize, color);
         }
@@ -452,81 +446,41 @@ impl<'a> Ppu<'a> {
         // Sprites
         if cycle == 1 {
             self.clearing_oam = true;
+        } else if cycle == 64 {
+            self.clearing_oam = false;
+        }
+
+        self.shift_fg();
+        if cycle == 257 && scanline >= 0 {
             self.oam2_data[..].fill(SpriteInfo {
                 y: 0xFF,
                 id: 0xFF,
                 attr: 0xFF,
                 x: 0xFF,
             });
-            self.oam_addr = 0;
-            self.sprite_n = 0;
-            self.oam2_index = 0;
-            self.sprite_count = 0;
-        } else if cycle == 64 {
-            self.clearing_oam = false;
-        }
 
-        self.shift_fg();
-        if (65..257).contains(&cycle) {
-            match cycle % 2 {
-                0 => {
-                    match self.oam_addr & 0x3 {
-                        0 => {
-                            if self.sprite_n >= 64 {
-                                self.oam_addr = 0;
-                            }
-                            self.sprite_n += 1;
-                            if self.oam2_index < 8 {
-                                self.oam2_data[self.oam2_index as usize].y = self.sprite_tmp;
-                            }
-                            let y1 = self.sprite_tmp;
-                            let y2 = if self.ctrl.sprite_size() { 16 } else { 8 };
-                            let scanline = scanline as u8;
-                            if !(y1..y2).contains(&scanline) {
-                                self.oam_addr = if self.sprite_n != 2 {
-                                    self.oam_addr.wrapping_add(3)
-                                } else {
-                                    8
-                                };
-                            } else {
-                                self.sprite_count += 1;
-                            }
-                        }
-                        1 => {
-                            if self.oam2_index < 8 {
-                                self.oam2_data[self.oam2_index as usize].id = self.sprite_tmp;
-                            }
-                        }
-                        2 => {
-                            if self.oam2_index < 8 {
-                                self.oam2_data[self.oam2_index as usize].attr = self.sprite_tmp;
-                            }
-                        }
-                        3 => {
-                            if self.oam2_index < 8 {
-                                self.oam2_data[self.oam2_index as usize].x = self.sprite_tmp;
-                                self.oam2_index += 1;
-                            } else {
-                                self.status.set_sp_overflow(true);
-                            }
-                            if self.sprite_n == 2 {
-                                self.oam_addr = 8;
-                            }
-                        }
-                        _ => unreachable!(),
-                    }
-                    self.oam_addr = self.oam_addr.wrapping_add(1);
-                }
-                1 => {
-                    self.sprite_tmp = self.oam_data[self.oam_addr as usize];
-                }
-                _ => unreachable!(),
-            }
-        }
-
-        if cycle == 257 {
             self.fg_lo_shift.fill(0);
             self.fg_hi_shift.fill(0);
+
+            let mut sprite_count = 0;
+            let sprite_size = if self.ctrl.sprite_size() { 16 } else { 8 };
+
+            for index in (0..OAM_SIZE).step_by(4) {
+                let diff = scanline as u16 - self.oam_data[index] as u16;
+
+                if (0..sprite_size).contains(&diff) {
+                    if sprite_count < 8 {
+                        self.oam2_data[sprite_count].y = self.oam_data[index];
+                        self.oam2_data[sprite_count].id = self.oam_data[index + 1];
+                        self.oam2_data[sprite_count].attr = self.oam_data[index + 2];
+                        self.oam2_data[sprite_count].x = self.oam_data[index + 3];
+                    }
+                    sprite_count += 1;
+                }
+            }
+
+            self.status.set_sp_overflow(sprite_count > 8);
+            self.sprite_count = if sprite_count > 8 { 8 } else { sprite_count };
         }
 
         if cycle == 340 {
@@ -538,39 +492,32 @@ impl<'a> Ppu<'a> {
         let scanline = self.scanline as u8;
         for i in 0..self.sprite_count {
             let sprite_addr = match !self.ctrl.sprite_size() {
-                false if self.oam2_data[i].attr & 0x80 == 0 => {
-                    self.ctrl.sp_base_addr()
-                        | ((self.oam2_data[i].id as u16) << 4)
-                        | scanline.wrapping_sub(self.oam2_data[i].y) as u16
+                true => {
+                    let offset = self.ctrl.sp_base_addr();
+                    let flipped_v = self.oam2_data[i].attr & 0x80 != 0;
+                    let tile_id = self.oam2_data[i].id;
+                    let row = match flipped_v {
+                        true => (7 - (scanline - self.oam2_data[i].y)) as u16,
+                        false => (scanline - self.oam2_data[i].y) as u16,
+                    };
+
+                    offset | (tile_id as u16) << 4 | row
                 }
-                false if self.oam2_data[i].attr & 0x80 != 0 => {
-                    self.ctrl.sp_base_addr()
-                        | ((self.oam2_data[i].id as u16) << 4)
-                        | 7u8.wrapping_sub(scanline - self.oam2_data[i].y) as u16
+                false => {
+                    let offset = ((self.oam2_data[i].id & 0x01) as u16) << 12;
+                    let flipped_v = self.oam2_data[i].attr & 0x80 != 0;
+                    let top_half = scanline - self.oam2_data[i].y < 8;
+                    let tile_id = match (flipped_v, top_half) {
+                        (false, true) | (true, false) => self.oam2_data[i].id & 0xFE,
+                        (false, false) | (true, true) => (self.oam2_data[i].id & 0xFE) + 1,
+                    };
+                    let row = match flipped_v {
+                        true => ((7 - (scanline - self.oam2_data[i].y)) & 0x7) as u16,
+                        false => ((scanline - self.oam2_data[i].y) & 0x7) as u16,
+                    };
+
+                    offset | (tile_id as u16) << 4 | row
                 }
-                true if self.oam2_data[i].attr & 0x80 == 0 => {
-                    if scanline - self.oam2_data[i].y < 8 {
-                        (((self.oam2_data[i].id & 0x01) as u16) << 12)
-                            | (((self.oam2_data[i].id & 0xFE) as u16) << 4)
-                            | ((scanline - self.oam2_data[i].y) & 0x7) as u16
-                    } else {
-                        (((self.oam2_data[i].id & 0x01) as u16) << 12)
-                            | (((self.oam2_data[i].id & 0xFE) as u16).wrapping_add(1) << 4)
-                            | ((7 - (scanline - self.oam2_data[i].y)) & 0x7) as u16
-                    }
-                }
-                true if self.oam2_data[i].attr & 0x80 != 0 => {
-                    if scanline - self.oam2_data[i].y < 8 {
-                        (((self.oam2_data[i].id & 0x01) as u16) << 12)
-                            | (((self.oam2_data[i].id & 0xFE) as u16) << 4)
-                            | ((scanline - self.oam2_data[i].y) & 0x7) as u16
-                    } else {
-                        (((self.oam2_data[i].id & 0x01) as u16) << 12)
-                            | (((self.oam2_data[i].id & 0xFE) as u16).wrapping_add(1) << 4)
-                            | ((7 - (scanline - self.oam2_data[i].y)) & 0x7) as u16
-                    }
-                }
-                _ => unreachable!(),
             };
 
             let sprite_lo = self.mem_read(sprite_addr);
@@ -583,16 +530,14 @@ impl<'a> Ppu<'a> {
                 v
             };
 
-            self.fg_lo_shift[i] = if self.oam2_data[i].attr & 0x40 != 0 {
-                flip(sprite_lo)
-            } else {
-                sprite_lo
+            self.fg_lo_shift[i] = match self.oam2_data[i].attr & 0x40 != 0 {
+                true => flip(sprite_lo),
+                false => sprite_lo,
             };
 
-            self.fg_hi_shift[i] = if self.oam2_data[i].attr & 0x40 != 0 {
-                flip(sprite_hi)
-            } else {
-                sprite_hi
+            self.fg_hi_shift[i] = match self.oam2_data[i].attr & 0x40 != 0 {
+                true => flip(sprite_hi),
+                false => sprite_hi,
             };
         }
     }
@@ -626,7 +571,7 @@ impl<'a> Ppu<'a> {
                 let hi_pixel = ((self.fg_hi_shift[i] & 0x80) != 0) as u8;
                 let fg_pixel = (hi_pixel << 1) | lo_pixel;
 
-                let fg_palette = (self.oam2_data[i].attr & 0x3).wrapping_add(0x4);
+                let fg_palette = (self.oam2_data[i].attr & 0x3) + 0x4;
                 let fg_priority = ((self.oam2_data[i].attr & 0x20) == 0) as u8;
 
                 if fg_pixel != 0 {
@@ -699,7 +644,12 @@ impl<'a> Ppu<'a> {
 
     fn shift_fg(&mut self) {
         if self.mask.render_sp() && (1..258).contains(&self.cycle) {
-            for (i, sprite) in self.oam2_data.iter_mut().enumerate() {
+            for (i, sprite) in self
+                .oam2_data
+                .iter_mut()
+                .take(self.sprite_count)
+                .enumerate()
+            {
                 if sprite.x > 0 {
                     sprite.x -= 1;
                 } else {
