@@ -42,6 +42,10 @@ impl Controller {
     pub fn nta_v(&self) -> bool {
         self.contains(Self::NAMETABLE_V)
     }
+
+    pub fn sprite_size(&self) -> bool {
+        self.contains(Self::SPRITE_SIZE)
+    }
 }
 
 bitflags! {

@@ -25,6 +25,14 @@ static NES_PALETTE: [Rgb; 0x40] = [
     Rgb(204, 210, 120), Rgb(180, 222, 120), Rgb(168, 226, 144), Rgb(152, 226, 180), Rgb(160, 214, 228), Rgb(160, 162, 160), Rgb(0, 0, 0),       Rgb(0, 0, 0),
 ];
 
+#[derive(Clone, Copy, Default, Debug)]
+struct SpriteInfo {
+    y: u8,
+    id: u8,
+    attr: u8,
+    x: u8,
+}
+
 const PPU_CTRL: u16 = 0x0;
 const PPU_MASK: u16 = 0x1;
 const PPU_STATUS: u16 = 0x2;
@@ -35,6 +43,7 @@ const PPU_ADDR: u16 = 0x6;
 const PPU_DATA: u16 = 0x7;
 
 const OAM_SIZE: usize = 0x100;
+const OAM2_SIZE: usize = 0x8;
 
 pub trait Interface {
     fn read(&self, addr: u16) -> u8;
@@ -51,7 +60,12 @@ pub struct Ppu<'a> {
     open_bus: u8,
 
     oam_data: [u8; OAM_SIZE],
+    oam2_data: [SpriteInfo; OAM2_SIZE],
     oam_addr: u8,
+    clearing_oam: bool,
+    sprite_n: u8,
+    oam2_index: u8,
+    sprite_tmp: u8,
 
     addr_toggle: bool,
     read_buffer: u8,
@@ -88,7 +102,12 @@ impl<'a> Ppu<'a> {
             open_bus: 0,
 
             oam_data: [0; OAM_SIZE],
+            oam2_data: [SpriteInfo::default(); OAM2_SIZE],
             oam_addr: 0,
+            clearing_oam: false,
+            sprite_n: 0,
+            oam2_index: 0,
+            sprite_tmp: 0,
 
             addr_toggle: false,
             read_buffer: 0,
@@ -216,9 +235,10 @@ impl<'a> Ppu<'a> {
                 self.addr_toggle = false;
             }
             OAM_ADDR => {}
-            OAM_DATA => {
-                data = self.oam_data[self.oam_addr as usize];
-            }
+            OAM_DATA => match self.clearing_oam {
+                true => data = 0xFF,
+                false => data = self.oam_data[self.oam_addr as usize],
+            },
             PPU_SCROLL => {}
             PPU_ADDR => {}
             PPU_DATA => {
@@ -345,6 +365,7 @@ impl<'a> Ppu<'a> {
             self.v_addr = self.scroll;
         }
 
+        // Background
         if (2..258).contains(&cycle) || (321..338).contains(&cycle) {
             self.shift_bg();
 
@@ -405,6 +426,77 @@ impl<'a> Ppu<'a> {
         if cycle == 337 || cycle == 339 {
             self.next_tile.id = self.mem_read(0x2000 | (self.v_addr.raw() & 0xFFF));
         }
+
+        // Sprites
+        if cycle == 1 {
+            self.clearing_oam = true;
+            self.oam2_data[..].fill(SpriteInfo {
+                y: 0xFF,
+                id: 0xFF,
+                attr: 0xFF,
+                x: 0xFF,
+            });
+            self.oam_addr = 0;
+            self.sprite_n = 0;
+            self.oam2_index = 0;
+        } else if cycle == 64 {
+            self.clearing_oam = false;
+        }
+
+        if (65..257).contains(&cycle) {
+            match cycle % 2 {
+                0 => {
+                    match self.oam_addr & 0x3 {
+                        0 => {
+                            if self.sprite_n >= 64 {
+                                self.oam_addr = 0;
+                            }
+                            self.sprite_n += 1;
+                            if self.oam2_index < 8 {
+                                self.oam2_data[self.oam2_index as usize].y = self.sprite_tmp;
+                            }
+                            let y1 = self.sprite_tmp;
+                            let y2 = if self.ctrl.sprite_size() { 16 } else { 8 };
+                            let scanline = scanline as u8;
+                            if !(y1..y2).contains(&scanline) {
+                                self.oam_addr = if self.sprite_n != 2 {
+                                    self.oam_addr.wrapping_add(3)
+                                } else {
+                                    8
+                                };
+                            }
+                        }
+                        1 => {
+                            if self.oam2_index < 8 {
+                                self.oam2_data[self.oam2_index as usize].id = self.sprite_tmp;
+                            }
+                        }
+                        2 => {
+                            if self.oam2_index < 8 {
+                                self.oam2_data[self.oam2_index as usize].attr = self.sprite_tmp;
+                            }
+                        }
+                        3 => {
+                            if self.oam2_index < 8 {
+                                self.oam2_data[self.oam2_index as usize].x = self.sprite_tmp;
+                                self.oam2_index += 1;
+                            } else {
+                                self.status.set_sp_overflow(true);
+                            }
+                            if self.sprite_n == 2 {
+                                self.oam_addr = 8;
+                            }
+                        }
+                        _ => unreachable!(),
+                    }
+                    self.oam_addr = self.oam_addr.wrapping_add(1);
+                }
+                1 => {
+                    self.sprite_tmp = self.oam_data[self.oam_addr as usize];
+                }
+                _ => unreachable!(),
+            }
+        }
     }
 
     fn get_bg_pixel_info(&self) -> (u8, u8) {
@@ -431,31 +523,35 @@ impl<'a> Ppu<'a> {
     }
 
     fn increment_xscroll(&mut self) {
-        let xcoarse = self.v_addr.xcoarse();
-        let nta_h = self.v_addr.nta_h();
-        if xcoarse == 31 {
-            self.v_addr.set_xcoarse(0);
-            self.v_addr.set_nta_h(!nta_h);
-        } else {
-            self.v_addr.set_xcoarse(xcoarse + 1);
+        if self.mask.render_bg() {
+            let xcoarse = self.v_addr.xcoarse();
+            let nta_h = self.v_addr.nta_h();
+            if xcoarse == 31 {
+                self.v_addr.set_xcoarse(0);
+                self.v_addr.set_nta_h(!nta_h);
+            } else {
+                self.v_addr.set_xcoarse(xcoarse + 1);
+            }
         }
     }
 
     fn increment_yscroll(&mut self) {
-        let yfine = self.v_addr.yfine();
-        let ycoarse = self.v_addr.ycoarse();
-        let nta_v = self.v_addr.nta_v();
-        if yfine < 7 {
-            self.v_addr.set_yfine(yfine + 1);
-        } else {
-            self.v_addr.set_yfine(0);
-            if ycoarse == 29 {
-                self.v_addr.set_ycoarse(0);
-                self.v_addr.set_nta_v(!nta_v);
-            } else if ycoarse == 31 {
-                self.v_addr.set_ycoarse(0);
+        if self.mask.render_bg() {
+            let yfine = self.v_addr.yfine();
+            let ycoarse = self.v_addr.ycoarse();
+            let nta_v = self.v_addr.nta_v();
+            if yfine < 7 {
+                self.v_addr.set_yfine(yfine + 1);
             } else {
-                self.v_addr.set_ycoarse(ycoarse + 1);
+                self.v_addr.set_yfine(0);
+                if ycoarse == 29 {
+                    self.v_addr.set_ycoarse(0);
+                    self.v_addr.set_nta_v(!nta_v);
+                } else if ycoarse == 31 {
+                    self.v_addr.set_ycoarse(0);
+                } else {
+                    self.v_addr.set_ycoarse(ycoarse + 1);
+                }
             }
         }
     }
