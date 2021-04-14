@@ -64,8 +64,11 @@ pub struct Ppu<'a> {
     oam_addr: u8,
     clearing_oam: bool,
     sprite_n: u8,
+    sprite_count: usize,
     oam2_index: u8,
     sprite_tmp: u8,
+    fg_lo_shift: [u8; OAM2_SIZE],
+    fg_hi_shift: [u8; OAM2_SIZE],
 
     addr_toggle: bool,
     read_buffer: u8,
@@ -106,8 +109,11 @@ impl<'a> Ppu<'a> {
             oam_addr: 0,
             clearing_oam: false,
             sprite_n: 0,
+            sprite_count: 0,
             oam2_index: 0,
             sprite_tmp: 0,
+            fg_lo_shift: [0; OAM2_SIZE],
+            fg_hi_shift: [0; OAM2_SIZE],
 
             addr_toggle: false,
             read_buffer: 0,
@@ -322,6 +328,8 @@ impl<'a> Ppu<'a> {
             self.status.set_sp_0_hit(false);
             self.status.set_sp_overflow(false);
             self.status.set_vblank(false);
+            self.fg_lo_shift.fill(0);
+            self.fg_hi_shift.fill(0);
         }
 
         if scanline < 240 && self.rendering_enabled() {
@@ -341,8 +349,22 @@ impl<'a> Ppu<'a> {
 
         if (0..240).contains(&scanline) && (1..=256).contains(&cycle) {
             let (bg_pixel, bg_palette) = self.get_bg_pixel_info();
+            let (fg_pixel, fg_palette, fg_priority) = self.get_fg_pixel_info();
 
-            let color = self.get_color(bg_palette, bg_pixel);
+            let (pixel, palette) = match bg_pixel {
+                0 if fg_pixel == 0 => (0, 0),
+                0 if fg_pixel > 0 => (fg_pixel, fg_palette),
+                1..=3 if fg_pixel == 0 => (bg_pixel, bg_palette),
+                _ => {
+                    if fg_priority != 0 {
+                        (fg_pixel, fg_palette)
+                    } else {
+                        (bg_pixel, bg_palette)
+                    }
+                }
+            };
+            
+            let color = self.get_color(palette, pixel);
             self.frame.set_pixel(cycle - 1, scanline as usize, color);
         }
 
@@ -439,10 +461,12 @@ impl<'a> Ppu<'a> {
             self.oam_addr = 0;
             self.sprite_n = 0;
             self.oam2_index = 0;
+            self.sprite_count = 0;
         } else if cycle == 64 {
             self.clearing_oam = false;
         }
 
+        self.shift_fg();
         if (65..257).contains(&cycle) {
             match cycle % 2 {
                 0 => {
@@ -464,6 +488,8 @@ impl<'a> Ppu<'a> {
                                 } else {
                                     8
                                 };
+                            } else {
+                                self.sprite_count += 1;
                             }
                         }
                         1 => {
@@ -497,24 +523,119 @@ impl<'a> Ppu<'a> {
                 _ => unreachable!(),
             }
         }
+
+        if cycle == 257 {
+            self.fg_lo_shift.fill(0);
+            self.fg_hi_shift.fill(0);
+        }
+
+        if cycle == 340 {
+            self.load_sprites();
+        }
+    }
+
+    fn load_sprites(&mut self) {
+        let scanline = self.scanline as u8;
+        for i in 0..self.sprite_count {
+            let sprite_addr = match !self.ctrl.sprite_size() {
+                false if self.oam2_data[i].attr & 0x80 == 0 => {
+                    self.ctrl.sp_base_addr()
+                        | ((self.oam2_data[i].id as u16) << 4)
+                        | scanline.wrapping_sub(self.oam2_data[i].y) as u16
+                }
+                false if self.oam2_data[i].attr & 0x80 != 0 => {
+                    self.ctrl.sp_base_addr()
+                        | ((self.oam2_data[i].id as u16) << 4)
+                        | 7u8.wrapping_sub(scanline - self.oam2_data[i].y) as u16
+                }
+                true if self.oam2_data[i].attr & 0x80 == 0 => {
+                    if scanline - self.oam2_data[i].y < 8 {
+                        (((self.oam2_data[i].id & 0x01) as u16) << 12)
+                            | (((self.oam2_data[i].id & 0xFE) as u16) << 4)
+                            | ((scanline - self.oam2_data[i].y) & 0x7) as u16
+                    } else {
+                        (((self.oam2_data[i].id & 0x01) as u16) << 12)
+                            | (((self.oam2_data[i].id & 0xFE) as u16).wrapping_add(1) << 4)
+                            | ((7 - (scanline - self.oam2_data[i].y)) & 0x7) as u16
+                    }
+                }
+                true if self.oam2_data[i].attr & 0x80 != 0 => {
+                    if scanline - self.oam2_data[i].y < 8 {
+                        (((self.oam2_data[i].id & 0x01) as u16) << 12)
+                            | (((self.oam2_data[i].id & 0xFE) as u16) << 4)
+                            | ((scanline - self.oam2_data[i].y) & 0x7) as u16
+                    } else {
+                        (((self.oam2_data[i].id & 0x01) as u16) << 12)
+                            | (((self.oam2_data[i].id & 0xFE) as u16).wrapping_add(1) << 4)
+                            | ((7 - (scanline - self.oam2_data[i].y)) & 0x7) as u16
+                    }
+                }
+                _ => unreachable!(),
+            };
+
+            let sprite_lo = self.mem_read(sprite_addr);
+            let sprite_hi = self.mem_read(sprite_addr.wrapping_add(8));
+
+            let flip = |mut v: u8| {
+                v = (v & 0xF0) >> 4 | (v & 0x0F) << 4;
+                v = (v & 0xCC) >> 2 | (v & 0x33) << 2;
+                v = (v & 0xAA) >> 1 | (v & 0x55) << 1;
+                v
+            };
+
+            self.fg_lo_shift[i] = if self.oam2_data[i].attr & 0x40 != 0 {
+                flip(sprite_lo)
+            } else {
+                sprite_lo
+            };
+
+            self.fg_hi_shift[i] = if self.oam2_data[i].attr & 0x40 != 0 {
+                flip(sprite_hi)
+            } else {
+                sprite_hi
+            };
+        }
     }
 
     fn get_bg_pixel_info(&self) -> (u8, u8) {
         if self.mask.render_bg() && (self.mask.render_bg8() || self.cycle >= 9) {
             let mux = 0x8000 >> self.xfine;
 
-            let p0_pixel = ((self.bg_lo_shift & mux) != 0) as u8;
-            let p1_pixel = ((self.bg_hi_shift & mux) != 0) as u8;
-            let bg_pixel = (p1_pixel << 1) | p0_pixel;
+            let lo_pixel = ((self.bg_lo_shift & mux) != 0) as u8;
+            let hi_pixel = ((self.bg_hi_shift & mux) != 0) as u8;
+            let bg_pixel = (hi_pixel << 1) | lo_pixel;
 
-            let p0_pal = ((self.bg_attr_lo_shift & mux) != 0) as u8;
-            let p1_pal = ((self.bg_attr_hi_shift & mux) != 0) as u8;
-            let bg_palette = (p1_pal << 1) | p0_pal;
+            let lo_pal = ((self.bg_attr_lo_shift & mux) != 0) as u8;
+            let hi_pal = ((self.bg_attr_hi_shift & mux) != 0) as u8;
+            let bg_palette = (hi_pal << 1) | lo_pal;
 
             return (bg_pixel, bg_palette);
         }
 
         (0, 0)
+    }
+
+    fn get_fg_pixel_info(&self) -> (u8, u8, u8) {
+        if self.mask.render_sp() && (self.mask.render_sp8() || self.cycle >= 9) {
+            for i in 0..self.sprite_count {
+                if self.oam2_data[i].x != 0 {
+                    continue;
+                }
+
+                let lo_pixel = ((self.fg_lo_shift[i] & 0x80) != 0) as u8;
+                let hi_pixel = ((self.fg_hi_shift[i] & 0x80) != 0) as u8;
+                let fg_pixel = (hi_pixel << 1) | lo_pixel;
+
+                let fg_palette = (self.oam2_data[i].attr & 0x3).wrapping_add(0x4);
+                let fg_priority = ((self.oam2_data[i].attr & 0x20) == 0) as u8;
+
+                if fg_pixel != 0 {
+                    return (fg_pixel, fg_palette, fg_priority);
+                }
+            }
+        }
+
+        (0, 0, 0)
     }
 
     fn get_color(&mut self, palette: u8, pixel: u8) -> Rgb {
@@ -573,6 +694,19 @@ impl<'a> Ppu<'a> {
             self.bg_hi_shift <<= 1;
             self.bg_attr_lo_shift <<= 1;
             self.bg_attr_hi_shift <<= 1;
+        }
+    }
+
+    fn shift_fg(&mut self) {
+        if self.mask.render_sp() && (1..258).contains(&self.cycle) {
+            for (i, sprite) in self.oam2_data.iter_mut().enumerate() {
+                if sprite.x > 0 {
+                    sprite.x -= 1;
+                } else {
+                    self.fg_lo_shift[i] <<= 1;
+                    self.fg_hi_shift[i] <<= 1;
+                }
+            }
         }
     }
 

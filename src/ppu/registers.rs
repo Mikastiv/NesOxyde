@@ -31,6 +31,13 @@ impl Controller {
         }
     }
 
+    pub fn sp_base_addr(&self) -> u16 {
+        match self.contains(Self::SP_ADDRESS) {
+            true => 0x1000,
+            false => 0x0000,
+        }
+    }
+
     pub fn nmi_enabled(&self) -> bool {
         self.contains(Self::NMI_ENABLED)
     }
@@ -76,6 +83,10 @@ impl Mask {
 
     pub fn render_bg8(&self) -> bool {
         self.contains(Self::SHOW_BG8)
+    }
+
+    pub fn render_sp8(&self) -> bool {
+        self.contains(Self::SHOW_SP8)
     }
 }
 
