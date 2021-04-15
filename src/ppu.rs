@@ -249,6 +249,7 @@ impl<'a> Ppu<'a> {
                 self.read_buffer = self.mem_read(self.v_addr.raw());
                 if (self.v_addr.raw() & 0x3F00) == 0x3F00 {
                     data = (self.open_bus & 0xC0) | (self.read_buffer & 0x3F);
+                    data &= self.mask.greyscale_mask();
                 }
                 self.open_bus = data;
                 self.increment_vaddr();
@@ -378,10 +379,7 @@ impl<'a> Ppu<'a> {
     }
 
     fn update_sprite_zero_hit(&mut self) {
-        if self.sprite_0_rendering
-            && self.mask.render_bg()
-            && self.mask.render_sp()
-        {
+        if self.sprite_0_rendering && self.mask.render_bg() && self.mask.render_sp() {
             if !(self.mask.render_bg8() | self.mask.render_sp8()) {
                 if (9..256).contains(&self.cycle) {
                     self.status.set_sp_0_hit(true);
@@ -609,8 +607,9 @@ impl<'a> Ppu<'a> {
     }
 
     fn get_color(&mut self, palette: u8, pixel: u8) -> Rgb {
-        let index = self.mem_read(0x3F00 + ((palette as u16) << 2) + pixel as u16) as usize;
-        NES_PALETTE[index & 0x3F]
+        let index = self.mem_read(0x3F00 + ((palette as u16) << 2) + pixel as u16)
+            & self.mask.greyscale_mask();
+        NES_PALETTE[(index as usize) & 0x3F]
     }
 
     fn increment_xscroll(&mut self) {

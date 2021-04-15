@@ -88,6 +88,13 @@ impl Mask {
     pub fn render_sp8(&self) -> bool {
         self.contains(Self::SHOW_SP8)
     }
+
+    pub fn greyscale_mask(&self) -> u8 {
+        match self.contains(Self::GREYSCALE) {
+            true => 0x30,
+            false => 0xFF,
+        }
+    }
 }
 
 bitflags! {
