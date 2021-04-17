@@ -13,7 +13,7 @@ use crate::timer::Timer;
 
 const SECS_PER_FRAME: f64 = 1.0 / 60.0;
 
-static WINDOW_TITLE: &str = "NesOxyde v0.1.0";
+static WINDOW_TITLE: &str = "NesOxyde";
 pub const WIDTH: u32 = 256;
 pub const HEIGHT: u32 = 240;
 
