@@ -18,7 +18,6 @@ impl Frame {
 
     pub fn set_pixel(&mut self, x: usize, y: usize, pixel: Rgb) {
         let index = (y * 3 * WIDTH as usize) + (x * 3);
-        assert!(index + 2 < self.pixels.len());
         self.pixels[index] = pixel.0;
         self.pixels[index + 1] = pixel.1;
         self.pixels[index + 2] = pixel.2;
