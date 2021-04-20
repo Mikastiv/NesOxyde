@@ -32,6 +32,8 @@ impl Interface for SnakeBus {
     fn frame_count(&self) -> u128 {
         0
     }
+
+    fn reset(&mut self) {}
 }
 
 impl SnakeBus {

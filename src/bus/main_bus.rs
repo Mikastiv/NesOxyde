@@ -2,6 +2,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use super::PpuBus;
+use crate::apu::Apu;
 use crate::cartridge::Cartridge;
 use crate::cpu::Interface;
 use crate::joypad::{Button, JoyPad, JoyPort};
@@ -24,9 +25,15 @@ const JOY2: u16 = 0x4017;
 
 const OAM_DMA: u16 = 0x4014;
 
+const APU_REG_START: u16 = 0x4000;
+const APU_REG_END: u16 = 0x4013;
+const APU_STATUS: u16 = 0x4015;
+const APU_FRAME_COUNTER: u16 = 0x4017;
+
 pub struct MainBus<'a> {
     ram: [u8; RAM_SIZE],
     cartridge: Rc<RefCell<Cartridge>>,
+    apu: Apu,
     ppu: Ppu<'a>,
     joypads: [JoyPad; 2],
 }
@@ -39,6 +46,7 @@ impl Interface for MainBus<'_> {
                 let addr = addr & PPU_MASK;
                 self.ppu.read(addr)
             }
+            APU_REG_START..=APU_REG_END | APU_STATUS => self.apu.read(addr),
             JOY1 => self.joypads[0].read(),
             JOY2 => self.joypads[1].read(),
             ROM_START..=ROM_END => self.cartridge.borrow_mut().read_prg(addr),
@@ -61,6 +69,9 @@ impl Interface for MainBus<'_> {
                     self.write(0x2000 + OAM_DATA, v);
                     self.tick(1);
                 }
+            }
+            APU_REG_START..=APU_REG_END | APU_STATUS | APU_FRAME_COUNTER => {
+                self.apu.write(addr, data)
             }
             JOY1 => {
                 self.joypads[0].strobe(data);
@@ -91,6 +102,10 @@ impl Interface for MainBus<'_> {
     fn frame_count(&self) -> u128 {
         self.ppu.frame_count()
     }
+
+    fn reset(&mut self) {
+        self.ppu.reset();
+    }
 }
 
 impl<'a> MainBus<'a> {
@@ -102,6 +117,7 @@ impl<'a> MainBus<'a> {
         Self {
             ram: [0; RAM_SIZE],
             cartridge,
+            apu: Apu::new(),
             ppu: Ppu::new(Box::new(ppu_bus), Box::new(sdl_render_fn)),
             joypads: [JoyPad::new(); 2],
         }

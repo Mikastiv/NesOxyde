@@ -133,6 +133,42 @@ impl<'a> Ppu<'a> {
         }
     }
 
+    pub fn reset(&mut self) {
+        self.ctrl = Controller::from_bits_truncate(0);
+        self.mask = Mask::from_bits_truncate(0);
+        self.status = Status::from_bits_truncate(0);
+
+        self.pending_nmi = None;
+        self.open_bus = 0;
+
+        self.oam_data = [0; OAM_SIZE];
+        self.oam2_data = [SpriteInfo::default(); OAM2_SIZE];
+        self.oam_addr = 0;
+        self.clearing_oam = false;
+        self.sprite_0_rendering = false;
+        self.sprite_count = 0;
+        self.fg_lo_shift = [0; OAM2_SIZE];
+        self.fg_hi_shift = [0; OAM2_SIZE];
+
+        self.addr_toggle = false;
+        self.read_buffer = 0;
+        self.xfine = 0;
+        self.v_addr.set_raw(0);
+        self.scroll.set_raw(0);
+
+        self.scanline = 0;
+        self.cycle = 0;
+        self.next_tile = Tile::new();
+        self.bg_lo_shift = 0;
+        self.bg_hi_shift = 0;
+        self.bg_attr_lo_shift = 0;
+        self.bg_attr_hi_shift = 0;
+
+        self.frame = Frame::new();
+        self.frame_count = 0;
+        self.odd_frame = false;
+    }
+
     #[allow(dead_code)]
     fn render_chr_pattern(&mut self) {
         for tile_y in 0..16 {

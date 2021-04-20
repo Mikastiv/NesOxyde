@@ -7,6 +7,7 @@ use sdl2::keyboard::Keycode;
 use cartridge::Cartridge;
 use joypad::{Button, JoyPort};
 
+mod apu;
 mod bus;
 mod cartridge;
 mod cpu;

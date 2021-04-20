@@ -20,6 +20,7 @@ pub trait Interface {
     fn tick(&mut self, cycles: u64);
     fn update_joypad(&mut self, button: Button, pressed: bool, port: JoyPort);
     fn frame_count(&self) -> u128;
+    fn reset(&mut self);
 }
 
 bitflags! {
@@ -107,6 +108,8 @@ impl<'a> Cpu<'a> {
         self.p = Flags::from_bits_truncate(STATUS_RESET);
         self.pc = self.mem_read_word(RESET_VECTOR);
         self.ins_cycles = 0;
+        self.bus.reset();
+        self.bus.tick(7);
         self.cycles = 7;
     }
 
