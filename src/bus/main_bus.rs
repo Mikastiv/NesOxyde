@@ -28,6 +28,7 @@ const OAM_DMA: u16 = 0x4014;
 const APU_REG_START: u16 = 0x4000;
 const APU_REG_END: u16 = 0x4013;
 const APU_STATUS: u16 = 0x4015;
+const APU_CH_ENABLE: u16 = 0x4015;
 const APU_FRAME_COUNTER: u16 = 0x4017;
 
 pub struct MainBus<'a> {
@@ -70,7 +71,7 @@ impl Interface for MainBus<'_> {
                     self.tick(1);
                 }
             }
-            APU_REG_START..=APU_REG_END | APU_STATUS | APU_FRAME_COUNTER => {
+            APU_REG_START..=APU_REG_END | APU_CH_ENABLE | APU_FRAME_COUNTER => {
                 self.apu.write(addr, data)
             }
             JOY1 => {

@@ -1,3 +1,4 @@
+use sdl2::audio::{AudioCallback, AudioSpecDesired};
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::pixels::PixelFormatEnum;
@@ -26,6 +27,7 @@ where
     // SDL2 init ----------------->
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
+    let audio_subsystem = sdl_context.audio().unwrap();
     let window = video_subsystem
         .window(WINDOW_TITLE, WIDTH * 2, HEIGHT * 2)
         .position_centered()
@@ -39,6 +41,15 @@ where
     let mut texture = creator
         .create_texture_target(PixelFormatEnum::RGB24, WIDTH as u32, HEIGHT as u32)
         .unwrap();
+
+    let spec = AudioSpecDesired {
+        freq: Some(44100),
+        channels: Some(1),
+        samples: Some(512),
+    };
+    let device = audio_subsystem
+        .open_playback(None, &spec, |_spec| NesAudio(0))
+        .unwrap();
     // >----------------- SDL2 init
 
     let bus = MainBus::new(Rc::new(RefCell::new(cartridge)), move |frame| {
@@ -51,19 +62,19 @@ where
     cpu.reset();
 
     let mut timer = Timer::new();
-    loop {
+    'nes: loop {
         let frame_count = cpu.frame_count();
         while cpu.frame_count() == frame_count {
             cpu.execute();
         }
-        
+
         for event in event_pump.poll_iter() {
             match event {
                 Event::Quit { .. }
                 | Event::KeyDown {
                     keycode: Some(Keycode::Escape),
                     ..
-                } => return,
+                } => break 'nes,
                 Event::KeyDown {
                     keycode: Some(Keycode::R),
                     ..
@@ -91,8 +102,19 @@ where
                 _ => {}
             }
         }
-        
+
         timer.wait(Duration::from_secs_f64(SECS_PER_FRAME));
         timer.reset();
+    }
+}
+
+struct NesAudio(u16);
+impl AudioCallback for NesAudio {
+    type Channel = u16;
+
+    fn callback(&mut self, out: &mut [Self::Channel]) {
+        for sample in out.iter_mut() {
+            *sample = self.0;
+        }
     }
 }
