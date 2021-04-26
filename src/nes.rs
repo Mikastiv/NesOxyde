@@ -70,8 +70,7 @@ where
         while cpu.frame_count() == frame_count {
             cpu.execute();
             if cpu.sample_ready() {
-                let mut s = cpu.sample();
-                samples.append(&mut s);
+                samples.append(&mut cpu.sample());
             }
         }
 

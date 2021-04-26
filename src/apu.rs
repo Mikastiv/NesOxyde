@@ -138,8 +138,7 @@ impl Apu {
         let s1 = (c1 / Self::SAMPLE_RATE) as u32;
         let s2 = (c2 / Self::SAMPLE_RATE) as u32;
         if s1 != s2 {
-            let out = self.output();
-            self.samples.push(out);
+            self.samples.push(self.output());
         }
     }
 
@@ -148,9 +147,14 @@ impl Apu {
     }
 
     pub fn sample(&mut self) -> Vec<f32> {
-        let v = self.samples.to_vec();
+        let v = self.samples.clone();
         self.samples.clear();
         v
+    }
+
+    pub fn reset(&mut self) {
+        self.sq1 = Square::new();
+        self.sq2 = Square::new();
     }
 
     fn output(&self) -> f32 {

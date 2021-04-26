@@ -109,6 +109,7 @@ impl Interface for MainBus<'_> {
 
     fn reset(&mut self) {
         self.ppu.reset();
+        self.apu.reset();
     }
 
     fn sample_ready(&self) -> bool {
