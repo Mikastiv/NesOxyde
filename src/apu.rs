@@ -35,12 +35,12 @@ enum Mode {
 
 pub struct Apu {
     cycles: u64,
+    frame_counter: u32,
 
     sq1: Square,
     sq2: Square,
 
     mode: Mode,
-    sequencer: u32,
     samples: Vec<f32>,
 }
 
@@ -48,12 +48,12 @@ impl Apu {
     pub fn new() -> Self {
         Self {
             cycles: 0,
+            frame_counter: 0,
 
             sq1: Square::new(),
             sq2: Square::new(),
 
             mode: Mode::FourStep,
-            sequencer: 0,
             samples: Vec::new(),
         }
     }
@@ -68,12 +68,12 @@ impl Apu {
     pub fn write(&mut self, addr: u16, data: u8) {
         match addr {
             SQ1_VOL => self.sq1.write_vol(data),
-            SQ1_SWEEP => {}
+            SQ1_SWEEP => self.sq1.write_sweep(data),
             SQ1_LO => self.sq1.write_lo(data),
             SQ1_HI => self.sq1.write_hi(data),
 
             SQ2_VOL => self.sq2.write_vol(data),
-            SQ2_SWEEP => {}
+            SQ2_SWEEP => self.sq2.write_sweep(data),
             SQ2_LO => self.sq2.write_lo(data),
             SQ2_HI => self.sq2.write_hi(data),
 
@@ -109,7 +109,6 @@ impl Apu {
         }
     }
 
-    const SEQ_RATE: f32 = 1789773.0 / 240.0;
     const SAMPLE_RATE: f32 = 1789773.0 / 44100.0;
 
     pub fn clock(&mut self) {
@@ -117,23 +116,41 @@ impl Apu {
         self.cycles = self.cycles.wrapping_add(1);
         let c2 = self.cycles as f32;
 
+        let mut quarter_frame = false;
+        let mut half_frame = false;
+
         if self.cycles % 2 == 0 {
             self.sq1.tick_timer();
             self.sq2.tick_timer();
-        }
 
-        let f1 = (c1 / Self::SEQ_RATE) as u32;
-        let f2 = (c2 / Self::SEQ_RATE) as u32;
-        if f1 != f2 {
-            self.tick_sequencer();
+            self.frame_counter += 1;
+
+            match self.frame_counter {
+                3729 | 11186 => quarter_frame = true,
+                7457 | 14916 => {
+                    quarter_frame = true;
+                    half_frame = true;
+                    if self.frame_counter == 14916 {
+                        self.frame_counter = 0;
+                    }
+                }
+                _ => {}
+            }
+
+            if quarter_frame {
+                self.tick_envelopes();
+            }
+
+            if half_frame {
+                self.tick_counters();
+                self.tick_sweep();
+            }
         }
 
         let s1 = (c1 / Self::SAMPLE_RATE) as u32;
         let s2 = (c2 / Self::SAMPLE_RATE) as u32;
         if s1 != s2 {
             let out = self.output();
-            self.samples.push(out);
-            self.samples.push(out);
             self.samples.push(out);
         }
     }
@@ -156,35 +173,6 @@ impl Apu {
         pulse
     }
 
-    fn tick_sequencer(&mut self) {
-        match self.mode {
-            Mode::FourStep => {
-                self.sequencer = (self.sequencer + 1) % 4;
-
-                match self.sequencer {
-                    0 | 2 => self.tick_envelopes(),
-                    1 | 3 => {
-                        self.tick_envelopes();
-                        self.tick_counters();
-                    }
-                    _ => {}
-                }
-            }
-            Mode::FiveStep => {
-                self.sequencer = (self.sequencer + 1) % 5;
-
-                match self.sequencer {
-                    0 | 2 => {
-                        self.tick_counters();
-                        self.tick_envelopes();
-                    }
-                    1 | 3 => self.tick_envelopes(),
-                    _ => {}
-                }
-            }
-        }
-    }
-
     fn tick_envelopes(&mut self) {
         self.sq1.tick_envelope();
         self.sq2.tick_envelope();
@@ -193,5 +181,10 @@ impl Apu {
     fn tick_counters(&mut self) {
         self.sq1.tick_counter();
         self.sq2.tick_counter();
+    }
+
+    fn tick_sweep(&mut self) {
+        self.sq1.tick_sweep(square::Channel::One);
+        self.sq2.tick_sweep(square::Channel::Two);
     }
 }

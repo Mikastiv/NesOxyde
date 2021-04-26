@@ -1,4 +1,4 @@
-use sdl2::audio::{AudioCallback, AudioSpecDesired, AudioQueue};
+use sdl2::audio::{AudioCallback, AudioQueue, AudioSpecDesired};
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::pixels::PixelFormatEnum;
@@ -45,9 +45,10 @@ where
     let spec = AudioSpecDesired {
         freq: Some(44100),
         channels: Some(1),
-        samples: None,
+        samples: Some(512),
     };
-    let mut queue: AudioQueue<f32> = audio_subsystem.open_queue(None, &spec).unwrap();
+    let queue: AudioQueue<f32> = audio_subsystem.open_queue(None, &spec).unwrap();
+    queue.resume();
 
     let mut samples = vec![];
 
@@ -73,6 +74,9 @@ where
                 samples.append(&mut s);
             }
         }
+
+        queue.queue(&samples);
+        samples.clear();
 
         for event in event_pump.poll_iter() {
             match event {
@@ -108,9 +112,6 @@ where
                 _ => {}
             }
         }
-
-        queue.queue(&samples);
-        samples.clear();
 
         timer.wait(Duration::from_secs_f64(SECS_PER_FRAME));
         timer.reset();
