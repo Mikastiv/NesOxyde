@@ -28,11 +28,6 @@ const FRAME_COUNTER: u16 = 0x4017;
 
 mod square;
 
-enum Mode {
-    FourStep,
-    FiveStep,
-}
-
 pub struct Apu {
     cycles: u64,
     frame_counter: u32,
@@ -40,7 +35,6 @@ pub struct Apu {
     sq1: Square,
     sq2: Square,
 
-    mode: Mode,
     samples: Vec<f32>,
 }
 
@@ -53,7 +47,6 @@ impl Apu {
             sq1: Square::new(),
             sq2: Square::new(),
 
-            mode: Mode::FourStep,
             samples: Vec::new(),
         }
     }
@@ -95,12 +88,7 @@ impl Apu {
                 self.sq2.set_enabled(data & 0x2 != 0);
             }
             FRAME_COUNTER => {
-                self.mode = match data & 0x80 == 0 {
-                    true => Mode::FourStep,
-                    false => Mode::FiveStep,
-                };
-
-                if let Mode::FiveStep = self.mode {
+                if data & 0x80 == 0 {
                     self.tick_envelopes();
                     self.tick_counters();
                 }
