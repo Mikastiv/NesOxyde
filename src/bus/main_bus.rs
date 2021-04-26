@@ -88,8 +88,11 @@ impl Interface for MainBus<'_> {
     }
 
     fn tick(&mut self, cycles: u64) {
-        for _ in 0..(cycles * 3) {
-            self.ppu.clock();
+        for _ in 0..cycles {
+            self.apu.clock();
+            for _ in 0..3 {
+                self.ppu.clock();
+            }
         }
     }
 
@@ -106,6 +109,14 @@ impl Interface for MainBus<'_> {
 
     fn reset(&mut self) {
         self.ppu.reset();
+    }
+
+    fn sample_ready(&self) -> bool {
+        self.apu.sample_ready()
+    }
+
+    fn sample(&mut self) -> Vec<f32> {
+        self.apu.sample()
     }
 }
 

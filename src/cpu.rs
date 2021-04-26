@@ -21,6 +21,8 @@ pub trait Interface {
     fn update_joypad(&mut self, button: Button, pressed: bool, port: JoyPort);
     fn frame_count(&self) -> u128;
     fn reset(&mut self);
+    fn sample_ready(&self) -> bool;
+    fn sample(&mut self) -> Vec<f32>;
 }
 
 bitflags! {
@@ -113,6 +115,14 @@ impl<'a> Cpu<'a> {
         self.cycles = 7;
     }
 
+    pub fn sample_ready(&self) -> bool {
+        self.bus.sample_ready()
+    }
+
+    pub fn sample(&mut self) -> Vec<f32> {
+        self.bus.sample()
+    }
+
     fn nmi(&mut self) {
         self.push_word(self.pc);
         self.push_byte((self.p & !Flags::B).bits());
@@ -158,7 +168,7 @@ impl<'a> Cpu<'a> {
         (ins.cpu_fn)(self, ins.mode);
 
         self.bus.tick(self.ins_cycles);
-        self.cycles += self.ins_cycles;
+        self.cycles = self.cycles.wrapping_add(self.ins_cycles);
         nmi_cycles + self.ins_cycles
     }
 

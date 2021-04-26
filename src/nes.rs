@@ -1,4 +1,4 @@
-use sdl2::audio::{AudioCallback, AudioSpecDesired};
+use sdl2::audio::{AudioCallback, AudioSpecDesired, AudioQueue};
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::pixels::PixelFormatEnum;
@@ -45,11 +45,13 @@ where
     let spec = AudioSpecDesired {
         freq: Some(44100),
         channels: Some(1),
-        samples: Some(512),
+        samples: None,
     };
-    let device = audio_subsystem
-        .open_playback(None, &spec, |_spec| NesAudio(0))
-        .unwrap();
+    let mut queue: AudioQueue<f32> = audio_subsystem.open_queue(None, &spec).unwrap();
+
+    let mut samples = vec![];
+
+    println!("Audio driver: {}", audio_subsystem.current_audio_driver());
     // >----------------- SDL2 init
 
     let bus = MainBus::new(Rc::new(RefCell::new(cartridge)), move |frame| {
@@ -66,6 +68,10 @@ where
         let frame_count = cpu.frame_count();
         while cpu.frame_count() == frame_count {
             cpu.execute();
+            if cpu.sample_ready() {
+                let mut s = cpu.sample();
+                samples.append(&mut s);
+            }
         }
 
         for event in event_pump.poll_iter() {
@@ -103,14 +109,17 @@ where
             }
         }
 
+        queue.queue(&samples);
+        samples.clear();
+
         timer.wait(Duration::from_secs_f64(SECS_PER_FRAME));
         timer.reset();
     }
 }
 
-struct NesAudio(u16);
+struct NesAudio(f32);
 impl AudioCallback for NesAudio {
-    type Channel = u16;
+    type Channel = f32;
 
     fn callback(&mut self, out: &mut [Self::Channel]) {
         for sample in out.iter_mut() {

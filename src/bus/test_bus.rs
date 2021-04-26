@@ -36,6 +36,14 @@ impl Interface for TestBus {
     }
 
     fn reset(&mut self) {}
+
+    fn sample_ready(&self) -> bool {
+        false
+    }
+
+    fn sample(&mut self) -> Vec<f32> {
+        vec![0.0]
+    }
 }
 
 impl TestBus {
