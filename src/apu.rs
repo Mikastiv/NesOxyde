@@ -153,9 +153,7 @@ impl Apu {
     }
 
     pub fn sample(&mut self) -> Vec<f32> {
-        let v = self.samples.clone();
-        self.samples.clear();
-        v
+        std::mem::take(&mut self.samples)
     }
 
     pub fn reset(&mut self) {
@@ -172,7 +170,7 @@ impl Apu {
         let sq2 = self.sq2.output();
         let pulse = 95.88 / (100.0 + (8128.0 / (sq1 as f32 + sq2 as f32)));
 
-        let tri = self.tri.output();
+        let tri = 0.8 * self.tri.output() as f32;
         let tnd =
             159.79 / (100.0 + (1.0 / ((tri as f32 / 8227.0) + (0.0 / 12241.0) + (0.0 / 22638.0))));
 

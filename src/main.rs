@@ -10,6 +10,7 @@ mod cpu;
 mod joypad;
 mod nes;
 mod ppu;
+mod reverb;
 mod snake_game;
 mod timer;
 

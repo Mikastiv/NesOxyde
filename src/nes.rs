@@ -10,6 +10,7 @@ use crate::bus::MainBus;
 use crate::cartridge::Cartridge;
 use crate::cpu::Cpu;
 use crate::joypad::{Button, JoyPort};
+use crate::reverb::Reverb;
 use crate::timer::Timer;
 
 const SECS_PER_FRAME: f64 = 1.0 / 60.0;
@@ -52,6 +53,12 @@ where
 
     let mut samples = vec![0.0; 1024];
 
+    let mut reverbs = [
+        Reverb::new(330, 44100, 0.15),
+        Reverb::new(150, 44100, 0.2),
+        Reverb::new(285, 44100, 0.05),
+    ];
+
     println!("Audio driver: {}", audio_subsystem.current_audio_driver());
     // >----------------- SDL2 init
 
@@ -72,6 +79,10 @@ where
             if cpu.sample_ready() {
                 samples.append(&mut cpu.sample());
             }
+        }
+
+        for r in reverbs.iter_mut() {
+            r.apply(&mut samples);
         }
 
         queue.queue(&samples);
