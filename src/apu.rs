@@ -1,6 +1,8 @@
 use square::Square;
 use triangle::Triangle;
 
+use crate::decay::Decay;
+
 const SQ1_VOL: u16 = 0x4000;
 const SQ1_SWEEP: u16 = 0x4001;
 const SQ1_LO: u16 = 0x4002;
@@ -39,6 +41,7 @@ pub struct Apu {
     tri: Triangle,
 
     samples: Vec<f32>,
+    env: Decay,
 }
 
 impl Apu {
@@ -52,6 +55,7 @@ impl Apu {
             tri: Triangle::new(),
 
             samples: Vec::new(),
+            env: Decay::new(0.001),
         }
     }
 
@@ -144,7 +148,8 @@ impl Apu {
         let s1 = (c1 / Self::SAMPLE_RATE) as u64;
         let s2 = (c2 / Self::SAMPLE_RATE) as u64;
         if s1 != s2 {
-            self.samples.push(self.output());
+            let out = self.output();
+            self.samples.push(out);
         }
     }
 
@@ -165,16 +170,17 @@ impl Apu {
         self.tri = Triangle::new();
     }
 
-    fn output(&self) -> f32 {
+    fn output(&mut self) -> f32 {
         let sq1 = self.sq1.output();
         let sq2 = self.sq2.output();
         let pulse = 95.88 / (100.0 + (8128.0 / (sq1 as f32 + sq2 as f32)));
 
         let tri = 0.8 * self.tri.output() as f32;
+
         let tnd =
             159.79 / (100.0 + (1.0 / ((tri as f32 / 8227.0) + (0.0 / 12241.0) + (0.0 / 22638.0))));
 
-        pulse + tnd
+        pulse + self.env.decay(tnd)
     }
 
     fn tick_envelopes(&mut self) {

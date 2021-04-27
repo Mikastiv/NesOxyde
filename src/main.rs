@@ -7,6 +7,7 @@ mod apu;
 mod bus;
 mod cartridge;
 mod cpu;
+mod decay;
 mod joypad;
 mod nes;
 mod ppu;

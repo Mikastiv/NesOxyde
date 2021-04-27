@@ -55,7 +55,7 @@ where
 
     let mut reverbs = [
         Reverb::new(330, 44100, 0.15),
-        Reverb::new(150, 44100, 0.2),
+        Reverb::new(150, 44100, 0.1),
         Reverb::new(285, 44100, 0.05),
     ];
 
