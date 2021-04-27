@@ -1,3 +1,5 @@
+use bitflags::bitflags;
+
 bitflags! {
     pub struct Controller: u8 {
         const NMI_ENABLED    = 0b10000000;

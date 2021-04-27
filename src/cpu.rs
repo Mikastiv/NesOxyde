@@ -1,3 +1,5 @@
+use bitflags::bitflags;
+
 use crate::joypad::{Button, JoyPort};
 
 pub use self::addr_modes::AddrMode;

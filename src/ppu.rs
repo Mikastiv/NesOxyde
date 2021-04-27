@@ -520,7 +520,7 @@ impl<'a> Ppu<'a> {
             let sprite_size = if self.ctrl.sprite_size() { 16 } else { 8 };
 
             for index in (0..OAM_SIZE).step_by(4) {
-                let diff = scanline as u16 - self.oam_data[index] as u16;
+                let diff = (scanline as u16).wrapping_sub(self.oam_data[index] as u16);
 
                 if (0..sprite_size).contains(&diff) {
                     if sprite_count < 8 {

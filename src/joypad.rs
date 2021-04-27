@@ -1,3 +1,5 @@
+use bitflags::bitflags;
+
 bitflags! {
     struct State: u8 {
         const A      = 0b00000001;

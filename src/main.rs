@@ -1,7 +1,3 @@
-#[macro_use]
-extern crate bitflags;
-extern crate lazy_static;
-
 use sdl2::keyboard::Keycode;
 
 use cartridge::Cartridge;

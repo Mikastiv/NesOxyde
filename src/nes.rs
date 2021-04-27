@@ -1,4 +1,4 @@
-use sdl2::audio::{AudioCallback, AudioQueue, AudioSpecDesired};
+use sdl2::audio::{AudioQueue, AudioSpecDesired};
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::pixels::PixelFormatEnum;
@@ -114,16 +114,5 @@ where
 
         timer.wait(Duration::from_secs_f64(SECS_PER_FRAME));
         timer.reset();
-    }
-}
-
-struct NesAudio(f32);
-impl AudioCallback for NesAudio {
-    type Channel = f32;
-
-    fn callback(&mut self, out: &mut [Self::Channel]) {
-        for sample in out.iter_mut() {
-            *sample = self.0;
-        }
     }
 }
