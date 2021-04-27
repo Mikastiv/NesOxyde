@@ -29,7 +29,7 @@ pub struct Square {
     sweep_shift: u8,
     sweep: u8,
 
-    envelope_start: bool,
+    envelope_reload: bool,
     envelope_divider: u8,
     envelope_volume: u8,
 }
@@ -57,7 +57,7 @@ impl Square {
             sweep_shift: 0,
             sweep: 0,
 
-            envelope_start: false,
+            envelope_reload: false,
             envelope_divider: 0,
             envelope_volume: 0,
         }
@@ -75,7 +75,7 @@ impl Square {
         self.length_halt = (data & 0x20) != 0;
         self.constant_volume = (data & 0x10) != 0;
         self.volume = data & 0xF;
-        self.envelope_start = true;
+        self.envelope_reload = true;
     }
 
     pub fn write_sweep(&mut self, data: u8) {
@@ -95,7 +95,7 @@ impl Square {
         self.timer_period = ((data & 0x7) as u16) << 8 | (self.timer_period & 0xFF);
         self.length_counter = LENGTH_TABLE[(data >> 3) as usize];
         self.duty_index = 0;
-        self.envelope_start = true;
+        self.envelope_reload = true;
     }
 
     pub fn tick_timer(&mut self) {
@@ -108,18 +108,18 @@ impl Square {
         }
     }
 
-    pub fn tick_counter(&mut self) {
+    pub fn tick_length(&mut self) {
         if !self.length_halt && self.length_counter > 0 {
             self.length_counter -= 1;
         }
     }
 
     pub fn tick_envelope(&mut self) {
-        match self.envelope_start {
+        match self.envelope_reload {
             true => {
                 self.envelope_volume = 15;
                 self.envelope_divider = self.volume + 1;
-                self.envelope_start = false;
+                self.envelope_reload = false;
             }
             false if self.envelope_divider > 0 => self.envelope_divider -= 1,
             false => {

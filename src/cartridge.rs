@@ -3,10 +3,10 @@ use std::fmt::Display;
 use std::io;
 use std::path::Path;
 
-use self::mapper::{Mapper, Mapper0};
+use self::mappers::{Mapper, Mapper0};
 use self::rom::Rom;
 
-mod mapper;
+mod mappers;
 mod rom;
 
 #[derive(Debug)]

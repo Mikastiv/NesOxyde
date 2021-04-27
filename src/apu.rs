@@ -1,4 +1,5 @@
 use square::Square;
+use triangle::Triangle;
 
 const SQ1_VOL: u16 = 0x4000;
 const SQ1_SWEEP: u16 = 0x4001;
@@ -27,6 +28,7 @@ const SND_CHN: u16 = 0x4015;
 const FRAME_COUNTER: u16 = 0x4017;
 
 mod square;
+mod triangle;
 
 pub struct Apu {
     cycles: u64,
@@ -34,6 +36,7 @@ pub struct Apu {
 
     sq1: Square,
     sq2: Square,
+    tri: Triangle,
 
     samples: Vec<f32>,
 }
@@ -46,6 +49,7 @@ impl Apu {
 
             sq1: Square::new(),
             sq2: Square::new(),
+            tri: Triangle::new(),
 
             samples: Vec::new(),
         }
@@ -70,9 +74,9 @@ impl Apu {
             SQ2_LO => self.sq2.write_lo(data),
             SQ2_HI => self.sq2.write_hi(data),
 
-            TRI_LINEAR => {}
-            TRI_LO => {}
-            TRI_HI => {}
+            TRI_LINEAR => self.tri.write_linear(data),
+            TRI_LO => self.tri.write_lo(data),
+            TRI_HI => self.tri.write_hi(data),
 
             NOISE_VOL => {}
             NOISE_LO => {}
@@ -86,11 +90,12 @@ impl Apu {
             SND_CHN => {
                 self.sq1.set_enabled(data & 0x1 != 0);
                 self.sq2.set_enabled(data & 0x2 != 0);
+                self.tri.set_enabled(data & 0x4 != 0);
             }
             FRAME_COUNTER => {
                 if data & 0x80 == 0 {
                     self.tick_envelopes();
-                    self.tick_counters();
+                    self.tick_lengths();
                 }
             }
             _ => {}
@@ -107,6 +112,7 @@ impl Apu {
         let mut quarter_frame = false;
         let mut half_frame = false;
 
+        self.tri.tick_timer();
         if self.cycles % 2 == 0 {
             self.sq1.tick_timer();
             self.sq2.tick_timer();
@@ -130,7 +136,7 @@ impl Apu {
             }
 
             if half_frame {
-                self.tick_counters();
+                self.tick_lengths();
                 self.tick_sweep();
             }
         }
@@ -162,17 +168,23 @@ impl Apu {
         let sq2 = self.sq2.output();
         let pulse = 95.88 / (100.0 + (8128.0 / (sq1 as f32 + sq2 as f32)));
 
-        pulse
+        let tri = self.tri.output();
+        let tnd =
+            159.79 / (100.0 + (1.0 / ((tri as f32 / 8227.0) + (0.0 / 12241.0) + (0.0 / 22638.0))));
+
+        pulse + tnd
     }
 
     fn tick_envelopes(&mut self) {
         self.sq1.tick_envelope();
         self.sq2.tick_envelope();
+        self.tri.tick_counter();
     }
 
-    fn tick_counters(&mut self) {
-        self.sq1.tick_counter();
-        self.sq2.tick_counter();
+    fn tick_lengths(&mut self) {
+        self.sq1.tick_length();
+        self.sq2.tick_length();
+        self.tri.tick_length();
     }
 
     fn tick_sweep(&mut self) {
