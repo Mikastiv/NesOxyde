@@ -50,7 +50,7 @@ where
     let queue: AudioQueue<f32> = audio_subsystem.open_queue(None, &spec).unwrap();
     queue.resume();
 
-    let mut samples = vec![];
+    let mut samples = vec![0.0; 1024];
 
     println!("Audio driver: {}", audio_subsystem.current_audio_driver());
     // >----------------- SDL2 init

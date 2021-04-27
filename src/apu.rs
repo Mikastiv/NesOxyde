@@ -31,7 +31,7 @@ mod square;
 mod triangle;
 
 pub struct Apu {
-    cycles: u64,
+    cycles: u32,
     frame_counter: u32,
 
     sq1: Square,
@@ -102,12 +102,12 @@ impl Apu {
         }
     }
 
-    const SAMPLE_RATE: f32 = 1789773.0 / 44100.0;
+    const SAMPLE_RATE: f64 = 1789773.0 / 44100.0;
 
     pub fn clock(&mut self) {
-        let c1 = self.cycles as f32;
+        let c1 = self.cycles as f64;
         self.cycles = self.cycles.wrapping_add(1);
-        let c2 = self.cycles as f32;
+        let c2 = self.cycles as f64;
 
         let mut quarter_frame = false;
         let mut half_frame = false;
@@ -141,8 +141,8 @@ impl Apu {
             }
         }
 
-        let s1 = (c1 / Self::SAMPLE_RATE) as u32;
-        let s2 = (c2 / Self::SAMPLE_RATE) as u32;
+        let s1 = (c1 / Self::SAMPLE_RATE) as u64;
+        let s2 = (c2 / Self::SAMPLE_RATE) as u64;
         if s1 != s2 {
             self.samples.push(self.output());
         }
@@ -159,8 +159,12 @@ impl Apu {
     }
 
     pub fn reset(&mut self) {
+        self.cycles = 0;
+        self.frame_counter = 0;
+        self.samples.clear();
         self.sq1 = Square::new();
         self.sq2 = Square::new();
+        self.tri = Triangle::new();
     }
 
     fn output(&self) -> f32 {
