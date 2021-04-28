@@ -271,6 +271,7 @@ impl<'a> Ppu<'a> {
             PPU_STATUS => {
                 data = self.status.bits() | (self.open_bus & 0x1F);
                 self.status.remove(Status::IN_VBLANK);
+                self.pending_nmi = None;
                 self.addr_toggle = false;
             }
             OAM_ADDR => {}

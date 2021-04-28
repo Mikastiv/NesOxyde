@@ -21,7 +21,13 @@ pub const HEIGHT: u32 = 240;
 
 mod trace;
 
-pub fn run<KeyMap>(cartridge: Cartridge, map_key: KeyMap)
+#[derive(Debug)]
+pub enum Mode {
+    VideoSync,
+    AudioSync,
+}
+
+pub fn run<KeyMap>(cartridge: Cartridge, map_key: KeyMap, mode: Mode)
 where
     KeyMap: Fn(Keycode, JoyPort) -> Option<Button>,
 {
@@ -43,10 +49,12 @@ where
         .create_texture_target(PixelFormatEnum::RGB24, WIDTH as u32, HEIGHT as u32)
         .unwrap();
 
+    let sample_size = 512;
+    let sample_rate = 41000;
     let spec = AudioSpecDesired {
-        freq: Some(44100),
+        freq: Some(sample_rate as i32),
         channels: Some(1),
-        samples: Some(1024),
+        samples: Some(sample_size),
     };
     let queue = audio_subsystem.open_queue::<f32, _>(None, &spec).unwrap();
     queue.resume();
@@ -54,12 +62,13 @@ where
     let mut samples = vec![0.0; 1024];
 
     let mut reverbs = [
-        Reverb::new(330, 44100, 0.15),
-        Reverb::new(150, 44100, 0.1),
-        Reverb::new(285, 44100, 0.05),
+        Reverb::new(330, sample_rate, 0.15),
+        Reverb::new(150, sample_rate, 0.1),
+        Reverb::new(285, sample_rate, 0.05),
     ];
 
     println!("Audio driver: {}", audio_subsystem.current_audio_driver());
+    println!("Emulation mode: {:?}", &mode);
     // >----------------- SDL2 init
 
     let bus = MainBus::new(
@@ -69,7 +78,7 @@ where
             canvas.copy(&texture, None, None).unwrap();
             canvas.present();
         },
-        44100.0,
+        sample_rate as f64,
     );
 
     let mut cpu = Cpu::new(bus);
@@ -77,20 +86,6 @@ where
 
     let mut timer = Timer::new();
     'nes: loop {
-        let frame_count = cpu.frame_count();
-        while cpu.frame_count() == frame_count {
-            cpu.execute();
-        }
-
-        samples.append(&mut cpu.samples());
-
-        for r in reverbs.iter_mut() {
-            r.apply(&mut samples);
-        }
-
-        queue.queue(&samples);
-        samples.clear();
-
         for event in event_pump.poll_iter() {
             match event {
                 Event::Quit { .. }
@@ -126,7 +121,34 @@ where
             }
         }
 
-        timer.wait(Duration::from_secs_f64(SECS_PER_FRAME));
-        timer.reset();
+        match mode {
+            Mode::VideoSync => {
+                let frame_count = cpu.frame_count();
+                while cpu.frame_count() == frame_count {
+                    cpu.execute();
+                }
+                timer.wait(Duration::from_secs_f64(SECS_PER_FRAME));
+                timer.reset();
+            }
+            Mode::AudioSync => {
+                while queue.size() > sample_size as u32 * 4 {
+                    timer.reset();
+                    timer.wait(Duration::from_millis(1));
+                }
+
+                while cpu.sample_count() < sample_size as usize {
+                    cpu.clock();
+                }
+            }
+        }
+
+        samples.append(&mut cpu.samples());
+
+        for r in reverbs.iter_mut() {
+            r.apply(&mut samples);
+        }
+
+        queue.queue(&samples);
+        samples.clear();
     }
 }

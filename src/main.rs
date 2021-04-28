@@ -18,11 +18,22 @@ mod timer;
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
-    if args.len() != 2 {
-        eprintln!("Usage: ./{} <iNES File>", args[0]);
+    if args.len() != 2 && args.len() != 3 {
+        eprintln!(
+            "Usage: ./{} [SyncMode: Audio (default) or Video (-A or -V)] <iNES File>",
+            args[0]
+        );
         std::process::exit(0);
     }
-    let cartridge = match Cartridge::new(&args[1]) {
+
+    let (mode, rom) = match args.len() {
+        2 => (nes::Mode::AudioSync, &args[1]),
+
+        3 => (nes::Mode::VideoSync, &args[2]),
+        count => panic!("Bad argument count: {}", count),
+    };
+
+    let cartridge = match Cartridge::new(rom) {
         Ok(cart) => cart,
         Err(e) => {
             eprintln!("Problem while loading ROM \"{}\" -> {}", args[1], e);
@@ -55,5 +66,5 @@ fn main() {
         },
     };
 
-    nes::run(cartridge, map_key);
+    nes::run(cartridge, map_key, mode);
 }
