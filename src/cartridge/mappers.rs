@@ -1,4 +1,4 @@
-pub use self::mapper_0::Mapper0;
+pub use mapper_0::Mapper0;
 
 use super::MirrorMode;
 

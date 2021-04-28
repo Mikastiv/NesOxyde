@@ -1,3 +1,4 @@
+use noise::Noise;
 use square::Square;
 use triangle::Triangle;
 
@@ -29,6 +30,7 @@ const DMC_LEN: u16 = 0x4013;
 const SND_CHN: u16 = 0x4015;
 const FRAME_COUNTER: u16 = 0x4017;
 
+mod noise;
 mod square;
 mod triangle;
 
@@ -39,6 +41,7 @@ pub struct Apu {
     sq1: Square,
     sq2: Square,
     tri: Triangle,
+    noise: Noise,
 
     samples: Vec<f32>,
     env: Decay,
@@ -53,6 +56,7 @@ impl Apu {
             sq1: Square::new(),
             sq2: Square::new(),
             tri: Triangle::new(),
+            noise: Noise::new(),
 
             samples: Vec::new(),
             env: Decay::new(0.001),
@@ -82,9 +86,9 @@ impl Apu {
             TRI_LO => self.tri.write_lo(data),
             TRI_HI => self.tri.write_hi(data),
 
-            NOISE_VOL => {}
-            NOISE_LO => {}
-            NOISE_HI => {}
+            NOISE_VOL => self.noise.write_vol(data),
+            NOISE_LO => self.noise.write_lo(data),
+            NOISE_HI => self.noise.write_hi(data),
 
             DMC_FREQ => {}
             DMC_RAW => {}
@@ -95,6 +99,7 @@ impl Apu {
                 self.sq1.set_enabled(data & 0x1 != 0);
                 self.sq2.set_enabled(data & 0x2 != 0);
                 self.tri.set_enabled(data & 0x4 != 0);
+                self.noise.set_enabled(data & 0x8 != 0);
             }
             FRAME_COUNTER => {
                 if data & 0x80 == 0 {
@@ -120,6 +125,7 @@ impl Apu {
         if self.cycles % 2 == 0 {
             self.sq1.tick_timer();
             self.sq2.tick_timer();
+            self.noise.tick_timer();
 
             self.frame_counter += 1;
 
@@ -175,24 +181,27 @@ impl Apu {
         let sq2 = self.sq2.output();
         let pulse = 95.88 / (100.0 + (8128.0 / (sq1 as f32 + sq2 as f32)));
 
-        let tri = 0.8 * self.tri.output() as f32;
+        let tri = self.env.decay(0.8 * self.tri.output() as f32);
+        let noise = 0.8 * self.noise.output() as f32;
 
-        let tnd =
-            159.79 / (100.0 + (1.0 / ((tri as f32 / 8227.0) + (0.0 / 12241.0) + (0.0 / 22638.0))));
+        let tnd = 159.79
+            / (100.0 + (1.0 / ((tri as f32 / 8227.0) + (noise / 12241.0) + (0.0 / 22638.0))));
 
-        pulse + self.env.decay(tnd)
+        pulse + tnd
     }
 
     fn tick_envelopes(&mut self) {
         self.sq1.tick_envelope();
         self.sq2.tick_envelope();
         self.tri.tick_counter();
+        self.noise.tick_envelope();
     }
 
     fn tick_lengths(&mut self) {
         self.sq1.tick_length();
         self.sq2.tick_length();
         self.tri.tick_length();
+        self.noise.tick_length();
     }
 
     fn tick_sweep(&mut self) {

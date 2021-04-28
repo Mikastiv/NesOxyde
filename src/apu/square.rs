@@ -72,8 +72,8 @@ impl Square {
 
     pub fn write_vol(&mut self, data: u8) {
         self.duty = data >> 6;
-        self.length_halt = (data & 0x20) != 0;
-        self.constant_volume = (data & 0x10) != 0;
+        self.length_halt = data & 0x20 != 0;
+        self.constant_volume = data & 0x10 != 0;
         self.volume = data & 0xF;
         self.envelope_reload = true;
     }
