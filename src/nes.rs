@@ -131,9 +131,9 @@ where
                 timer.reset();
             }
             Mode::AudioSync => {
-                while queue.size() > sample_size as u32 * 4 {
+                while queue.size() > sample_size as u32 * 6 {
                     timer.reset();
-                    timer.wait(Duration::from_millis(1));
+                    timer.wait(Duration::from_micros(100));
                 }
 
                 while cpu.sample_count() < sample_size as usize {
