@@ -36,7 +36,7 @@ fn main() {
     let cartridge = match Cartridge::new(rom) {
         Ok(cart) => cart,
         Err(e) => {
-            eprintln!("Problem while loading ROM \"{}\" -> {}", args[1], e);
+            eprintln!("Problem while loading ROM \"{}\" -> {}", rom, e);
             std::process::exit(0);
         }
     };
