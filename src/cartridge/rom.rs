@@ -5,8 +5,8 @@ use std::path::Path;
 
 use super::MirrorMode;
 
-const PRG_PAGE_SIZE: usize = 0x4000;
-const CHR_PAGE_SIZE: usize = 0x2000;
+pub const PRG_PAGE_SIZE: usize = 0x4000;
+pub const CHR_PAGE_SIZE: usize = 0x2000;
 const HEADER_SIZE: usize = 16;
 const NES_TAG: [u8; 4] = [b'N', b'E', b'S', 0x1A];
 
@@ -80,22 +80,32 @@ impl Rom {
             PRG_PAGE_SIZE,
             prg_size
         );
-        println!(
-            "CHR Size: {} * {:#06X} = {:#06X}",
-            header.chr_count(),
-            CHR_PAGE_SIZE,
-            chr_size
-        );
+        if header.chr_count() == 0 {
+            println!(
+                "CHR Size (RAM): 1 * {:#06X} = {:#06X}",
+                CHR_PAGE_SIZE, CHR_PAGE_SIZE
+            );
+        } else {
+            println!(
+                "CHR Size: {} * {:#06X} = {:#06X}",
+                header.chr_count(),
+                CHR_PAGE_SIZE,
+                chr_size
+            );
+        }
         println!("Mapper ID: {}", header.mapper_id());
         println!("Mirror mode: {:?}", header.mirror_mode());
 
         let mut rom_bytes = Vec::new();
         file.read_to_end(&mut rom_bytes)?;
 
-        Ok(Self {
-            header,
-            prg: rom_bytes[prg_start..(prg_start + prg_size)].to_vec(),
-            chr: rom_bytes[chr_start..(chr_start + chr_size)].to_vec(),
-        })
+        let prg = rom_bytes[prg_start..(prg_start + prg_size)].to_vec();
+        let chr = if header.chr_count() == 0 {
+            vec![0; CHR_PAGE_SIZE]
+        } else {
+            rom_bytes[chr_start..(chr_start + chr_size)].to_vec()
+        };
+
+        Ok(Self { header, prg, chr })
     }
 }

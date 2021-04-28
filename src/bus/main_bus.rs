@@ -122,6 +122,7 @@ impl Interface for MainBus<'_> {
     fn reset(&mut self) {
         self.ppu.reset();
         self.apu.reset();
+        self.cartridge.borrow_mut().reset();
     }
 
     fn samples(&mut self) -> Vec<f32> {

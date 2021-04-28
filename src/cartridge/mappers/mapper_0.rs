@@ -1,5 +1,3 @@
-use std::usize;
-
 use super::Mapper;
 use crate::cartridge::{MirrorMode, Rom};
 
@@ -34,4 +32,6 @@ impl Mapper for Mapper0 {
     fn mirror_mode(&self) -> MirrorMode {
         self.rom.header.mirror_mode()
     }
+
+    fn reset(&mut self) {}
 }

@@ -79,7 +79,7 @@ where
     'nes: loop {
         let frame_count = cpu.frame_count();
         while cpu.frame_count() == frame_count {
-            cpu.clock();
+            cpu.execute();
         }
 
         samples.append(&mut cpu.samples());
@@ -87,8 +87,6 @@ where
         for r in reverbs.iter_mut() {
             r.apply(&mut samples);
         }
-
-        println!("{}", queue.size() / std::mem::size_of::<f32>() as u32);
 
         queue.queue(&samples);
         samples.clear();

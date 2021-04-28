@@ -6,6 +6,8 @@ use std::path::Path;
 use mappers::{Mapper, Mapper0};
 use rom::Rom;
 
+use crate::cartridge::mappers::Mapper2;
+
 mod mappers;
 mod rom;
 
@@ -22,14 +24,13 @@ pub struct Cartridge {
 impl Cartridge {
     pub fn new<P: AsRef<Path> + Display>(romfile: P) -> io::Result<Self> {
         let rom = Rom::new(romfile)?;
-        let mapper = match rom.header.mapper_id() {
-            0 => Mapper0::new(rom),
+        let mapper: Box<dyn Mapper> = match rom.header.mapper_id() {
+            0 => Box::new(Mapper0::new(rom)),
+            2 => Box::new(Mapper2::new(rom)),
             _ => panic!("Unimplemented mapper: {}", rom.header.mapper_id()),
         };
 
-        Ok(Self {
-            mapper: Box::new(mapper),
-        })
+        Ok(Self { mapper })
     }
 
     pub fn read_prg(&mut self, addr: u16) -> u8 {
@@ -50,5 +51,9 @@ impl Cartridge {
 
     pub fn mirror_mode(&self) -> MirrorMode {
         self.mapper.mirror_mode()
+    }
+
+    pub fn reset(&mut self) {
+        self.mapper.reset();
     }
 }
