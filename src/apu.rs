@@ -43,7 +43,6 @@ pub struct Apu {
     tri: Triangle,
     noise: Noise,
 
-    samples: Vec<f32>,
     env: Decay,
 }
 
@@ -58,7 +57,6 @@ impl Apu {
             tri: Triangle::new(),
             noise: Noise::new(),
 
-            samples: Vec::new(),
             env: Decay::new(0.001),
         }
     }
@@ -111,12 +109,8 @@ impl Apu {
         }
     }
 
-    const SAMPLE_RATE: f64 = 1789773.0 / 44100.0;
-
     pub fn clock(&mut self) {
-        let c1 = self.cycles as f64;
         self.cycles = self.cycles.wrapping_add(1);
-        let c2 = self.cycles as f64;
 
         let mut quarter_frame = false;
         let mut half_frame = false;
@@ -150,30 +144,19 @@ impl Apu {
                 self.tick_sweep();
             }
         }
-
-        let s1 = (c1 / Self::SAMPLE_RATE) as u64;
-        let s2 = (c2 / Self::SAMPLE_RATE) as u64;
-        if s1 != s2 {
-            let out = self.output();
-            self.samples.push(out);
-        }
     }
 
-    pub fn sample_ready(&self) -> bool {
-        !self.samples.is_empty()
-    }
-
-    pub fn sample(&mut self) -> Vec<f32> {
-        std::mem::take(&mut self.samples)
+    pub fn sample(&mut self) -> f32 {
+        self.output()
     }
 
     pub fn reset(&mut self) {
         self.cycles = 0;
         self.frame_counter = 0;
-        self.samples.clear();
         self.sq1 = Square::new();
         self.sq2 = Square::new();
         self.tri = Triangle::new();
+        self.noise = Noise::new();
     }
 
     fn output(&mut self) -> f32 {

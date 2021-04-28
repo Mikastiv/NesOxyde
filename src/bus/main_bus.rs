@@ -37,6 +37,11 @@ pub struct MainBus<'a> {
     apu: Apu,
     ppu: Ppu<'a>,
     joypads: [JoyPad; 2],
+
+    audio_time: f64,
+    time_per_clock: f64,
+    time_per_sample: f64,
+    samples: Vec<f32>,
 }
 
 impl Interface for MainBus<'_> {
@@ -89,9 +94,16 @@ impl Interface for MainBus<'_> {
 
     fn tick(&mut self, cycles: u64) {
         for _ in 0..cycles {
-            self.apu.clock();
             for _ in 0..3 {
                 self.ppu.clock();
+            }
+
+            self.apu.clock();
+            self.audio_time += self.time_per_clock;
+            if self.audio_time >= self.time_per_sample {
+                self.audio_time -= self.time_per_sample;
+                let sample = self.apu.sample();
+                self.samples.push(sample);
             }
         }
     }
@@ -112,17 +124,15 @@ impl Interface for MainBus<'_> {
         self.apu.reset();
     }
 
-    fn sample_ready(&self) -> bool {
-        self.apu.sample_ready()
-    }
-
-    fn sample(&mut self) -> Vec<f32> {
-        self.apu.sample()
+    fn samples(&mut self) -> Vec<f32> {
+        std::mem::take(&mut self.samples.as_mut())
     }
 }
 
 impl<'a> MainBus<'a> {
-    pub fn new<F>(cartridge: Rc<RefCell<Cartridge>>, sdl_render_fn: F) -> Self
+    const APU_CLOCK_RATE: f64 = 1789773.0;
+
+    pub fn new<F>(cartridge: Rc<RefCell<Cartridge>>, sdl_render_fn: F, sample_rate: f64) -> Self
     where
         F: FnMut(&[u8]) + 'a,
     {
@@ -133,6 +143,11 @@ impl<'a> MainBus<'a> {
             apu: Apu::new(),
             ppu: Ppu::new(Box::new(ppu_bus), Box::new(sdl_render_fn)),
             joypads: [JoyPad::new(); 2],
+
+            audio_time: 0.0,
+            time_per_clock: 1.0 / Self::APU_CLOCK_RATE,
+            time_per_sample: 1.0 / sample_rate,
+            samples: Vec::new(),
         }
     }
 }

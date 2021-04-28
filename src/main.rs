@@ -17,6 +17,10 @@ mod timer;
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
+    if args.len() != 2 {
+        eprintln!("Usage: ./{} <iNES File>", args[0]);
+        std::process::exit(0);
+    }
     let cartridge = match Cartridge::new(&args[1]) {
         Ok(cart) => cart,
         Err(e) => {

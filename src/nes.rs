@@ -46,7 +46,7 @@ where
     let spec = AudioSpecDesired {
         freq: Some(44100),
         channels: Some(1),
-        samples: Some(512),
+        samples: Some(1024),
     };
     let queue: AudioQueue<f32> = audio_subsystem.open_queue(None, &spec).unwrap();
     queue.resume();
@@ -62,11 +62,15 @@ where
     println!("Audio driver: {}", audio_subsystem.current_audio_driver());
     // >----------------- SDL2 init
 
-    let bus = MainBus::new(Rc::new(RefCell::new(cartridge)), move |frame| {
-        texture.update(None, frame, (WIDTH * 3) as usize).unwrap();
-        canvas.copy(&texture, None, None).unwrap();
-        canvas.present();
-    });
+    let bus = MainBus::new(
+        Rc::new(RefCell::new(cartridge)),
+        move |frame| {
+            texture.update(None, frame, (WIDTH * 3) as usize).unwrap();
+            canvas.copy(&texture, None, None).unwrap();
+            canvas.present();
+        },
+        44100.0,
+    );
 
     let mut cpu = Cpu::new(bus);
     cpu.reset();
@@ -75,11 +79,10 @@ where
     'nes: loop {
         let frame_count = cpu.frame_count();
         while cpu.frame_count() == frame_count {
-            cpu.execute();
-            if cpu.sample_ready() {
-                samples.append(&mut cpu.sample());
-            }
+            cpu.clock();
         }
+
+        samples.append(&mut cpu.samples());
 
         for r in reverbs.iter_mut() {
             r.apply(&mut samples);

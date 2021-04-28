@@ -23,8 +23,7 @@ pub trait Interface {
     fn update_joypad(&mut self, button: Button, pressed: bool, port: JoyPort);
     fn frame_count(&self) -> u128;
     fn reset(&mut self);
-    fn sample_ready(&self) -> bool;
-    fn sample(&mut self) -> Vec<f32>;
+    fn samples(&mut self) -> Vec<f32>;
 }
 
 bitflags! {
@@ -117,12 +116,8 @@ impl<'a> Cpu<'a> {
         self.cycles = 7;
     }
 
-    pub fn sample_ready(&self) -> bool {
-        self.bus.sample_ready()
-    }
-
-    pub fn sample(&mut self) -> Vec<f32> {
-        self.bus.sample()
+    pub fn samples(&mut self) -> Vec<f32> {
+        self.bus.samples()
     }
 
     fn nmi(&mut self) {
@@ -172,6 +167,24 @@ impl<'a> Cpu<'a> {
         self.bus.tick(self.ins_cycles);
         self.cycles = self.cycles.wrapping_add(self.ins_cycles);
         nmi_cycles + self.ins_cycles
+    }
+
+    pub fn clock(&mut self) {
+        if self.ins_cycles == 0 && self.bus.poll_nmi().is_some() {
+            self.nmi();
+        }
+
+        if self.ins_cycles == 0 {
+            let opcode = self.read_byte();
+
+            let ins = *OPTABLE.get(&opcode).unwrap();
+            self.ins_cycles = ins.cycles;
+            (ins.cpu_fn)(self, ins.mode);
+        }
+
+        self.bus.tick(1);
+        self.cycles = self.cycles.wrapping_add(1);
+        self.ins_cycles -= 1;
     }
 
     pub fn update_joypad(&mut self, button: Button, pressed: bool, port: JoyPort) {
