@@ -3,6 +3,7 @@ use square::Square;
 use triangle::Triangle;
 
 use crate::decay::Decay;
+use crate::filters::{Filter, HighPass, LowPass};
 
 const SQ1_VOL: u16 = 0x4000;
 const SQ1_SWEEP: u16 = 0x4001;
@@ -44,10 +45,17 @@ pub struct Apu {
     noise: Noise,
 
     env: Decay,
+    filters: Vec<Box<dyn Filter>>,
 }
 
 impl Apu {
     pub fn new() -> Self {
+        let filters: Vec<Box<dyn Filter>> = vec![
+            Box::new(LowPass::new(14000.0, 44100.0, 2.0f32.sqrt())),
+            Box::new(HighPass::new(90.0, 44100.0, 2.0f32.sqrt())),
+            Box::new(HighPass::new(440.0, 44100.0, 2.0f32.sqrt())),
+        ];
+
         Self {
             cycles: 0,
             frame_counter: 0,
@@ -58,6 +66,7 @@ impl Apu {
             noise: Noise::new(),
 
             env: Decay::new(0.001),
+            filters,
         }
     }
 
@@ -170,7 +179,11 @@ impl Apu {
         let tnd = 159.79
             / (100.0 + (1.0 / ((tri as f32 / 8227.0) + (noise / 12241.0) + (0.0 / 22638.0))));
 
-        pulse + tnd
+        let signal = pulse + tnd;
+
+        self.filters
+            .iter_mut()
+            .fold(signal, |signal, filter| filter.filter(signal))
     }
 
     fn tick_envelopes(&mut self) {

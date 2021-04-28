@@ -8,6 +8,7 @@ mod bus;
 mod cartridge;
 mod cpu;
 mod decay;
+mod filters;
 mod joypad;
 mod nes;
 mod ppu;
