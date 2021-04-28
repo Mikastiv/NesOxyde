@@ -40,7 +40,9 @@ impl Mapper for Mapper2 {
     }
 
     fn write_chr(&mut self, addr: u16, data: u8) {
-        self.rom.chr[addr as usize] = data;
+        if self.rom.header.chr_count() == 0 {
+            self.rom.chr[addr as usize] = data;
+        }
     }
 
     fn mirror_mode(&self) -> MirrorMode {

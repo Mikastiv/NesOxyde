@@ -1,10 +1,12 @@
-pub use mapper_0::Mapper0;
-pub use mapper_2::Mapper2;
+pub use mapper0::Mapper0;
+pub use mapper2::Mapper2;
+pub use mapper3::Mapper3;
 
 use super::MirrorMode;
 
-mod mapper_0;
-mod mapper_2;
+mod mapper0;
+mod mapper2;
+mod mapper3;
 
 pub trait Mapper {
     fn read_prg(&mut self, addr: u16) -> u8;

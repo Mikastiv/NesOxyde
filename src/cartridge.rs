@@ -3,10 +3,8 @@ use std::fmt::Display;
 use std::io;
 use std::path::Path;
 
-use mappers::{Mapper, Mapper0};
+use mappers::{Mapper, Mapper0, Mapper2, Mapper3};
 use rom::Rom;
-
-use crate::cartridge::mappers::Mapper2;
 
 mod mappers;
 mod rom;
@@ -27,6 +25,7 @@ impl Cartridge {
         let mapper: Box<dyn Mapper> = match rom.header.mapper_id() {
             0 => Box::new(Mapper0::new(rom)),
             2 => Box::new(Mapper2::new(rom)),
+            3 => Box::new(Mapper3::new(rom)),
             _ => panic!("Unimplemented mapper: {}", rom.header.mapper_id()),
         };
 
