@@ -51,6 +51,9 @@ impl Noise {
 
     pub fn set_enabled(&mut self, v: bool) {
         self.enabled = v;
+        if !v {
+            self.length_counter = 0;
+        }
     }
 
     pub fn write_vol(&mut self, data: u8) {
@@ -122,5 +125,9 @@ impl Noise {
             true => self.volume,
             false => self.envelope_volume,
         }
+    }
+
+    pub fn length_counter(&self) -> u8 {
+        self.length_counter
     }
 }

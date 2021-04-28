@@ -15,6 +15,9 @@ impl Decay {
         let diff = (self.prev - sample).abs();
         if sample == 0.0 && diff > self.max_diff {
             self.prev -= self.max_diff;
+            if self.prev < 0.0 {
+                self.prev = 0.0;
+            }
             self.prev
         } else {
             self.prev = sample;

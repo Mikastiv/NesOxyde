@@ -186,4 +186,8 @@ impl Square {
             false => self.envelope_volume,
         }
     }
+
+    pub fn length_counter(&self) -> u8 {
+        self.length_counter
+    }
 }

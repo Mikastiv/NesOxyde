@@ -1,3 +1,4 @@
+use dmc::Dmc;
 use noise::Noise;
 use square::Square;
 use triangle::Triangle;
@@ -31,6 +32,7 @@ const DMC_LEN: u16 = 0x4013;
 const SND_CHN: u16 = 0x4015;
 const FRAME_COUNTER: u16 = 0x4017;
 
+mod dmc;
 mod noise;
 mod square;
 mod triangle;
@@ -43,6 +45,7 @@ pub struct Apu {
     sq2: Square,
     tri: Triangle,
     noise: Noise,
+    dmc: Dmc,
 
     env: Decay,
     filters: Vec<Box<dyn Filter>>,
@@ -64,6 +67,7 @@ impl Apu {
             sq2: Square::new(),
             tri: Triangle::new(),
             noise: Noise::new(),
+            dmc: Dmc::new(),
 
             env: Decay::new(0.001),
             filters,
@@ -72,7 +76,14 @@ impl Apu {
 
     pub fn read(&self, addr: u16) -> u8 {
         match addr {
-            SND_CHN => 0,
+            SND_CHN => {
+                let sq1 = (self.sq1.length_counter() > 0) as u8;
+                let sq2 = (self.sq2.length_counter() > 0) as u8;
+                let tri = (self.tri.length_counter() > 0) as u8;
+                let noise = (self.noise.length_counter() > 0) as u8;
+
+                noise << 3 | tri << 2 | sq2 << 1 | sq1
+            }
             _ => 0,
         }
     }
@@ -97,16 +108,17 @@ impl Apu {
             NOISE_LO => self.noise.write_lo(data),
             NOISE_HI => self.noise.write_hi(data),
 
-            DMC_FREQ => {}
-            DMC_RAW => {}
-            DMC_START => {}
-            DMC_LEN => {}
+            DMC_FREQ => self.dmc.write_freq(data),
+            DMC_RAW => self.dmc.write_raw(data),
+            DMC_START => self.dmc.write_start(data),
+            DMC_LEN => self.dmc.write_len(data),
 
             SND_CHN => {
                 self.sq1.set_enabled(data & 0x1 != 0);
                 self.sq2.set_enabled(data & 0x2 != 0);
                 self.tri.set_enabled(data & 0x4 != 0);
                 self.noise.set_enabled(data & 0x8 != 0);
+                self.dmc.set_enabled(data & 0x10 != 0);
             }
             FRAME_COUNTER => {
                 if data & 0x80 == 0 {
@@ -166,6 +178,7 @@ impl Apu {
         self.sq2 = Square::new();
         self.tri = Triangle::new();
         self.noise = Noise::new();
+        self.dmc = Dmc::new();
     }
 
     fn output(&mut self) -> f32 {
@@ -175,9 +188,10 @@ impl Apu {
 
         let tri = self.env.decay(0.8 * self.tri.output() as f32);
         let noise = 0.8 * self.noise.output() as f32;
+        let dmc = self.dmc.output() as f32;
 
         let tnd = 159.79
-            / (100.0 + (1.0 / ((tri as f32 / 8227.0) + (noise / 12241.0) + (0.0 / 22638.0))));
+            / (100.0 + (1.0 / ((tri as f32 / 8227.0) + (noise / 12241.0) + (dmc / 22638.0))));
 
         let signal = pulse + tnd;
 

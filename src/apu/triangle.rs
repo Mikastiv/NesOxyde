@@ -43,6 +43,9 @@ impl Triangle {
 
     pub fn set_enabled(&mut self, v: bool) {
         self.enabled = v;
+        if !v {
+            self.length_counter = 0;
+        }
     }
 
     pub fn write_linear(&mut self, data: u8) {
@@ -97,5 +100,9 @@ impl Triangle {
         }
 
         OUTPUT_TABLE[self.duty as usize]
+    }
+
+    pub fn length_counter(&self) -> u8 {
+        self.length_counter
     }
 }
