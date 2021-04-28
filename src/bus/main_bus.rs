@@ -127,6 +127,10 @@ impl Interface for MainBus<'_> {
     fn samples(&mut self) -> Vec<f32> {
         std::mem::take(&mut self.samples.as_mut())
     }
+
+    fn sample_count(&self) -> usize {
+        self.samples.len()
+    }
 }
 
 impl<'a> MainBus<'a> {

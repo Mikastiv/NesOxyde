@@ -24,6 +24,7 @@ pub trait Interface {
     fn frame_count(&self) -> u128;
     fn reset(&mut self);
     fn samples(&mut self) -> Vec<f32>;
+    fn sample_count(&self) -> usize;
 }
 
 bitflags! {
@@ -118,6 +119,10 @@ impl<'a> Cpu<'a> {
 
     pub fn samples(&mut self) -> Vec<f32> {
         self.bus.samples()
+    }
+
+    pub fn sample_count(&self) -> usize {
+        self.bus.sample_count()
     }
 
     fn nmi(&mut self) {

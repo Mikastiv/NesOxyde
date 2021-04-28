@@ -38,6 +38,10 @@ impl Interface for SnakeBus {
     fn samples(&mut self) -> Vec<f32> {
         vec![0.0]
     }
+
+    fn sample_count(&self) -> usize {
+        0
+    }
 }
 
 impl SnakeBus {

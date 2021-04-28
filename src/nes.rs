@@ -1,4 +1,4 @@
-use sdl2::audio::{AudioQueue, AudioSpecDesired};
+use sdl2::audio::AudioSpecDesired;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::pixels::PixelFormatEnum;
@@ -48,7 +48,7 @@ where
         channels: Some(1),
         samples: Some(1024),
     };
-    let queue: AudioQueue<f32> = audio_subsystem.open_queue(None, &spec).unwrap();
+    let queue = audio_subsystem.open_queue::<f32, _>(None, &spec).unwrap();
     queue.resume();
 
     let mut samples = vec![0.0; 1024];
@@ -87,6 +87,8 @@ where
         for r in reverbs.iter_mut() {
             r.apply(&mut samples);
         }
+
+        println!("{}", queue.size() / std::mem::size_of::<f32>() as u32);
 
         queue.queue(&samples);
         samples.clear();
