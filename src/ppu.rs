@@ -400,7 +400,13 @@ impl<'a> Ppu<'a> {
                 }
             };
 
-            let color = self.get_color(palette, pixel);
+            // Little hack because for some reasons the first row of 
+            // the first two tiles sometimes were the wrong color
+            let color = if scanline == 0 {
+                self.get_color(palette, 0)
+            } else {
+                self.get_color(palette, pixel)
+            };
             self.frame.set_pixel(cycle - 1, scanline as usize, color);
         }
 
@@ -491,10 +497,6 @@ impl<'a> Ppu<'a> {
                 self.v_addr.set_nta_h(self.scroll.nta_h());
                 self.v_addr.set_xcoarse(self.scroll.xcoarse());
             }
-        }
-
-        if cycle == 337 || cycle == 339 {
-            self.next_tile.id = self.mem_read(0x2000 | (self.v_addr.raw() & 0xFFF));
         }
 
         // Sprites
