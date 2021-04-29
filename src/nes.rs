@@ -49,7 +49,7 @@ where
         .create_texture_target(PixelFormatEnum::RGB24, WIDTH as u32, HEIGHT as u32)
         .unwrap();
 
-    let sample_size = 512;
+    let sample_size = 1024;
     let sample_rate = 44100;
     let spec = AudioSpecDesired {
         freq: Some(sample_rate as i32),
@@ -133,7 +133,7 @@ where
             Mode::AudioSync => {
                 while queue.size() > sample_size as u32 * 4 {
                     timer.reset();
-                    timer.wait(Duration::from_micros(100));
+                    timer.wait(Duration::from_micros(10));
                 }
                 
                 while cpu.sample_count() < sample_size as usize {
