@@ -3,7 +3,7 @@ use std::fmt::Display;
 use std::io;
 use std::path::Path;
 
-use mappers::{Mapper, Mapper0, Mapper1, Mapper2, Mapper3};
+use mappers::{Mapper, Mapper0, Mapper1, Mapper2, Mapper3, Mapper7};
 use rom::Rom;
 
 mod mappers;
@@ -13,8 +13,8 @@ mod rom;
 pub enum MirrorMode {
     Vertical,
     Horizontal,
-    OnScreenLo,
-    OnScreenHi,
+    OneScreenLo,
+    OneScreenHi,
 }
 
 pub struct Cartridge {
@@ -29,6 +29,7 @@ impl Cartridge {
             1 => Box::new(Mapper1::new(rom)),
             2 => Box::new(Mapper2::new(rom)),
             3 => Box::new(Mapper3::new(rom)),
+            7 => Box::new(Mapper7::new(rom)),
             _ => panic!("Unimplemented mapper: {}", rom.header.mapper_id()),
         };
 

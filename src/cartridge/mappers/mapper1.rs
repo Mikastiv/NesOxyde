@@ -83,8 +83,8 @@ impl Mapper for Mapper1 {
                             0 => {
                                 self.control = self.load & 0x1F;
                                 self.mirror_mode = match self.control & 0x3 {
-                                    0 => MirrorMode::OnScreenLo,
-                                    1 => MirrorMode::OnScreenHi,
+                                    0 => MirrorMode::OneScreenLo,
+                                    1 => MirrorMode::OneScreenHi,
                                     2 => MirrorMode::Vertical,
                                     _ => MirrorMode::Horizontal,
                                 };
