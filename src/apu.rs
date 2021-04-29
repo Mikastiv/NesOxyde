@@ -200,8 +200,8 @@ impl Apu {
         let sq2 = self.sq2.output();
         let pulse = 95.88 / (100.0 + (8128.0 / (sq1 as f32 + sq2 as f32)));
 
-        let tri = self.env.decay(0.8 * self.tri.output() as f32);
-        let noise = 0.7 * self.noise.output() as f32;
+        let tri = self.env.decay(0.9 * self.tri.output() as f32);
+        let noise = 0.8 * self.noise.output() as f32;
         let dmc = self.dmc.output() as f32;
         let tnd = 159.79
             / (100.0 + (1.0 / ((tri as f32 / 8227.0) + (noise / 12241.0) + (dmc / 22638.0))));
