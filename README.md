@@ -12,7 +12,7 @@ This was my 4th attempt at coding a NES emulator and I finally succeded! The emu
 
 ## Usage
 
-The program is needs libsdl2 to run.
+The program is needs libsdl2 to run and libsdl2-devel to compile.
 It works on Linux, Windows and MacOS
 
 Launch: ./nesoxyde [SyncMode] \<iNES File\>
@@ -21,6 +21,22 @@ SyncMode: -A (default) or -V
 
 - Audio sync (-A). The emulation is synced with the audio sample rate (44100Hz). Can cause frame lag.
 - Video sync (-V). The emulation is synced with the video refresh rate of 60fps. Can cause audio pops and cracks.
+
+## Controls
+
+R -> Reset
+Esc -> Close emulator
+
+Key mappings can be changed in main.rs
+Defaults:
+- A -> B
+- S -> A
+- Z -> Select
+- X -> Start
+- UpArrow ->  Up
+- DownArrow -> Down
+- LeftArrow -> Left
+- RightArrow -> Right
 
 ## Screenshots
 
