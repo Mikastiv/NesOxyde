@@ -131,23 +131,23 @@ where
                 timer.reset();
             }
             Mode::AudioSync => {
-                while queue.size() > sample_size as u32 * 6 {
+                while queue.size() > sample_size as u32 * 4 {
                     timer.reset();
                     timer.wait(Duration::from_micros(100));
                 }
-
+                
                 while cpu.sample_count() < sample_size as usize {
                     cpu.clock();
                 }
             }
         }
-
+        
         samples.append(&mut cpu.samples());
-
+        
         for r in reverbs.iter_mut() {
             r.apply(&mut samples);
         }
-
+        
         queue.queue(&samples);
         samples.clear();
     }

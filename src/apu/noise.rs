@@ -49,6 +49,26 @@ impl Noise {
         }
     }
 
+    pub fn reset(&mut self) {
+        self.enabled = false;
+        self.mode = false;
+
+        self.timer_period = 0;
+        self.timer = 0;
+
+        self.length_halt = false;
+        self.length_counter = 0;
+
+        self.constant_volume = false;
+        self.volume = 0;
+
+        self.envelope_reload = false;
+        self.envelope_divider = 0;
+        self.envelope_volume = 0;
+
+        self.shift = 1;
+    }
+
     pub fn set_enabled(&mut self, v: bool) {
         self.enabled = v;
         if !v {

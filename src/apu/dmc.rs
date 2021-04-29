@@ -7,6 +7,10 @@ impl Dmc {
         Self { enabled: false }
     }
 
+    pub fn reset(&mut self) {
+        self.enabled = false;
+    }
+
     pub fn set_enabled(&mut self, v: bool) {
         self.enabled = v;
     }

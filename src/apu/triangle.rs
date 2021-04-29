@@ -41,6 +41,21 @@ impl Triangle {
         }
     }
 
+    pub fn reset(&mut self) {
+        self.enabled = false;
+        self.duty = 0;
+
+        self.timer_period = 0;
+        self.timer = 0;
+
+        self.length_halt = false;
+        self.length_counter = 0;
+
+        self.counter_reload = false;
+        self.counter_period = 0;
+        self.linear_counter = 0;
+    }
+
     pub fn set_enabled(&mut self, v: bool) {
         self.enabled = v;
         if !v {

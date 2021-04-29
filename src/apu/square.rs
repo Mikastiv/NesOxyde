@@ -5,7 +5,8 @@ const LENGTH_TABLE: [u8; 32] = [
 ];
 
 pub enum Channel {
-    One, Two,
+    One,
+    Two,
 }
 
 pub struct Square {
@@ -63,6 +64,32 @@ impl Square {
         }
     }
 
+    pub fn reset(&mut self) {
+        self.enabled = false;
+
+        self.duty = 0;
+        self.duty_index = 0;
+        self.timer = 0;
+        self.timer_period = 0;
+
+        self.length_halt = false;
+        self.length_counter = 0;
+
+        self.constant_volume = false;
+        self.volume = 0;
+
+        self.sweep_enabled = false;
+        self.sweep_negate = false;
+        self.sweep_reload = false;
+        self.sweep_period = 0;
+        self.sweep_shift = 0;
+        self.sweep = 0;
+
+        self.envelope_reload = false;
+        self.envelope_divider = 0;
+        self.envelope_volume = 0;
+    }
+
     pub fn set_enabled(&mut self, v: bool) {
         self.enabled = v;
         if !v {
@@ -80,9 +107,9 @@ impl Square {
 
     pub fn write_sweep(&mut self, data: u8) {
         self.sweep_enabled = data & 0x80 != 0;
-        self.sweep_period  = (data & 0x70) >> 4;
-        self.sweep_negate  = data & 0x8 != 0;
-        self.sweep_shift   =  data & 0x7;
+        self.sweep_period = (data & 0x70) >> 4;
+        self.sweep_negate = data & 0x8 != 0;
+        self.sweep_shift = data & 0x7;
 
         self.sweep_reload = true;
     }

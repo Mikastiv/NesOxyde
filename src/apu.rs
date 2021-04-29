@@ -37,6 +37,11 @@ mod noise;
 mod square;
 mod triangle;
 
+enum SequencerMode {
+    FourStep,
+    FiveStep,
+}
+
 pub struct Apu {
     cycles: u32,
     frame_counter: u32,
@@ -48,6 +53,8 @@ pub struct Apu {
     tri: Triangle,
     noise: Noise,
     dmc: Dmc,
+    sequencer: u8,
+    mode: SequencerMode,
 
     env: Decay,
     filters: Vec<Box<dyn Filter>>,
@@ -72,6 +79,8 @@ impl Apu {
             tri: Triangle::new(),
             noise: Noise::new(),
             dmc: Dmc::new(),
+            sequencer: 0,
+            mode: SequencerMode::FourStep,
 
             env: Decay::new(0.001),
             filters,
@@ -127,9 +136,16 @@ impl Apu {
                 self.dmc.set_enabled(data & 0x10 != 0);
             }
             FRAME_COUNTER => {
-                if data & 0x80 == 0 {
+                self.sequencer = 0;
+                self.mode = match data & 0x80 == 0 {
+                    true => SequencerMode::FiveStep,
+                    false => SequencerMode::FourStep,
+                };
+
+                if let SequencerMode::FiveStep = self.mode {
                     self.tick_envelopes();
                     self.tick_lengths();
+                    self.tick_sweep();
                 }
 
                 self.irq_off = data & 0x40 != 0;
@@ -141,9 +157,6 @@ impl Apu {
     pub fn clock(&mut self) {
         self.cycles = self.cycles.wrapping_add(1);
 
-        let mut quarter_frame = false;
-        let mut half_frame = false;
-
         self.tri.tick_timer();
         if self.cycles % 2 == 0 {
             self.sq1.tick_timer();
@@ -151,27 +164,11 @@ impl Apu {
             self.noise.tick_timer();
 
             self.frame_counter += 1;
-
-            match self.frame_counter {
-                3729 | 11186 => quarter_frame = true,
-                7457 | 14916 => {
-                    quarter_frame = true;
-                    half_frame = true;
-                    if self.frame_counter == 14916 {
-                        self.frame_counter = 0;
-                        self.pending_irq = if !self.irq_off { Some(true) } else { None };
-                    }
+            if let 3729 | 7457 | 11186 | 14916 = self.frame_counter {
+                self.tick_sequencer();
+                if self.frame_counter == 14916 {
+                    self.frame_counter = 0;
                 }
-                _ => {}
-            }
-
-            if quarter_frame {
-                self.tick_envelopes();
-            }
-
-            if half_frame {
-                self.tick_lengths();
-                self.tick_sweep();
             }
         }
     }
@@ -187,11 +184,13 @@ impl Apu {
     pub fn reset(&mut self) {
         self.cycles = 0;
         self.frame_counter = 0;
-        self.sq1 = Square::new();
-        self.sq2 = Square::new();
-        self.tri = Triangle::new();
-        self.noise = Noise::new();
-        self.dmc = Dmc::new();
+        self.sequencer = 0;
+        self.mode = SequencerMode::FourStep;
+        self.sq1.reset();
+        self.sq2.reset();
+        self.tri.reset();
+        self.noise.reset();
+        self.dmc.reset();
     }
 
     fn output(&mut self) -> f32 {
@@ -210,6 +209,39 @@ impl Apu {
         self.filters
             .iter_mut()
             .fold(signal, |signal, filter| filter.filter(signal))
+    }
+
+    fn tick_sequencer(&mut self) {
+        match self.mode {
+            SequencerMode::FourStep => {
+                match self.sequencer {
+                    0 | 2 => self.tick_envelopes(),
+                    value => {
+                        self.tick_envelopes();
+                        self.tick_lengths();
+                        self.tick_sweep();
+
+                        if value == 3 {
+                            self.pending_irq = if !self.irq_off { Some(true) } else { None };
+                        }
+                    }
+                }
+
+                self.sequencer = (self.sequencer + 1) % 4;
+            }
+            SequencerMode::FiveStep => {
+                match self.sequencer {
+                    0 | 2 => self.tick_envelopes(),
+                    1 | 4 => {
+                        self.tick_envelopes();
+                        self.tick_lengths();
+                        self.tick_sweep();
+                    }
+                    _ => {}
+                }
+                self.sequencer = (self.sequencer + 1) % 5;
+            }
+        }
     }
 
     fn tick_envelopes(&mut self) {
