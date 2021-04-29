@@ -19,6 +19,7 @@ pub trait Interface {
     fn read(&mut self, addr: u16) -> u8;
     fn write(&mut self, addr: u16, data: u8);
     fn poll_nmi(&mut self) -> Option<bool>;
+    fn poll_irq(&mut self) -> Option<bool>;
     fn tick(&mut self, cycles: u64);
     fn update_joypad(&mut self, button: Button, pressed: bool, port: JoyPort);
     fn frame_count(&self) -> u128;
@@ -168,16 +169,27 @@ impl<'a> Cpu<'a> {
         let ins = *OPTABLE.get(&opcode).unwrap();
         self.ins_cycles = ins.cycles;
         (ins.cpu_fn)(self, ins.mode);
-
         self.bus.tick(self.ins_cycles);
+
+        let mut irq_cycles = 0;
+        if self.bus.poll_irq().is_some() {
+            self.irq();
+            self.bus.tick(self.ins_cycles);
+            irq_cycles = self.ins_cycles;
+        }
+
         self.cycles = self.cycles.wrapping_add(self.ins_cycles);
-        nmi_cycles + self.ins_cycles
+        nmi_cycles + irq_cycles + self.ins_cycles
     }
 
     #[allow(dead_code)]
     pub fn clock(&mut self) {
         if self.ins_cycles == 0 && self.bus.poll_nmi().is_some() {
             self.nmi();
+        }
+        
+        if self.ins_cycles == 0 && self.bus.poll_irq().is_some() {
+            self.irq();
         }
 
         if self.ins_cycles == 0 {

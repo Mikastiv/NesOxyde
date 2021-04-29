@@ -25,6 +25,10 @@ impl Interface for SnakeBus {
         None
     }
 
+    fn poll_irq(&mut self) -> Option<bool> {
+        None
+    }
+
     fn tick(&mut self, _cycles: u64) {}
 
     fn update_joypad(&mut self, _button: Button, _pressed: bool, _port: JoyPort) {}

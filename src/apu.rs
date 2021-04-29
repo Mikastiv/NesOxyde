@@ -177,6 +177,10 @@ impl Apu {
         }
     }
 
+    pub fn poll_irq(&mut self) -> Option<bool> {
+        self.pending_irq.take()
+    }
+
     pub fn sample(&mut self) -> f32 {
         self.output()
     }

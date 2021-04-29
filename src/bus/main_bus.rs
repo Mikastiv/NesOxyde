@@ -92,6 +92,10 @@ impl Interface for MainBus<'_> {
         self.ppu.poll_nmi()
     }
 
+    fn poll_irq(&mut self) -> Option<bool> {
+        self.apu.poll_irq()
+    }
+
     fn tick(&mut self, cycles: u64) {
         for _ in 0..cycles {
             for _ in 0..3 {
