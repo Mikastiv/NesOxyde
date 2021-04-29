@@ -127,7 +127,6 @@ impl Apu {
                 self.dmc.set_enabled(data & 0x10 != 0);
             }
             FRAME_COUNTER => {
-                self.frame_counter = 0;
                 if data & 0x80 == 0 {
                     self.tick_envelopes();
                     self.tick_lengths();
