@@ -96,13 +96,7 @@ impl PpuBus {
                 ),
             },
             MirrorMode::OneScreenLo => index & 0x3FF,
-            MirrorMode::OneScreenHi => {
-                if index > 0x3FF {
-                    index & 0x7FF
-                } else {
-                    (index + NTA_SIZE) & 0x7FF
-                }
-            }
+            MirrorMode::OneScreenHi => (index & 0x3FF) + NTA_SIZE,
         }
     }
 }
