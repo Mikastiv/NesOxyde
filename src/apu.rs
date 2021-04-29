@@ -40,6 +40,8 @@ mod triangle;
 pub struct Apu {
     cycles: u32,
     frame_counter: u32,
+    irq_off: bool,
+    pending_irq: Option<bool>,
 
     sq1: Square,
     sq2: Square,
@@ -62,6 +64,8 @@ impl Apu {
         Self {
             cycles: 0,
             frame_counter: 0,
+            irq_off: false,
+            pending_irq: None,
 
             sq1: Square::new(),
             sq2: Square::new(),
@@ -74,13 +78,15 @@ impl Apu {
         }
     }
 
-    pub fn read(&self, addr: u16) -> u8 {
+    pub fn read(&mut self, addr: u16) -> u8 {
         match addr {
             SND_CHN => {
                 let sq1 = (self.sq1.length_counter() > 0) as u8;
                 let sq2 = (self.sq2.length_counter() > 0) as u8;
                 let tri = (self.tri.length_counter() > 0) as u8;
                 let noise = (self.noise.length_counter() > 0) as u8;
+
+                self.pending_irq = None;
 
                 noise << 3 | tri << 2 | sq2 << 1 | sq1
             }
@@ -121,10 +127,13 @@ impl Apu {
                 self.dmc.set_enabled(data & 0x10 != 0);
             }
             FRAME_COUNTER => {
+                self.frame_counter = 0;
                 if data & 0x80 == 0 {
                     self.tick_envelopes();
                     self.tick_lengths();
                 }
+
+                self.irq_off = data & 0x40 != 0;
             }
             _ => {}
         }
@@ -151,6 +160,7 @@ impl Apu {
                     half_frame = true;
                     if self.frame_counter == 14916 {
                         self.frame_counter = 0;
+                        self.pending_irq = if !self.irq_off { Some(true) } else { None };
                     }
                 }
                 _ => {}
@@ -187,9 +197,8 @@ impl Apu {
         let pulse = 95.88 / (100.0 + (8128.0 / (sq1 as f32 + sq2 as f32)));
 
         let tri = self.env.decay(0.8 * self.tri.output() as f32);
-        let noise = 0.8 * self.noise.output() as f32;
+        let noise = 0.7 * self.noise.output() as f32;
         let dmc = self.dmc.output() as f32;
-
         let tnd = 159.79
             / (100.0 + (1.0 / ((tri as f32 / 8227.0) + (noise / 12241.0) + (dmc / 22638.0))));
 

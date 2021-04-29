@@ -1,6 +1,6 @@
 use std::fmt::Display;
 use std::fs::File;
-use std::io::{self, Read};
+use std::io::{self, Read, Seek, SeekFrom};
 use std::path::Path;
 
 use super::MirrorMode;
@@ -69,8 +69,12 @@ impl Rom {
             ));
         }
 
+        if header.has_trainer() {
+            file.seek(SeekFrom::Current(512))?;
+        }
+
         let prg_size = PRG_PAGE_SIZE * header.prg_count();
-        let prg_start = if header.has_trainer() { 512 } else { 0 };
+        let prg_start = 0;
         let chr_size = CHR_PAGE_SIZE * header.chr_count();
         let chr_start = prg_start + prg_size;
 

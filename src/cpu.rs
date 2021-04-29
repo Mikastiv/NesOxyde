@@ -184,6 +184,7 @@ impl<'a> Cpu<'a> {
             let opcode = self.read_byte();
 
             let ins = *OPTABLE.get(&opcode).unwrap();
+
             self.ins_cycles = ins.cycles;
             (ins.cpu_fn)(self, ins.mode);
         }
