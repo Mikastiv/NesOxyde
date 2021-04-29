@@ -24,10 +24,10 @@ SyncMode: -A (default) or -V
 
 ## Controls
 
-R -> Reset
+R -> Reset  
 Esc -> Close emulator
 
-Key mappings can be changed in main.rs
+Key mappings can be changed in main.rs  
 Defaults:
 - A -> B
 - S -> A
