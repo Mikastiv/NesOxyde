@@ -106,6 +106,7 @@ impl<'a> Cpu<'a> {
     }
 
     pub fn reset(&mut self) {
+        self.bus.reset();
         self.a = 0;
         self.x = 0;
         self.y = 0;
@@ -113,7 +114,6 @@ impl<'a> Cpu<'a> {
         self.p = Flags::from_bits_truncate(STATUS_RESET);
         self.pc = self.mem_read_word(RESET_VECTOR);
         self.ins_cycles = 0;
-        self.bus.reset();
         self.bus.tick(7);
         self.cycles = 7;
     }
