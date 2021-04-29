@@ -182,7 +182,6 @@ impl<'a> Cpu<'a> {
         nmi_cycles + irq_cycles + self.ins_cycles
     }
 
-    #[allow(dead_code)]
     pub fn clock(&mut self) {
         if self.ins_cycles == 0 && self.bus.poll_nmi() {
             self.nmi();
