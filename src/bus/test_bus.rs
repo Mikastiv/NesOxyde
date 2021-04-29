@@ -1,7 +1,6 @@
 #![allow(dead_code)]
 
 use crate::cpu::Interface;
-use crate::joypad::{Button, JoyPort};
 
 pub struct TestBus {
     ram: [u8; 0x800],

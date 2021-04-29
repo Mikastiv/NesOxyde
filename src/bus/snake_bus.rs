@@ -3,7 +3,6 @@
 use std::usize;
 
 use crate::cpu::Interface;
-use crate::joypad::{Button, JoyPort};
 
 const RESET_VECTOR: u16 = 0xFFFC;
 

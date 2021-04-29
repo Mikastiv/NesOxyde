@@ -41,5 +41,6 @@ Defaults:
 ## Screenshots
 
 ![Super Mario Bros](/screenshots/smb.png "Super Mario Bros")
+![Super Mario Bros 3](/screenshots/smb3.png "Super Mario Bros 3")
 ![Zelda](/screenshots/zelda.png "Zelda")
 ![Castlevania](/screenshots/castlevania.png "Castlevania")
