@@ -149,7 +149,7 @@ impl<'a> MainBus<'a> {
         Self {
             ram: [0; RAM_SIZE],
             cartridge,
-            apu: Apu::new(),
+            apu: Apu::new(sample_rate as f32),
             ppu: Ppu::new(Box::new(ppu_bus), Box::new(sdl_render_fn)),
             joypads: [JoyPad::new(); 2],
 

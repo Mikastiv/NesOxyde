@@ -61,11 +61,11 @@ pub struct Apu {
 }
 
 impl Apu {
-    pub fn new() -> Self {
+    pub fn new(sample_rate: f32) -> Self {
         let filters: Vec<Box<dyn Filter>> = vec![
-            Box::new(LowPass::new(14000.0, 44100.0, 2.0f32.sqrt())),
-            Box::new(HighPass::new(90.0, 44100.0, 2.0f32.sqrt())),
-            Box::new(HighPass::new(440.0, 44100.0, 2.0f32.sqrt())),
+            Box::new(LowPass::new(14000.0, sample_rate, 2.0f32.sqrt())),
+            Box::new(HighPass::new(90.0, sample_rate, 2.0f32.sqrt())),
+            Box::new(HighPass::new(440.0, sample_rate, 2.0f32.sqrt())),
         ];
 
         Self {
