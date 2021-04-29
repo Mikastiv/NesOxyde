@@ -60,4 +60,12 @@ impl Cartridge {
     pub fn reset(&mut self) {
         self.mapper.reset();
     }
+
+    pub fn inc_scanline(&mut self) {
+        self.mapper.inc_scanline();
+    }
+
+    pub fn poll_irq(&mut self) -> bool {
+        self.mapper.poll_irq().is_some()
+    }
 }

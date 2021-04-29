@@ -11,8 +11,8 @@ pub struct Mapper4 {
     mirror_mode: MirrorMode,
 
     registers: [u8; 8],
-    prg_pages: [usize; 4],
-    chr_pages: [usize; 8],
+    prg_banks: [usize; 4],
+    chr_banks: [usize; 8],
 
     irq_reload: u8,
     irq_counter: u8,
@@ -33,8 +33,8 @@ impl Mapper4 {
             mirror_mode: MirrorMode::Horizontal,
 
             registers: [0; 8],
-            prg_pages: [0; 4],
-            chr_pages: [0; 8],
+            prg_banks: [0; 4],
+            chr_banks: [0; 8],
 
             irq_reload: 0,
             irq_counter: 0,
@@ -58,7 +58,7 @@ impl Mapper for Mapper4 {
                     0xE000..=0xFFFF => 3,
                     _ => 0,
                 };
-                let index = self.prg_pages[reg_index] + (addr & 0x1FFF) as usize;
+                let index = self.prg_banks[reg_index] + (addr & 0x1FFF) as usize;
                 self.rom.prg[index]
             }
             _ => 0,
@@ -79,39 +79,39 @@ impl Mapper for Mapper4 {
 
                 match self.chr_invert {
                     true => {
-                        self.chr_pages[0] = self.registers[2] as usize * 0x400;
-                        self.chr_pages[1] = self.registers[3] as usize * 0x400;
-                        self.chr_pages[2] = self.registers[4] as usize * 0x400;
-                        self.chr_pages[3] = self.registers[5] as usize * 0x400;
-                        self.chr_pages[4] = (self.registers[0] & 0xFE) as usize * 0x400;
-                        self.chr_pages[5] = self.registers[0] as usize * 0x400 + 0x400;
-                        self.chr_pages[6] = (self.registers[1] & 0xFE) as usize * 0x400;
-                        self.chr_pages[7] = self.registers[1] as usize * 0x400 + 0x400;
+                        self.chr_banks[0] = self.registers[2] as usize * 0x400;
+                        self.chr_banks[1] = self.registers[3] as usize * 0x400;
+                        self.chr_banks[2] = self.registers[4] as usize * 0x400;
+                        self.chr_banks[3] = self.registers[5] as usize * 0x400;
+                        self.chr_banks[4] = (self.registers[0] & 0xFE) as usize * 0x400;
+                        self.chr_banks[5] = (self.registers[0] & 0xFE) as usize * 0x400 + 0x400;
+                        self.chr_banks[6] = (self.registers[1] & 0xFE) as usize * 0x400;
+                        self.chr_banks[7] = (self.registers[1] & 0xFE) as usize * 0x400 + 0x400;
                     }
                     false => {
-                        self.chr_pages[0] = (self.registers[0] & 0xFE) as usize * 0x400;
-                        self.chr_pages[1] = self.registers[0] as usize * 0x400 + 0x400;
-                        self.chr_pages[2] = (self.registers[1] & 0xFE) as usize * 0x400;
-                        self.chr_pages[3] = self.registers[1] as usize * 0x400 + 0x400;
-                        self.chr_pages[4] = self.registers[2] as usize * 0x400;
-                        self.chr_pages[5] = self.registers[3] as usize * 0x400;
-                        self.chr_pages[6] = self.registers[4] as usize * 0x400;
-                        self.chr_pages[7] = self.registers[5] as usize * 0x400;
+                        self.chr_banks[0] = (self.registers[0] & 0xFE) as usize * 0x400;
+                        self.chr_banks[1] = (self.registers[0] & 0xFE) as usize * 0x400 + 0x400;
+                        self.chr_banks[2] = (self.registers[1] & 0xFE) as usize * 0x400;
+                        self.chr_banks[3] = (self.registers[1] & 0xFE) as usize * 0x400 + 0x400;
+                        self.chr_banks[4] = self.registers[2] as usize * 0x400;
+                        self.chr_banks[5] = self.registers[3] as usize * 0x400;
+                        self.chr_banks[6] = self.registers[4] as usize * 0x400;
+                        self.chr_banks[7] = self.registers[5] as usize * 0x400;
                     }
                 }
 
                 match self.prg_mode {
                     true => {
-                        self.prg_pages[2] = (self.registers[6] & 0x3F) as usize * 0x2000;
-                        self.prg_pages[0] = (self.rom.header.prg_count() * 2 - 2) * 0x2000;
+                        self.prg_banks[0] = (self.rom.header.prg_count() * 2 - 2) * 0x2000;
+                        self.prg_banks[2] = (self.registers[6] & 0x3F) as usize * 0x2000;
                     }
                     false => {
-                        self.prg_pages[0] = (self.registers[6] & 0x3F) as usize * 0x2000;
-                        self.prg_pages[2] = (self.rom.header.prg_count() * 2 - 2) * 0x2000;
+                        self.prg_banks[0] = (self.registers[6] & 0x3F) as usize * 0x2000;
+                        self.prg_banks[2] = (self.rom.header.prg_count() * 2 - 2) * 0x2000;
                     }
                 }
 
-                self.prg_pages[1] = (self.registers[7] & 0x3F) as usize * 0x2000;
+                self.prg_banks[1] = (self.registers[7] & 0x3F) as usize * 0x2000;
             }
             0xA000..=0xBFFF if even => match data & 0x1 != 0 {
                 true => self.mirror_mode = MirrorMode::Horizontal,
@@ -140,7 +140,7 @@ impl Mapper for Mapper4 {
             0x1C00..=0x1FFF => 7,
             _ => 0,
         };
-        let index = self.chr_pages[reg_index] + (addr & 0x3FF) as usize;
+        let index = self.chr_banks[reg_index] + (addr & 0x3FF) as usize;
         self.rom.chr[index]
     }
 
@@ -166,11 +166,26 @@ impl Mapper for Mapper4 {
         self.pending_irq = None;
 
         self.registers.fill(0);
-        self.chr_pages.fill(0);
+        self.chr_banks.fill(0);
 
-        self.prg_pages[0] = 0;
-        self.prg_pages[1] = 0x2000;
-        self.prg_pages[2] = (self.rom.header.prg_count() * 2 - 2) as usize * 0x2000;
-        self.prg_pages[3] = (self.rom.header.prg_count() * 2 - 1) as usize * 0x2000;
+        self.prg_banks[0] = 0;
+        self.prg_banks[1] = 0x2000;
+        self.prg_banks[2] = (self.rom.header.prg_count() * 2 - 2) as usize * 0x2000;
+        self.prg_banks[3] = (self.rom.header.prg_count() * 2 - 1) as usize * 0x2000;
+    }
+
+    fn inc_scanline(&mut self) {
+        match self.irq_counter == 0 {
+            true => self.irq_counter = self.irq_reload,
+            false => self.irq_counter -= 1,
+        }
+
+        if self.irq_counter == 0 && self.irq_enable {
+            self.pending_irq = Some(true);
+        }
+    }
+
+    fn poll_irq(&mut self) -> Option<bool> {
+        self.pending_irq.take()
     }
 }

@@ -93,7 +93,7 @@ impl Interface for MainBus<'_> {
     }
 
     fn poll_irq(&mut self) -> bool {
-        self.apu.poll_irq().is_some()
+        self.apu.poll_irq().is_some() | self.cartridge.borrow_mut().poll_irq()
     }
 
     fn tick(&mut self, cycles: u64) {

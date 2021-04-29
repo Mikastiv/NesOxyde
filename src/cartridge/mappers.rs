@@ -21,4 +21,8 @@ pub trait Mapper {
     fn write_chr(&mut self, addr: u16, data: u8);
     fn mirror_mode(&self) -> MirrorMode;
     fn reset(&mut self);
+    fn inc_scanline(&mut self) {}
+    fn poll_irq(&mut self) -> Option<bool> {
+        None
+    }
 }

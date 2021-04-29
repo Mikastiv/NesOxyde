@@ -49,6 +49,7 @@ const OAM2_SIZE: usize = 0x8;
 pub trait Interface {
     fn read(&self, addr: u16) -> u8;
     fn write(&mut self, addr: u16, data: u8);
+    fn inc_scanline(&mut self);
 }
 
 pub struct Ppu<'a> {
@@ -400,17 +401,16 @@ impl<'a> Ppu<'a> {
                 }
             };
 
-            // Little hack because for some reasons the first row of 
-            // the first two tiles sometimes were the wrong color
-            let color = if scanline == 0 {
-                self.get_color(palette, 0)
-            } else {
-                self.get_color(palette, pixel)
-            };
+            let color = self.get_color(palette, pixel);
             self.frame.set_pixel(cycle - 1, scanline as usize, color);
         }
 
         self.cycle += 1;
+
+        if self.rendering_enabled() && self.cycle == 260 && scanline < 240 {
+            self.bus.inc_scanline();
+        }
+
         if self.cycle > 340 {
             self.cycle = 0;
             self.scanline += 1;

@@ -62,6 +62,10 @@ impl Interface for PpuBus {
             _ => unreachable!("Reached impossible match arm. (Ppu bus addr) {:#04X}", addr),
         }
     }
+
+    fn inc_scanline(&mut self) {
+        self.cartridge.borrow_mut().inc_scanline()
+    }
 }
 
 impl PpuBus {
