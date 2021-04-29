@@ -69,7 +69,7 @@ impl Rom {
             ));
         }
 
-        if header.bytes[7] & 0xC != 0x0 {
+        if !(header.bytes[7] & 0xC == 0 && header.bytes[12..].iter().all(|byte| *byte == 0)) {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
                 "This emulator does not support iNES2.0 nor archaic iNES",
