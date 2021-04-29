@@ -23,12 +23,12 @@ impl Interface for TestBus {
         }
     }
 
-    fn poll_nmi(&mut self) -> Option<bool> {
-        None
+    fn poll_nmi(&mut self) -> bool {
+        false
     }
 
-    fn poll_irq(&mut self) -> Option<bool> {
-        None
+    fn poll_irq(&mut self) -> bool {
+        false
     }
 
     fn tick(&mut self, _cycles: u64) {}

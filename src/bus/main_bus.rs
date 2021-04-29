@@ -88,12 +88,12 @@ impl Interface for MainBus<'_> {
         }
     }
 
-    fn poll_nmi(&mut self) -> Option<bool> {
-        self.ppu.poll_nmi()
+    fn poll_nmi(&mut self) -> bool {
+        self.ppu.poll_nmi().is_some()
     }
 
-    fn poll_irq(&mut self) -> Option<bool> {
-        self.apu.poll_irq()
+    fn poll_irq(&mut self) -> bool {
+        self.apu.poll_irq().is_some()
     }
 
     fn tick(&mut self, cycles: u64) {
