@@ -17,10 +17,10 @@ It works on Linux, Windows and MacOS
 
 Launch: ./nesoxyde [SyncMode] \<iNES File\>
 
-SyncMode:
+SyncMode: -A (default) or -V
 
-- -A (default) - Audio sync. The emulation is synced with the audio sample rate (44100Hz). Can cause frame lag.
-- -V - Video sync. The emulation is synced with the video refresh rate of 60fps. Can cause audio pops and cracks.
+- Audio sync (-A). The emulation is synced with the audio sample rate (44100Hz). Can cause frame lag.
+- Video sync (-V). The emulation is synced with the video refresh rate of 60fps. Can cause audio pops and cracks.
 
 ## Screenshots
 
