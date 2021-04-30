@@ -129,7 +129,7 @@ impl Dmc {
                 true => self.output_level + 2,
                 false => self.output_level - 2,
             };
-            if (0..=0x7F).contains(&v) {
+            if (0..=0x7F).contains(&v) && self.enabled {
                 self.output_level = v;
             }
         }
