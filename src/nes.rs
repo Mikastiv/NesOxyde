@@ -125,7 +125,7 @@ where
             Mode::VideoSync => {
                 let frame_count = cpu.frame_count();
                 while cpu.frame_count() == frame_count {
-                    cpu.execute();
+                    cpu.clock();
                 }
                 timer.wait(Duration::from_secs_f64(SECS_PER_FRAME));
                 timer.reset();

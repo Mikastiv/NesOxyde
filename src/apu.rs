@@ -94,10 +94,11 @@ impl Apu {
                 let sq2 = (self.sq2.length_counter() > 0) as u8;
                 let tri = (self.tri.length_counter() > 0) as u8;
                 let noise = (self.noise.length_counter() > 0) as u8;
+                let irq = self.pending_irq.is_some() as u8;
 
                 self.pending_irq = None;
 
-                noise << 3 | tri << 2 | sq2 << 1 | sq1
+                irq << 6 | noise << 3 | tri << 2 | sq2 << 1 | sq1
             }
             _ => 0,
         }
@@ -136,7 +137,6 @@ impl Apu {
                 self.dmc.set_enabled(data & 0x10 != 0);
             }
             FRAME_COUNTER => {
-                self.sequencer = 0;
                 self.mode = match data & 0x80 == 0 {
                     true => SequencerMode::FiveStep,
                     false => SequencerMode::FourStep,
