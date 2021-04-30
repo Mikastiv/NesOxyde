@@ -102,9 +102,11 @@ impl Noise {
                     false => 1,
                 };
 
-                let feedback = (self.shift & 0x1) ^ ((self.shift >> bit) & 0x1);
-                self.shift >>= 1;
-                self.shift |= feedback << 14;
+                if self.shift == 0 {
+                    self.shift = 1;
+                }
+                let feedback = (self.shift ^ (self.shift >> bit)) & 0x1;
+                self.shift = (self.shift >> 1) | (feedback << 14);
             }
             false => self.timer -= 1,
         }
