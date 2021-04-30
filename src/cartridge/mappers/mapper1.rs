@@ -91,7 +91,7 @@ impl Mapper for Mapper1 {
                             }
                             1 => match chr_4k_mode {
                                 true => self.chr_lo = self.load & 0x1F,
-                                false => self.chr_8k = self.load & 0x1E,
+                                false => self.chr_8k = (self.load & 0x1E) >> 1,
                             },
                             2 => {
                                 if chr_4k_mode {
@@ -127,6 +127,10 @@ impl Mapper for Mapper1 {
     fn read_chr(&mut self, addr: u16) -> u8 {
         let chr_4k_mode = self.control & 0x10 != 0;
 
+        if self.rom.header.chr_count() == 0 {
+            return self.rom.chr[addr as usize];
+        }
+
         let index = match chr_4k_mode {
             true => match addr {
                 0x0000..=0x0FFF => self.chr_lo as usize * 0x1000 + (addr & 0xFFF) as usize,
@@ -135,6 +139,11 @@ impl Mapper for Mapper1 {
             },
             false => self.chr_8k as usize * 0x2000 + (addr & 0x1FFF) as usize,
         };
+        if index > self.rom.chr.len() {
+            println!("{}", chr_4k_mode);
+            println!("{}", self.chr_8k);
+            println!("{}", index);
+        }
         self.rom.chr[index]
     }
 
@@ -149,7 +158,7 @@ impl Mapper for Mapper1 {
     }
 
     fn reset(&mut self) {
-        self.control |= 0x0C;
+        self.control = 0x0C;
         self.count = 0;
         self.load = 0;
         self.prg_hi = (self.rom.header.prg_count() - 1) as u8;

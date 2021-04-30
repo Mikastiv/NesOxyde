@@ -31,6 +31,10 @@ impl Mapper for Mapper3 {
     }
 
     fn read_chr(&mut self, addr: u16) -> u8 {
+        if self.rom.header.chr_count() == 0 {
+            return self.rom.chr[addr as usize];
+        }
+
         let mask = self.rom.header.chr_count() * CHR_PAGE_SIZE - 1;
         let index = self.page * CHR_PAGE_SIZE + addr as usize;
         self.rom.chr[index & mask]
@@ -38,9 +42,7 @@ impl Mapper for Mapper3 {
 
     fn write_chr(&mut self, addr: u16, data: u8) {
         if self.rom.header.chr_count() == 0 {
-            let mask = self.rom.header.chr_count() * CHR_PAGE_SIZE - 1;
-            let index = self.page * CHR_PAGE_SIZE + addr as usize;
-            self.rom.chr[index & mask] = data;
+            self.rom.chr[addr as usize] = data;
         }
     }
 

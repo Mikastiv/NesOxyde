@@ -129,6 +129,10 @@ impl Mapper for Mapper4 {
     }
 
     fn read_chr(&mut self, addr: u16) -> u8 {
+        if self.rom.header.chr_count() == 0 {
+            return self.rom.chr[addr as usize];
+        }
+        
         let reg_index = match addr {
             0x0000..=0x03FF => 0,
             0x0400..=0x07FF => 1,
