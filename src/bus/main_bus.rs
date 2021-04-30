@@ -74,6 +74,7 @@ impl Interface for MainBus<'_> {
                     self.tick(1);
                     self.write(0x2000 + OAM_DATA, v);
                     self.tick(1);
+                    self.update_dmc_sample();
                 }
             }
             APU_REG_START..=APU_REG_END | APU_CH_ENABLE | APU_FRAME_COUNTER => {
@@ -103,6 +104,7 @@ impl Interface for MainBus<'_> {
             }
 
             self.apu.clock();
+            self.update_dmc_sample();
             self.audio_time += self.time_per_clock;
             if self.audio_time >= self.time_per_sample {
                 self.audio_time -= self.time_per_sample;
@@ -157,6 +159,14 @@ impl<'a> MainBus<'a> {
             time_per_clock: 1.0 / Self::APU_CLOCK_RATE,
             time_per_sample: 1.0 / sample_rate,
             samples: Vec::new(),
+        }
+    }
+
+    fn update_dmc_sample(&mut self) {
+        if self.apu.need_dmc_sample() {
+            let addr = self.apu.dmc_sample_address();
+            let sample = self.read(addr);
+            self.apu.set_dmc_sample(sample);
         }
     }
 }

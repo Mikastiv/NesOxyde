@@ -158,11 +158,11 @@ impl Apu {
         self.cycles = self.cycles.wrapping_add(1);
 
         self.tri.tick_timer();
+        self.dmc.tick();
         if self.cycles % 2 == 0 {
             self.sq1.tick_timer();
             self.sq2.tick_timer();
             self.noise.tick_timer();
-            self.dmc.tick();
 
             self.frame_counter += 1;
             if let 3729 | 7457 | 11186 | 14916 = self.frame_counter {
@@ -179,6 +179,18 @@ impl Apu {
             true => Some(true),
             false => None,
         }
+    }
+
+    pub fn need_dmc_sample(&mut self) -> bool {
+        self.dmc.need_sample().is_some()
+    }
+
+    pub fn set_dmc_sample(&mut self, sample: u8) {
+        self.dmc.set_sample(sample);
+    }
+
+    pub fn dmc_sample_address(&self) -> u16 {
+        self.dmc.address()
     }
 
     pub fn sample(&mut self) -> f32 {
