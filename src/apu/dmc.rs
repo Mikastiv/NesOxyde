@@ -152,6 +152,10 @@ impl Dmc {
         self.pending_irq.take()
     }
 
+    pub fn length_counter(&self) -> u16 {
+        self.length_counter
+    }
+
     pub fn output(&self) -> u8 {
         self.output_level
     }
