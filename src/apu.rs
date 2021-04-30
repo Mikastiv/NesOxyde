@@ -162,6 +162,7 @@ impl Apu {
             self.sq1.tick_timer();
             self.sq2.tick_timer();
             self.noise.tick_timer();
+            self.dmc.tick();
 
             self.frame_counter += 1;
             if let 3729 | 7457 | 11186 | 14916 = self.frame_counter {
@@ -174,7 +175,10 @@ impl Apu {
     }
 
     pub fn poll_irq(&mut self) -> Option<bool> {
-        self.pending_irq.take()
+        match self.pending_irq.take().is_some() | self.dmc.poll_irq().is_some() {
+            true => Some(true),
+            false => None,
+        }
     }
 
     pub fn sample(&mut self) -> f32 {
