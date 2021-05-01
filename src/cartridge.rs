@@ -3,7 +3,7 @@ use std::fmt::Display;
 use std::io;
 use std::path::Path;
 
-use mappers::{Mapper, Mapper0, Mapper1, Mapper2, Mapper3, Mapper4, Mapper7, Mapper9};
+use mappers::{Mapper, Mapper0, Mapper1, Mapper2, Mapper3, Mapper4, Mapper7, Mapper9, Mapper10};
 use rom::Rom;
 
 mod mappers;
@@ -32,6 +32,7 @@ impl Cartridge {
             4 => Box::new(Mapper4::new(rom)),
             7 => Box::new(Mapper7::new(rom)),
             9 => Box::new(Mapper9::new(rom)),
+            10 => Box::new(Mapper10::new(rom)),
             _ => panic!("Unimplemented mapper: {}", rom.header.mapper_id()),
         };
 

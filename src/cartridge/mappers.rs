@@ -5,6 +5,7 @@ pub use mapper3::Mapper3;
 pub use mapper4::Mapper4;
 pub use mapper7::Mapper7;
 pub use mapper9::Mapper9;
+pub use mapper10::Mapper10;
 
 use super::MirrorMode;
 
@@ -15,6 +16,7 @@ mod mapper3;
 mod mapper4;
 mod mapper7;
 mod mapper9;
+mod mapper10;
 
 pub trait Mapper {
     fn read_prg(&mut self, addr: u16) -> u8;
