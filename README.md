@@ -38,6 +38,10 @@ Defaults:
 - LeftArrow -> Left
 - RightArrow -> Right
 
+## TODOs
+
+- Add a save/load state system
+
 ## Screenshots
 
 ![Super Mario Bros](/screenshots/smb.png "Super Mario Bros")
