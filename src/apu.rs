@@ -82,7 +82,7 @@ impl Apu {
             sequencer: 0,
             mode: SequencerMode::FourStep,
 
-            tri_decay: Decay::new(0.001),
+            tri_decay: Decay::new(0.1),
             filters,
         }
     }

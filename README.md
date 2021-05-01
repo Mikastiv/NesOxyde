@@ -19,7 +19,7 @@ Launch: ./nesoxyde [SyncMode] \<iNES File\>
 
 SyncMode: -A (default) or -V
 
-- Audio sync (-A). The emulation is synced with the audio sample rate (48000Hz). Can cause frame lag.
+- Audio sync (-A). The emulation is synced with the audio sample rate (44100Hz). Can cause frame lag.
 - Video sync (-V). The emulation is synced with the video refresh rate of 60fps. Can cause audio pops and cracks.
 
 ## Controls

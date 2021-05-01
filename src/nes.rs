@@ -50,7 +50,7 @@ where
         .unwrap();
 
     let sample_size = 1024;
-    let sample_rate = 48000;
+    let sample_rate = 44100;
     let spec = AudioSpecDesired {
         freq: Some(sample_rate as i32),
         channels: Some(1),
