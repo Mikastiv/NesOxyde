@@ -65,7 +65,7 @@ impl Apu {
         let filters: Vec<Box<dyn Filter>> = vec![
             Box::new(LowPass::new(14000.0, sample_rate, 2.0f32.sqrt())),
             Box::new(HighPass::new(90.0, sample_rate, 2.0f32.sqrt())),
-            Box::new(HighPass::new(440.0, sample_rate, 2.0f32.sqrt())),
+            //Box::new(HighPass::new(440.0, sample_rate, 2.0f32.sqrt())),
         ];
 
         Self {
