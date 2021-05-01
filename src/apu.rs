@@ -95,10 +95,8 @@ impl Apu {
                 let tri = (self.tri.length_counter() > 0) as u8;
                 let noise = (self.noise.length_counter() > 0) as u8;
                 let dmc = (self.dmc.length_counter() > 0) as u8;
-                let irq = self.pending_irq.is_some() as u8;
+                let irq = self.pending_irq.take().is_some() as u8;
                 let dmc_irq = self.dmc.poll_irq().is_some() as u8;
-
-                self.pending_irq = None;
 
                 dmc_irq << 7 | irq << 6 | dmc << 4 | noise << 3 | tri << 2 | sq2 << 1 | sq1
             }
