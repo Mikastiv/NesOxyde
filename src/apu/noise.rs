@@ -80,7 +80,6 @@ impl Noise {
         self.length_halt = data & 0x20 != 0;
         self.constant_volume = data & 0x10 != 0;
         self.volume = data & 0xF;
-        self.envelope_reload = true;
     }
 
     pub fn write_lo(&mut self, data: u8) {
@@ -89,6 +88,7 @@ impl Noise {
     }
 
     pub fn write_hi(&mut self, data: u8) {
+        self.envelope_reload = true;
         self.length_counter = LENGTH_TABLE[(data >> 3) as usize];
     }
 

@@ -165,9 +165,9 @@ impl Apu {
         self.tri.tick_timer();
         self.dmc.tick();
         if self.cycles % 2 == 0 {
+            self.noise.tick_timer();
             self.sq1.tick_timer();
             self.sq2.tick_timer();
-            self.noise.tick_timer();
 
             self.frame_counter += 1;
             if let 3729 | 7457 | 11186 | 14916 = self.frame_counter {
@@ -225,11 +225,11 @@ impl Apu {
         let tnd = 159.79
             / (100.0 + (1.0 / ((tri as f32 / 8227.0) + (noise / 12241.0) + (dmc / 22638.0))));
 
-        let signal = pulse + tnd;
+        let sample = pulse + tnd;
 
         self.filters
             .iter_mut()
-            .fold(signal, |signal, filter| filter.filter(signal))
+            .fold(sample, |sample, filter| filter.filter(sample))
     }
 
     fn tick_sequencer(&mut self) {

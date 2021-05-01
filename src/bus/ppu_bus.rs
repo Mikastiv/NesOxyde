@@ -2,7 +2,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use crate::cartridge::{Cartridge, MirrorMode};
-use crate::ppu::Interface;
+use crate::ppu;
 
 const ROM_START: u16 = 0x0000;
 const ROM_END: u16 = 0x1FFF;
@@ -22,7 +22,7 @@ pub struct PpuBus {
     vram: [u8; VRAM_SIZE],
 }
 
-impl Interface for PpuBus {
+impl ppu::Interface for PpuBus {
     fn read(&self, addr: u16) -> u8 {
         let addr = addr & 0x3FFF;
         match addr {
@@ -84,20 +84,12 @@ impl PpuBus {
         match self.cartridge.borrow().mirror_mode() {
             MirrorMode::Vertical => match nta {
                 2 | 3 => index - (NTA_SIZE * 2),
-                0 | 1 => index,
-                _ => unreachable!(
-                    "Reached impossible match arm. Nametable (id: {}, addr: {})",
-                    nta, addr
-                ),
+                _ => index,
             },
             MirrorMode::Horizontal => match nta {
                 1 | 2 => index - NTA_SIZE,
                 3 => index - (NTA_SIZE * 2),
-                0 => index,
-                _ => unreachable!(
-                    "Reached impossible match arm. Nametable (id: {}, addr: {})",
-                    nta, addr
-                ),
+                _ => index,
             },
             MirrorMode::OneScreenLo => index & 0x3FF,
             MirrorMode::OneScreenHi => (index & 0x3FF) + NTA_SIZE,
