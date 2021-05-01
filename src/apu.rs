@@ -179,11 +179,8 @@ impl Apu {
         }
     }
 
-    pub fn poll_irq(&mut self) -> Option<bool> {
-        match self.pending_irq.take().is_some() | self.dmc.poll_irq().is_some() {
-            true => Some(true),
-            false => None,
-        }
+    pub fn poll_irq(&mut self) -> bool {
+        self.pending_irq.take().is_some() | self.dmc.poll_irq().is_some()
     }
 
     pub fn need_dmc_sample(&mut self) -> bool {

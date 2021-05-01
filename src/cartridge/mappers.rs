@@ -4,6 +4,7 @@ pub use mapper2::Mapper2;
 pub use mapper3::Mapper3;
 pub use mapper4::Mapper4;
 pub use mapper7::Mapper7;
+pub use mapper9::Mapper9;
 
 use super::MirrorMode;
 
@@ -13,6 +14,7 @@ mod mapper2;
 mod mapper3;
 mod mapper4;
 mod mapper7;
+mod mapper9;
 
 pub trait Mapper {
     fn read_prg(&mut self, addr: u16) -> u8;
@@ -22,7 +24,7 @@ pub trait Mapper {
     fn mirror_mode(&self) -> MirrorMode;
     fn reset(&mut self);
     fn inc_scanline(&mut self) {}
-    fn poll_irq(&mut self) -> Option<bool> {
-        None
+    fn poll_irq(&mut self) -> bool {
+        false
     }
 }

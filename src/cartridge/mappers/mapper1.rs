@@ -37,7 +37,7 @@ impl Mapper1 {
             load: 0,
 
             ram: vec![0; 0x2000],
-            mirror_mode: MirrorMode::Horizontal,
+            mirror_mode: MirrorMode::Vertical,
         }
     }
 }
@@ -158,6 +158,7 @@ impl Mapper for Mapper1 {
     }
 
     fn reset(&mut self) {
+        self.mirror_mode = MirrorMode::Vertical;
         self.control = 0x0C;
         self.count = 0;
         self.load = 0;

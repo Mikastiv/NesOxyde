@@ -347,8 +347,8 @@ impl<'a> Ppu<'a> {
         }
     }
 
-    pub fn poll_nmi(&mut self) -> Option<bool> {
-        self.pending_nmi.take()
+    pub fn poll_nmi(&mut self) -> bool {
+        self.pending_nmi.take().is_some()
     }
 
     pub fn clock(&mut self) {

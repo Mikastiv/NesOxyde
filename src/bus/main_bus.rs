@@ -90,11 +90,11 @@ impl Interface for MainBus<'_> {
     }
 
     fn poll_nmi(&mut self) -> bool {
-        self.ppu.poll_nmi().is_some()
+        self.ppu.poll_nmi()
     }
 
     fn poll_irq(&mut self) -> bool {
-        self.apu.poll_irq().is_some() | self.cartridge.borrow_mut().poll_irq()
+        self.apu.poll_irq() | self.cartridge.borrow_mut().poll_irq()
     }
 
     fn tick(&mut self, cycles: u64) {

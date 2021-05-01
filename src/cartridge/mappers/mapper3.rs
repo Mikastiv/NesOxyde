@@ -5,12 +5,12 @@ use super::Mapper;
 
 pub struct Mapper3 {
     rom: Rom,
-    page: usize,
+    bank: usize,
 }
 
 impl Mapper3 {
     pub fn new(rom: Rom) -> Self {
-        Self { rom, page: 0 }
+        Self { rom, bank: 0 }
     }
 }
 
@@ -26,7 +26,7 @@ impl Mapper for Mapper3 {
 
     fn write_prg(&mut self, addr: u16, data: u8) {
         if let 0x8000..=0xFFFF = addr {
-            self.page = (data & 0x3) as usize;
+            self.bank = (data & 0x3) as usize;
         }
     }
 
@@ -36,7 +36,7 @@ impl Mapper for Mapper3 {
         }
 
         let mask = self.rom.header.chr_count() * CHR_PAGE_SIZE - 1;
-        let index = self.page * CHR_PAGE_SIZE + addr as usize;
+        let index = self.bank * CHR_PAGE_SIZE + addr as usize;
         self.rom.chr[index & mask]
     }
 
@@ -51,6 +51,6 @@ impl Mapper for Mapper3 {
     }
 
     fn reset(&mut self) {
-        self.page = 0;
+        self.bank = 0;
     }
 }

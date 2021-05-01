@@ -5,7 +5,7 @@ use super::Mapper;
 pub struct Mapper7 {
     rom: Rom,
 
-    page: usize,
+    bank: usize,
     mirror_mode: MirrorMode,
 }
 
@@ -13,7 +13,7 @@ impl Mapper7 {
     pub fn new(rom: Rom) -> Self {
         Self {
             rom,
-            page: 0,
+            bank: 0,
             mirror_mode: MirrorMode::OneScreenLo,
         }
     }
@@ -21,13 +21,13 @@ impl Mapper7 {
 
 impl Mapper for Mapper7 {
     fn read_prg(&mut self, addr: u16) -> u8 {
-        let index = self.page * 0x8000 + (addr & 0x7FFF) as usize;
+        let index = self.bank * 0x8000 + (addr & 0x7FFF) as usize;
         self.rom.prg[index]
     }
 
     fn write_prg(&mut self, addr: u16, data: u8) {
         if let 0x8000..=0xFFFF = addr {
-            self.page = (data & 0x7) as usize;
+            self.bank = (data & 0x7) as usize;
             match (data >> 4) & 0x1 != 0 {
                 true => self.mirror_mode = MirrorMode::OneScreenHi,
                 false => self.mirror_mode = MirrorMode::OneScreenLo,
@@ -50,7 +50,7 @@ impl Mapper for Mapper7 {
     }
 
     fn reset(&mut self) {
-        self.page = 0;
+        self.bank = 0;
         self.mirror_mode = MirrorMode::OneScreenLo;
     }
 }

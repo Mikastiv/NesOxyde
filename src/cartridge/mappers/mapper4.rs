@@ -189,7 +189,7 @@ impl Mapper for Mapper4 {
         }
     }
 
-    fn poll_irq(&mut self) -> Option<bool> {
-        self.pending_irq.take()
+    fn poll_irq(&mut self) -> bool {
+        self.pending_irq.take().is_some()
     }
 }
