@@ -8,13 +8,10 @@ pub struct Reverb {
 
 impl Reverb {
     pub fn new(delay_ms: usize, sample_rate: usize, decay: f32) -> Self {
-        let mut v = VecDeque::new();
-        v.make_contiguous();
-
         Self {
             delay: delay_ms * sample_rate / 1000,
             decay,
-            buf: v,
+            buf: VecDeque::new(),
         }
     }
 
