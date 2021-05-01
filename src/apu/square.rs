@@ -102,7 +102,6 @@ impl Square {
         self.length_halt = data & 0x20 != 0;
         self.constant_volume = data & 0x10 != 0;
         self.volume = data & 0xF;
-        self.envelope_reload = true;
     }
 
     pub fn write_sweep(&mut self, data: u8) {
