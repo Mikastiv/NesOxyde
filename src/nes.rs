@@ -13,22 +13,28 @@ use crate::joypad::{Button, JoyPort};
 use crate::reverb::Reverb;
 use crate::timer::Timer;
 
+/// Time between each frame (at 60fps)
 const SECS_PER_FRAME: f64 = 1.0 / 60.0;
 
 static WINDOW_TITLE: &str = "NesOxyde";
+/// NES screen width
 pub const WIDTH: u32 = 256;
+/// NES screen height
 pub const HEIGHT: u32 = 240;
 
+/// Step when adjusting volume
 const VOLUME_STEP: f32 = 0.05;
 
 mod trace;
 
+/// Emulation sync mode
 #[derive(Debug)]
 pub enum Mode {
     VideoSync,
     AudioSync,
 }
 
+/// Runs the emulation
 pub fn run<KeyMap>(cartridge: Cartridge, map_key: KeyMap, mode: Mode)
 where
     KeyMap: Fn(Keycode, JoyPort) -> Option<Button>,

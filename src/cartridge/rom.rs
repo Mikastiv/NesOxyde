@@ -5,11 +5,16 @@ use std::path::Path;
 
 use super::MirrorMode;
 
+/// Size of one PRG bank
 pub const PRG_PAGE_SIZE: usize = 0x4000;
+/// Size of one CHR bank
 pub const CHR_PAGE_SIZE: usize = 0x2000;
+/// Size of the iNES header 
 const HEADER_SIZE: usize = 16;
+/// iNES header tag. Must be at the start of the file
 const NES_TAG: [u8; 4] = [b'N', b'E', b'S', 0x1A];
 
+/// Header of the iNES file format
 #[derive(Clone, Copy)]
 pub struct INesHeader {
     bytes: [u8; 16],
@@ -24,18 +29,22 @@ impl INesHeader {
         self.bytes[..4] == NES_TAG
     }
 
+    /// PRG bank count
     pub fn prg_count(&self) -> usize {
         self.bytes[4] as usize
     }
 
+    /// CHR bank count
     pub fn chr_count(&self) -> usize {
         self.bytes[5] as usize
     }
 
+    /// Contains trainer data or not
     pub fn has_trainer(&self) -> bool {
         self.bytes[6] & 0x4 != 0
     }
 
+    /// Hardware mirror mode
     pub fn mirror_mode(&self) -> MirrorMode {
         match self.bytes[6] & 0x1 != 0 {
             true => MirrorMode::Vertical,
@@ -43,15 +52,18 @@ impl INesHeader {
         }
     }
 
+    /// Uses 4 screen VRAM
     pub fn four_screen(&self) -> bool {
         self.bytes[6] & 0x8 != 0
     }
 
+    /// ID of the iNES mapper
     pub fn mapper_id(&self) -> u8 {
         (self.bytes[7] & 0xF0) | (self.bytes[6] >> 4)
     }
 }
 
+/// Game ROM data
 pub struct Rom {
     pub header: INesHeader,
     pub prg: Vec<u8>,

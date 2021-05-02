@@ -1,6 +1,7 @@
 use bitflags::bitflags;
 
 bitflags! {
+    /// State of the controller buttons
     struct State: u8 {
         const A      = 0b00000001;
         const B      = 0b00000010;
@@ -13,11 +14,13 @@ bitflags! {
     }
 }
 
+/// Controller port of the NES
 pub enum JoyPort {
     Port1,
     Port2,
 }
 
+/// Buttons on the NES controller
 #[derive(Debug)]
 pub enum Button {
     A,
@@ -30,6 +33,7 @@ pub enum Button {
     Right,
 }
 
+/// NES controller
 #[derive(Clone, Copy)]
 pub struct JoyPad {
     strobe: bool,

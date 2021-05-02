@@ -14,8 +14,11 @@ const STACK_PAGE: u16 = 0x0100;
 const STACK_RESET: u8 = 0xFD;
 /// Reset value of the status register
 const STATUS_RESET: u8 = Flags::U.bits() | Flags::I.bits();
+/// Non-maskable interrupt vector
 const NMI_VECTOR: u16 = 0xFFFA;
+/// Reset vector
 const RESET_VECTOR: u16 = 0xFFFC;
+/// Interrupt request vector
 const IRQ_VECTOR: u16 = 0xFFFE;
 
 /// Cpu's interface to the rest of the components
@@ -68,6 +71,7 @@ pub trait Interface {
 }
 
 bitflags! {
+    /// Cpu Flags
     struct Flags: u8 {
         /// Negative
         const N = 0b10000000;
@@ -154,6 +158,7 @@ impl<'a> Cpu<'a> {
         self.p.bits()
     }
 
+    /// Cpu cycles passed
     pub fn cycles(&self) -> u64 {
         self.cycles
     }
@@ -174,8 +179,8 @@ impl<'a> Cpu<'a> {
         // Set pc to value at reset vector
         self.pc = self.mem_read_word(RESET_VECTOR);
         self.ins_cycles = 0;
-        self.bus.tick(7);
         // Reset takes 7 cycles
+        self.bus.tick(7);
         self.cycles = 7;
     }
 
@@ -627,6 +632,7 @@ impl<'a> Cpu<'a> {
         self.set_x(self.a());
     }
 
+    /// Transfer accumulator to Y register
     fn tay(&mut self, _mode: AddrMode) {
         self.set_y(self.a());
     }

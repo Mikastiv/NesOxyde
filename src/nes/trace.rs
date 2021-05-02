@@ -5,6 +5,7 @@
 use crate::cpu::{AddrMode, Cpu, OPTABLE};
 
 impl<'a> Cpu<'a> {
+    /// Gets the operand addr without changing the program counter. Used in trace module
     fn operand_addr_peek(&mut self, mode: AddrMode, pc: u16) -> u16 {
         match mode {
             AddrMode::None | AddrMode::Imp => 0,
@@ -58,6 +59,7 @@ impl<'a> Cpu<'a> {
     }
 }
 
+/// Traces execution of the NES
 pub fn trace(cpu: &mut Cpu) -> String {
     let code = cpu.mem_read(cpu.pc());
     let ins = *OPTABLE.get(&code).unwrap();

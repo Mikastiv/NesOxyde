@@ -9,6 +9,7 @@ use rom::Rom;
 mod mappers;
 mod rom;
 
+/// Mirroring modes for the VRAM
 #[derive(Debug, Clone, Copy)]
 pub enum MirrorMode {
     Vertical,
@@ -18,6 +19,7 @@ pub enum MirrorMode {
     FourScreen,
 }
 
+/// NES ROM cartridge
 pub struct Cartridge {
     mapper: Box<dyn Mapper>,
     filename: Option<String>,
