@@ -8,31 +8,60 @@ pub use instructions::OPTABLE;
 mod addr_modes;
 mod instructions;
 
+/// Memory page of the cpu stack
 const STACK_PAGE: u16 = 0x0100;
+/// Reset value of the stack pointer
 const STACK_RESET: u8 = 0xFD;
+/// Reset value of the status register
 const STATUS_RESET: u8 = Flags::U.bits() | Flags::I.bits();
 const NMI_VECTOR: u16 = 0xFFFA;
 const RESET_VECTOR: u16 = 0xFFFC;
 const IRQ_VECTOR: u16 = 0xFFFE;
 
+/// Cpu's interface to the rest of the components
 pub trait Interface {
+    /// Reads a byte from `addr`
     fn read(&mut self, addr: u16) -> u8;
+
+    /// Writes a byte to `addr`
     fn write(&mut self, addr: u16, data: u8);
+
+    /// Polls the state of NMI flag of Ppu
+    ///
+    /// `true`: Ppu is requesting NMI. `false`: Ppu is not requesting NMI
     fn poll_nmi(&mut self) -> bool {
         false
     }
+
+    /// Polls the state of IRQ flag of Apu
+    ///
+    /// `true`: Apu is requesting IRQ. `false`: Apu is not requesting IRQ
     fn poll_irq(&mut self) -> bool {
         false
     }
+
+    /// Performs one clock tick on the bus
     fn tick(&mut self, _cycles: u64) {}
+
+    /// Updates a controller's state
+    ///
+    /// Used with SDL2 keyboard events
     fn update_joypad(&mut self, _button: Button, _pressed: bool, _port: JoyPort) {}
+
+    /// Returns the number of frame rendered by the Ppu
     fn frame_count(&self) -> u128 {
         0
     }
+
+    /// Resets the bus and its components
     fn reset(&mut self) {}
+
+    /// Gets audio samples from the Apu
     fn samples(&mut self) -> Vec<f32> {
         vec![]
     }
+
+    /// Returns how many samples are ready to be played
     fn sample_count(&self) -> usize {
         0
     }
@@ -40,27 +69,45 @@ pub trait Interface {
 
 bitflags! {
     struct Flags: u8 {
+        /// Negative
         const N = 0b10000000;
+        /// Overflow
         const V = 0b01000000;
+        /// Unused
         const U = 0b00100000;
+        /// Break flag
         const B = 0b00010000;
+        /// Decimal flag (disabled on the NES)
         const D = 0b00001000;
+        /// Disable interrupt
         const I = 0b00000100;
+        /// Zero
         const Z = 0b00000010;
+        /// Carry
         const C = 0b00000001;
     }
 }
 
+/// 2A03 Cpu
 pub struct Cpu<'a> {
+    /// Accumulator
     a: u8,
+    /// Index X
     x: u8,
+    /// Index Y
     y: u8,
+    /// Stack pointer
     s: u8,
+    /// Status register
     p: Flags,
+    /// Program counter
     pc: u16,
 
+    /// Memory bus
     bus: Box<dyn Interface + 'a>,
+    /// Current instruction duration in cycles
     ins_cycles: u64,
+    /// Cycles elapsed
     cycles: u64,
 }
 
@@ -111,10 +158,12 @@ impl<'a> Cpu<'a> {
         self.cycles
     }
 
+    /// Ppu frames rendered
     pub fn frame_count(&self) -> u128 {
         self.bus.frame_count()
     }
 
+    /// Resets the NES
     pub fn reset(&mut self) {
         self.bus.reset();
         self.a = 0;
@@ -122,40 +171,62 @@ impl<'a> Cpu<'a> {
         self.y = 0;
         self.s = STACK_RESET;
         self.p = Flags::from_bits_truncate(STATUS_RESET);
+        // Set pc to value at reset vector
         self.pc = self.mem_read_word(RESET_VECTOR);
         self.ins_cycles = 0;
         self.bus.tick(7);
+        // Reset takes 7 cycles
         self.cycles = 7;
     }
 
+    /// Gets audio samples from the Apu
     pub fn samples(&mut self) -> Vec<f32> {
         self.bus.samples()
     }
 
+    /// Returns how many samples are ready to be played
     pub fn sample_count(&self) -> usize {
         self.bus.sample_count()
     }
 
+    /// Non-maskable interrupt
     fn nmi(&mut self) {
+        // Push the program counter
         self.push_word(self.pc);
+        // Push the status register without the Break flag
         self.push_byte((self.p & !Flags::B).bits());
+        // Set disable interrupt
         self.p.insert(Flags::I);
+        // Set pc to value at NMI vector
         self.pc = self.mem_read_word(NMI_VECTOR);
+        // NMI takes 7 cycles
         self.cycles += 7;
         self.ins_cycles = 7;
     }
 
+    /// Interrupt request
     fn irq(&mut self) {
+        // Don't execute if disable interrupt is set
         if !self.p.contains(Flags::I) {
+            // Push the program counter
             self.push_word(self.pc);
+            // Push the status register without the Break flag
             self.push_byte((self.p & !Flags::B).bits());
+            // Set disable interrupt
             self.p.insert(Flags::I);
+            // Set pc to value at IRQ vector
             self.pc = self.mem_read_word(IRQ_VECTOR);
+            // IRQ takes 7 cycles
             self.cycles += 7;
             self.ins_cycles = 7;
+        } else {
+            self.ins_cycles = 0;
         }
     }
 
+    /// Executes an instruction and runs a callback function in a loop
+    ///
+    /// Used with the trace debug module
     pub fn run_with_callback<F>(&mut self, mut callback: F)
     where
         F: FnMut(&mut Self),
@@ -166,271 +237,392 @@ impl<'a> Cpu<'a> {
         }
     }
 
+    /// Executes a full instruction
+    ///
+    /// Returns how many cycles were executed
     pub fn execute(&mut self) -> u64 {
         let mut nmi_cycles = 0;
+        // If Ppu has requested a NMI, do it
         if self.bus.poll_nmi() {
             self.nmi();
+            // Clock the bus for the NMI cycles duration (7)
             self.bus.tick(self.ins_cycles);
             nmi_cycles = self.ins_cycles;
         }
 
+        // Get next instruction opcode
         let opcode = self.read_byte();
 
+        // Get the instruction from the instruction table
         let ins = *OPTABLE.get(&opcode).unwrap();
+        // Set the current instruction cycle duration
         self.ins_cycles = ins.cycles;
+        // Call the instruction function
         (ins.cpu_fn)(self, ins.mode);
+
+        // Clock the bus for the instruction's cycles duration
         self.bus.tick(self.ins_cycles);
 
         let mut irq_cycles = 0;
+        // If Apu has requested an interrupt, do it
         if self.bus.poll_irq() {
             self.irq();
             self.bus.tick(self.ins_cycles);
             irq_cycles = self.ins_cycles;
         }
 
-        self.cycles = self.cycles.wrapping_add(self.ins_cycles);
+        // Count cycles
+        self.cycles = self
+            .cycles
+            .wrapping_add(nmi_cycles + irq_cycles + self.ins_cycles);
+
         nmi_cycles + irq_cycles + self.ins_cycles
     }
 
+    /// Clocks the Cpu once
+    ///
+    /// This function is not cycle accurate. I execute the instruction in one cycle and then do nothing for the remaining cycles
     pub fn clock(&mut self) {
+        // If current instruction is done and a NMI is requested, do it
         if self.ins_cycles == 0 && self.bus.poll_nmi() {
             self.nmi();
         }
 
+        // If current instruction is done and a IRQ is requested, do it
         if self.ins_cycles == 0 && self.bus.poll_irq() {
             self.irq();
         }
 
+        // If current instruction is done, do the next one
         if self.ins_cycles == 0 {
+            // Read opcode
             let opcode = self.read_byte();
 
+            // Get the instruction from the instruction table
             let ins = *OPTABLE.get(&opcode).unwrap();
 
             self.ins_cycles = ins.cycles;
             (ins.cpu_fn)(self, ins.mode);
         }
 
+        // Tick once
         self.bus.tick(1);
+        // Count cycles
         self.cycles = self.cycles.wrapping_add(1);
+        // Once instruction cycle has passed
         self.ins_cycles -= 1;
     }
 
+    /// Updates a controller's state
+    ///
+    /// Used with SDL2 keyboard events
     pub fn update_joypad(&mut self, button: Button, pressed: bool, port: JoyPort) {
         self.bus.update_joypad(button, pressed, port);
     }
 
+    /// Reads a byte at addr
     pub fn mem_read(&mut self, addr: u16) -> u8 {
         self.bus.read(addr)
     }
 
+    /// Reads a word (2 bytes) at addr
+    ///
+    /// This Cpu is little endian
     pub fn mem_read_word(&mut self, addr: u16) -> u16 {
+        // Read low byte first
         let lo = self.mem_read(addr);
+        // Then high byte
         let hi = self.mem_read(addr.wrapping_add(1));
+        // Combine them
         u16::from_le_bytes([lo, hi])
     }
 
+    /// Writes a byte to addr
     pub fn mem_write(&mut self, addr: u16, data: u8) {
         self.bus.write(addr, data);
     }
 
+    /// Reads a byte at program counter, then increments it
     fn read_byte(&mut self) -> u8 {
         let b = self.mem_read(self.pc);
         self.increment_pc();
         b
     }
 
+    /// Reads a word (2 bytes) at program counter, then increments it
     fn read_word(&mut self) -> u16 {
+        // Read low byte first
         let lo = self.read_byte();
+        // Then high byte
         let hi = self.read_byte();
+        // Combine them
         u16::from_le_bytes([lo, hi])
     }
 
+    /// Pushes a byte on the stack
     fn push_byte(&mut self, data: u8) {
+        // Write byte at stack pointer location
         self.mem_write(STACK_PAGE + self.s() as u16, data);
+        // Decrement stack pointer
         self.s = self.s().wrapping_sub(1);
     }
 
+    /// Pushes a word (2 bytes) on the stack
     fn push_word(&mut self, data: u16) {
+        // Get high byte from data
         let hi = (data >> 8) as u8;
+        // Get low byte from data
         let lo = data as u8;
+        // Push the high byte first because it will be popped off in reverse order (low, then high)
         self.push_byte(hi);
         self.push_byte(lo);
     }
 
+    /// Pops a byte off the stack
     fn pop_byte(&mut self) -> u8 {
+        // Increment stack pointer
         self.s = self.s().wrapping_add(1);
+        // Read byte at stack pointer location
         self.mem_read(STACK_PAGE + self.s() as u16)
     }
 
+    /// Pops a word (2 bytes) off the stack
     fn pop_word(&mut self) -> u16 {
+        // Little endian, so pop low
         let lo = self.pop_byte();
+        // Then high
         let hi = self.pop_byte();
+        // Combine them
         u16::from_le_bytes([lo, hi])
     }
 
+    /// Returns the address of the operand based on the addressing mode
     fn operand_addr(&mut self, mode: AddrMode) -> u16 {
         match mode {
+            // None or implied don't have operand
             AddrMode::None | AddrMode::Imp => panic!("Not supported"),
+            // Immediate or relative: the operand is the byte right after the opcode
             AddrMode::Imm | AddrMode::Rel => self.pc,
+            // Zero page: the byte after the opcode is the operand address in page 0x00
             AddrMode::Zp0 => self.read_byte() as u16,
+            // Zero page with X: the byte after the opcode plus the value in register X is the operand address in page 0x00
             AddrMode::Zpx => {
                 let base = self.read_byte();
                 base.wrapping_add(self.x()) as u16
             }
+            // Zero page with Y: the byte after the opcode plus the value in register Y is the operand address in page 0x00
             AddrMode::Zpy => {
                 let base = self.read_byte();
                 base.wrapping_add(self.y()) as u16
             }
+            // Absolute: the two bytes right after the opcode makes the operand address
+            // Indirect: I cheat a bit here, the actual address is the operand. I use it as the operand later. Indirect is only used with JMP
             AddrMode::Abs | AddrMode::Ind => self.read_word(),
+            // Absolute with X: the two bytes right after the opcode plus the value in register X makes the operand address
             AddrMode::Abx => {
                 let base = self.read_word();
                 let addr = base.wrapping_add(self.x() as u16);
 
+                // If a page is crossed (e.g. when the first byte is at 0x04FF and the second at 0x0500) it takes an extra cycle
                 if Self::page_crossed(base, addr) {
                     self.ins_cycles += 1;
                 }
 
                 addr
             }
+            // Absolute with X for write instructions: the two bytes right after the opcode plus the value in register X makes the operand address
             AddrMode::AbxW => {
                 let base = self.read_word();
                 base.wrapping_add(self.x() as u16)
             }
+            // Absolute with Y: the two bytes right after the opcode plus the value in register Y makes the operand address
             AddrMode::Aby => {
                 let base = self.read_word();
                 let addr = base.wrapping_add(self.y() as u16);
 
+                // If a page is crossed (e.g. when the first byte is at 0x04FF and the second at 0x0500) it takes an extra cycle
                 if Self::page_crossed(base, addr) {
                     self.ins_cycles += 1;
                 }
 
                 addr
             }
+            // Absolute with Y for write instructions: the two bytes right after the opcode plus the value in register Y makes the operand address
             AddrMode::AbyW => {
                 let base = self.read_word();
                 base.wrapping_add(self.y() as u16)
             }
+            // Indirect with X: the two bytes right after the opcode plus the value in register X make a pointer in page 0x00. The value at this
+            // location is the address of the operand
             AddrMode::Izx => {
+                // Construct pointer
                 let base = self.read_byte();
                 let ptr = base.wrapping_add(self.x());
+                // Read values
                 let lo = self.mem_read(ptr as u16);
                 let hi = self.mem_read(ptr.wrapping_add(1) as u16);
                 u16::from_le_bytes([lo, hi])
             }
+            // Indirect with Y: the two bytes right after the opcode make a pointer in page 0x00. The value at this
+            // location plus the value in register Y is the address of the operand. Note that the pointer never
+            // leaves page 0x00. 0x00FF wraps to 0x0000
             AddrMode::Izy => {
+                // Construct pointer
                 let ptr = self.read_byte();
+                // Read values
                 let lo = self.mem_read(ptr as u16);
                 let hi = self.mem_read(ptr.wrapping_add(1) as u16);
+                // Add value in register Y to the result
                 let addr = u16::from_le_bytes([lo, hi]).wrapping_add(self.y() as u16);
-
+                
+                // If a page is crossed (e.g. when the first byte is at 0x04FF and the second at 0x0500) it takes an extra cycle
                 if Self::page_crossed(u16::from_le_bytes([lo, hi]), addr) {
                     self.ins_cycles += 1;
                 }
 
                 addr
             }
+            // Indirect with Y: the two bytes right after the opcode make a pointer in page 0x00. The value at this
+            // location plus the value in register Y is the address of the operand. Note that the pointer never
+            // leaves page 0x00. 0x00FF wraps to 0x0000
             AddrMode::IzyW => {
+                // Construct pointer
                 let ptr = self.read_byte();
+                // Read values
                 let lo = self.mem_read(ptr as u16);
                 let hi = self.mem_read(ptr.wrapping_add(1) as u16);
+                // Add value in register Y to the result
                 u16::from_le_bytes([lo, hi]).wrapping_add(self.y() as u16)
             }
         }
     }
 
+    /// Fetches the operand at the address based on the addressing mode
     fn fetch_operand(&mut self, addr: u16, mode: AddrMode) -> u8 {
         match mode {
+            // Should not be called with these modes
             AddrMode::None | AddrMode::Imp | AddrMode::Ind => panic!("Not supported"),
+            // The operand is next to the opcode for these 2
             AddrMode::Imm | AddrMode::Rel => self.read_byte(),
+            // All the others reads at the provided address. Should be the address returned from `operand_addr`
             _ => self.mem_read(addr),
         }
     }
 
-    fn branch(&mut self, mode: AddrMode, cond: bool) {
-        let addr = self.operand_addr(mode);
-        let offset = self.fetch_operand(addr, mode) as i8;
+    /// Branched if the condition is met
+    fn branch(&mut self, cond: bool) {
+        // Get the operand (offset). Can be positive or negative
+        let offset = self.read_byte() as i8;
 
+        // If the condition is true, branch
         if cond {
+            // Branching take one more cycle
             self.ins_cycles += 1;
+            // Calculate new address
             let new_addr = self.pc.wrapping_add(offset as u16);
 
+            // If a page is crossed, add one more cycle
             if Self::page_crossed(self.pc, new_addr) {
                 self.ins_cycles += 1;
             }
 
+            // Set program counter to new address
             self.pc = new_addr;
         }
     }
 
+    /// Increments the program counter
     fn increment_pc(&mut self) {
         self.pc = self.pc.wrapping_add(1);
     }
 
+    /// Sets flags Zero and Negative based on value
     fn set_z_n(&mut self, v: u8) {
+        // If value equals 0
         self.p.set(Flags::Z, v == 0);
+        // If value bit 7 is set
         self.p.set(Flags::N, v & 0x80 != 0);
     }
 
+    /// Sets the accumulator to v
     fn set_a(&mut self, v: u8) {
         self.a = v;
+        // Update flags Z and N
         self.set_z_n(v);
     }
-
+    
+    /// Sets the X register to v 
     fn set_x(&mut self, v: u8) {
         self.x = v;
+        // Update flags Z and N
         self.set_z_n(v);
     }
 
+    /// Sets the X register to v 
     fn set_y(&mut self, v: u8) {
         self.y = v;
+        // Update flags Z and N
         self.set_z_n(v);
     }
 
+    /// Sets the status register to v 
     fn set_p(&mut self, v: u8) {
+        // Always set U flag and never the B flag
         self.p.bits = (v | Flags::U.bits()) & !Flags::B.bits();
     }
 
+    /// Returns if a page was crossed or not
     fn page_crossed(old: u16, new: u16) -> bool {
         old & 0xFF00 != new & 0xFF00
     }
 
+    /// Wrap an address so it doesn't change page
     fn wrap(old: u16, new: u16) -> u16 {
         (old & 0xFF00) | (new & 0x00FF)
     }
 
+    // List of all the 2A03 instructions
+
+    /// Load accumulator
     fn lda(&mut self, mode: AddrMode) {
         let addr = self.operand_addr(mode);
         let v = self.fetch_operand(addr, mode);
         self.set_a(v);
     }
 
+    /// Load X register
     fn ldx(&mut self, mode: AddrMode) {
         let addr = self.operand_addr(mode);
         let v = self.fetch_operand(addr, mode);
         self.set_x(v);
     }
 
+    /// Load Y register
     fn ldy(&mut self, mode: AddrMode) {
         let addr = self.operand_addr(mode);
         let v = self.fetch_operand(addr, mode);
         self.set_y(v);
     }
 
+    /// Store accumulator
     fn sta(&mut self, mode: AddrMode) {
         let addr = self.operand_addr(mode);
         self.mem_write(addr, self.a());
     }
 
+    /// Store X register
     fn stx(&mut self, mode: AddrMode) {
         let addr = self.operand_addr(mode);
         self.mem_write(addr, self.x());
     }
 
+    /// Store Y register
     fn sty(&mut self, mode: AddrMode) {
         let addr = self.operand_addr(mode);
         self.mem_write(addr, self.y());
     }
 
+    /// Transfer accumulator to X register
     fn tax(&mut self, _mode: AddrMode) {
         self.set_x(self.a());
     }
@@ -537,36 +729,36 @@ impl<'a> Cpu<'a> {
         self.cmp(self.y(), v);
     }
 
-    fn bcs(&mut self, mode: AddrMode) {
-        self.branch(mode, self.p.contains(Flags::C));
+    fn bcs(&mut self, _mode: AddrMode) {
+        self.branch(self.p.contains(Flags::C));
     }
 
-    fn bcc(&mut self, mode: AddrMode) {
-        self.branch(mode, !self.p.contains(Flags::C));
+    fn bcc(&mut self, _mode: AddrMode) {
+        self.branch(!self.p.contains(Flags::C));
     }
 
-    fn beq(&mut self, mode: AddrMode) {
-        self.branch(mode, self.p.contains(Flags::Z));
+    fn beq(&mut self, _mode: AddrMode) {
+        self.branch(self.p.contains(Flags::Z));
     }
 
-    fn bne(&mut self, mode: AddrMode) {
-        self.branch(mode, !self.p.contains(Flags::Z));
+    fn bne(&mut self, _mode: AddrMode) {
+        self.branch(!self.p.contains(Flags::Z));
     }
 
-    fn bmi(&mut self, mode: AddrMode) {
-        self.branch(mode, self.p.contains(Flags::N));
+    fn bmi(&mut self, _mode: AddrMode) {
+        self.branch(self.p.contains(Flags::N));
     }
 
-    fn bpl(&mut self, mode: AddrMode) {
-        self.branch(mode, !self.p.contains(Flags::N));
+    fn bpl(&mut self, _mode: AddrMode) {
+        self.branch(!self.p.contains(Flags::N));
     }
 
-    fn bvs(&mut self, mode: AddrMode) {
-        self.branch(mode, self.p.contains(Flags::V));
+    fn bvs(&mut self, _mode: AddrMode) {
+        self.branch(self.p.contains(Flags::V));
     }
 
-    fn bvc(&mut self, mode: AddrMode) {
-        self.branch(mode, !self.p.contains(Flags::V));
+    fn bvc(&mut self, _mode: AddrMode) {
+        self.branch(!self.p.contains(Flags::V));
     }
 
     fn jmp_abs(&mut self, mode: AddrMode) {

@@ -46,6 +46,10 @@ impl JoyPad {
         }
     }
 
+    /// Strobes the controller
+    ///
+    /// If bit 0 is set, the controller continuously latches the current state of the buttons.
+    /// If bit 0 is clear, stops latching
     pub fn strobe(&mut self, v: u8) {
         if self.strobe {
             self.snapshot = self.state.bits();
@@ -53,6 +57,11 @@ impl JoyPad {
         self.strobe = v & 0x1 != 0;
     }
 
+    /// Reads the controller input data
+    ///
+    /// If the controller is strobing, returns the state of A button. Otherwise, shifts out the state of the button to read.
+    ///
+    /// Buttons are always read in the order: A, B, Select, Start, Up, Down, Left, Right
     pub fn read(&mut self) -> u8 {
         if self.strobe {
             self.state.contains(State::A) as u8
@@ -64,6 +73,9 @@ impl JoyPad {
         }
     }
 
+    /// Updates the state of the buttons
+    ///
+    /// This function is used to update the buttons from SDL2 keyboard events
     pub fn update(&mut self, button: Button, pressed: bool) {
         match button {
             Button::A => self.state.set(State::A, pressed),

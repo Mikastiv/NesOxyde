@@ -7,6 +7,11 @@ pub struct Reverb {
 }
 
 impl Reverb {
+    /// `delay_ms`: Reverb delay in ms
+    ///
+    /// `sample_rate`: Sample rate of samples
+    ///
+    /// `decay`: Strength of the reverb
     pub fn new(delay_ms: usize, sample_rate: usize, decay: f32) -> Self {
         Self {
             delay: delay_ms * sample_rate / 1000,
@@ -15,6 +20,7 @@ impl Reverb {
         }
     }
 
+    /// Applies a reverb effect to sound samples
     pub fn apply(&mut self, samples: &mut [f32]) {
         self.buf.extend(samples.iter());
 

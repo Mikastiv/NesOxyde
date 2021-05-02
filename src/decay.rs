@@ -1,3 +1,4 @@
+
 pub struct Decay {
     max_diff: f32,
     prev: f32,
@@ -11,6 +12,9 @@ impl Decay {
         }
     }
 
+    /// Decays sound volume smoothly if it drops to fast
+    ///
+    /// Used to reduce pops from the triangle channel
     pub fn decay(&mut self, sample: f32) -> f32 {
         let diff = (self.prev - sample).abs();
         if sample == 0.0 && diff > self.max_diff {

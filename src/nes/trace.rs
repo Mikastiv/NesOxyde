@@ -1,3 +1,5 @@
+// Debug module used to compare my cpu with Nintendulator's log of the nestest rom
+
 #![allow(dead_code)]
 
 use crate::cpu::{AddrMode, Cpu, OPTABLE};

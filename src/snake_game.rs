@@ -1,3 +1,6 @@
+// This module was used to test my cpu emulation in early stages
+// Play a simple 6502 asm snake game
+
 #![allow(dead_code)]
 
 use rand::prelude::*;
@@ -81,6 +84,7 @@ fn read_screen_state(cpu: &mut Cpu, frame: &mut [u8; 32 * 3 * 32]) -> bool {
     update
 }
 
+/// Run a 6502 asm snake game
 pub fn run() {
 	let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();

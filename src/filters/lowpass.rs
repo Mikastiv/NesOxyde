@@ -3,6 +3,7 @@ use std::f32::consts::PI;
 
 use super::Filter;
 
+/// Butterworth lowpass filter
 pub struct LowPass {
     a1: f32,
     a2: f32,

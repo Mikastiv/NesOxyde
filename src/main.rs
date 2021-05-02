@@ -17,6 +17,7 @@ mod reverb;
 mod snake_game;
 mod timer;
 
+/// Parse program arguments
 fn parse_args(args: &[String]) -> (Mode, &String) {
     if args.len() != 2 && args.len() != 3 {
         eprintln!(
@@ -27,6 +28,7 @@ fn parse_args(args: &[String]) -> (Mode, &String) {
     }
 
     match args.len() {
+        // Default to AudioSync
         2 => (nes::Mode::AudioSync, &args[1]),
         3 => match args[1].as_str() {
             "-A" => (nes::Mode::AudioSync, &args[2]),
@@ -47,6 +49,7 @@ fn main() {
     let args: Vec<String> = std::env::args().collect();
     let (mode, rom) = parse_args(&args);
 
+    // Load the rom from iNES file
     let cartridge = match Cartridge::new(rom) {
         Ok(cart) => cart,
         Err(e) => {
@@ -55,7 +58,9 @@ fn main() {
         }
     };
 
+    // Closure which maps keycodes to NES buttons
     let map_key = |key: Keycode, port: JoyPort| match port {
+        // Controller 1
         JoyPort::Port1 => match key {
             Keycode::S => Some(Button::A),
             Keycode::A => Some(Button::B),
@@ -67,6 +72,7 @@ fn main() {
             Keycode::Right => Some(Button::Right),
             _ => None,
         },
+        // Controller 2
         JoyPort::Port2 => match key {
             Keycode::J => Some(Button::A),
             Keycode::K => Some(Button::B),
@@ -80,5 +86,6 @@ fn main() {
         },
     };
 
+    // Run the game
     nes::run(cartridge, map_key, mode);
 }
