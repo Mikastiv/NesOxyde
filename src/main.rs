@@ -28,9 +28,18 @@ fn main() {
 
     let (mode, rom) = match args.len() {
         2 => (nes::Mode::AudioSync, &args[1]),
-
-        3 => (nes::Mode::VideoSync, &args[2]),
-        count => panic!("Bad argument count: {}", count),
+        3 => match args[1].as_str() {
+            "-A" => (nes::Mode::AudioSync, &args[2]),
+            "-V" => (nes::Mode::VideoSync, &args[2]),
+            flag => {
+                eprintln!("Bad option flag: {}. Use -A or -V", flag);
+                std::process::exit(0);
+            }
+        },
+        count => {
+            eprintln!("Bad argument count: {}", count);
+            std::process::exit(0);
+        }
     };
 
     let cartridge = match Cartridge::new(rom) {
