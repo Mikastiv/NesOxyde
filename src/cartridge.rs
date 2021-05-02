@@ -3,7 +3,7 @@ use std::fmt::Display;
 use std::io;
 use std::path::Path;
 
-use mappers::{Mapper, Mapper0, Mapper1, Mapper2, Mapper3, Mapper4, Mapper7, Mapper9, Mapper10};
+use mappers::{Mapper, Mapper0, Mapper1, Mapper10, Mapper2, Mapper3, Mapper4, Mapper7, Mapper9};
 use rom::Rom;
 
 mod mappers;
@@ -19,10 +19,16 @@ pub enum MirrorMode {
 
 pub struct Cartridge {
     mapper: Box<dyn Mapper>,
+    filename: Option<String>,
 }
 
 impl Cartridge {
     pub fn new<P: AsRef<Path> + Display>(romfile: P) -> io::Result<Self> {
+        let filename = match romfile.as_ref().file_stem() {
+            Some(name) => Some(name.to_string_lossy().to_string()),
+            None => None,
+        };
+
         let rom = Rom::new(romfile)?;
         let mapper: Box<dyn Mapper> = match rom.header.mapper_id() {
             0 => Box::new(Mapper0::new(rom)),
@@ -36,7 +42,7 @@ impl Cartridge {
             _ => panic!("Unimplemented mapper: {}", rom.header.mapper_id()),
         };
 
-        Ok(Self { mapper })
+        Ok(Self { mapper, filename })
     }
 
     pub fn read_prg(&mut self, addr: u16) -> u8 {
@@ -69,5 +75,12 @@ impl Cartridge {
 
     pub fn poll_irq(&mut self) -> bool {
         self.mapper.poll_irq()
+    }
+
+    pub fn filename(&self) -> String {
+        match self.filename {
+            Some(ref name) => format!(" - {}", name.clone()),
+            None => "".to_string(),
+        }
     }
 }
