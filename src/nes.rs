@@ -76,6 +76,7 @@ where
 
     println!("Audio driver: {}", audio_subsystem.current_audio_driver());
     println!("Emulation mode: {:?}", &mode);
+    println!("Volume: {:.0}", volume * 100.0);
     // >----------------- SDL2 init
 
     let bus = MainBus::new(
