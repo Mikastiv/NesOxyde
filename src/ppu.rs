@@ -385,7 +385,11 @@ impl<'a> Ppu<'a> {
 
         if (0..240).contains(&scanline) && (1..257).contains(&cycle) {
             let (bg_pixel, bg_palette) = self.get_bg_pixel_info();
-            let (fg_pixel, fg_palette, fg_priority) = self.get_fg_pixel_info();
+            // little hack to fix random sprite colors on left of first scanline
+            let (fg_pixel, fg_palette, fg_priority) = match scanline != 0 {
+                true => self.get_fg_pixel_info(),
+                false => (0, 0, 0),
+            };
 
             let (pixel, palette) = match bg_pixel {
                 0 if fg_pixel == 0 => (0, 0),
