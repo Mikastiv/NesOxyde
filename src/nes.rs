@@ -38,7 +38,11 @@ where
     let video_subsystem = sdl_context.video().unwrap();
     let audio_subsystem = sdl_context.audio().unwrap();
     let window = video_subsystem
-        .window(&format!("{}{}", WINDOW_TITLE, cartridge.filename()), WIDTH * 2, HEIGHT * 2)
+        .window(
+            &format!("{}{}", WINDOW_TITLE, cartridge.filename()),
+            WIDTH * 2,
+            HEIGHT * 2,
+        )
         .position_centered()
         .resizable()
         .build()
@@ -72,6 +76,7 @@ where
 
     println!("Audio driver: {}", audio_subsystem.current_audio_driver());
     println!("Emulation mode: {:?}", &mode);
+    println!("Volume: {:.0}", volume * 100.0);
     // >----------------- SDL2 init
 
     let bus = MainBus::new(

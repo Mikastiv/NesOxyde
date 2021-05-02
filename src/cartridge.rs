@@ -15,6 +15,7 @@ pub enum MirrorMode {
     Horizontal,
     OneScreenLo,
     OneScreenHi,
+    FourScreen,
 }
 
 pub struct Cartridge {

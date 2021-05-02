@@ -43,6 +43,10 @@ impl INesHeader {
         }
     }
 
+    pub fn four_screen(&self) -> bool {
+        self.bytes[6] & 0x8 != 0
+    }
+
     pub fn mapper_id(&self) -> u8 {
         (self.bytes[7] & 0xF0) | (self.bytes[6] >> 4)
     }
@@ -86,22 +90,24 @@ impl Rom {
         let chr_start = prg_start + prg_size;
 
         println!(
-            "PRG Size: {} * {:#06X} = {:#06X}",
+            "PRG Size: {} * {:#06X} = {:#06X} ({} KB)",
             header.prg_count(),
             PRG_PAGE_SIZE,
-            prg_size
+            prg_size,
+            header.prg_count() * 16,
         );
         if header.chr_count() == 0 {
             println!(
-                "CHR Size (RAM): 1 * {:#06X} = {:#06X}",
-                CHR_PAGE_SIZE, CHR_PAGE_SIZE
+                "CHR Size (RAM): 1 * {:#06X} = {:#06X} (8 KB)",
+                CHR_PAGE_SIZE, CHR_PAGE_SIZE,
             );
         } else {
             println!(
-                "CHR Size: {} * {:#06X} = {:#06X}",
+                "CHR Size: {} * {:#06X} = {:#06X} ({} KB)",
                 header.chr_count(),
                 CHR_PAGE_SIZE,
-                chr_size
+                chr_size,
+                header.chr_count() * 8
             );
         }
         println!("Mapper ID: {}", header.mapper_id());

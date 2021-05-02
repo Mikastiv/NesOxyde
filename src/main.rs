@@ -2,6 +2,7 @@ use sdl2::keyboard::Keycode;
 
 use cartridge::Cartridge;
 use joypad::{Button, JoyPort};
+use nes::Mode;
 
 mod apu;
 mod bus;
@@ -16,8 +17,7 @@ mod reverb;
 mod snake_game;
 mod timer;
 
-fn main() {
-    let args: Vec<String> = std::env::args().collect();
+fn parse_args(args: &[String]) -> (Mode, &String) {
     if args.len() != 2 && args.len() != 3 {
         eprintln!(
             "Usage: ./{} [SyncMode: Audio (default) or Video (-A or -V)] <iNES File>",
@@ -26,7 +26,7 @@ fn main() {
         std::process::exit(0);
     }
 
-    let (mode, rom) = match args.len() {
+    match args.len() {
         2 => (nes::Mode::AudioSync, &args[1]),
         3 => match args[1].as_str() {
             "-A" => (nes::Mode::AudioSync, &args[2]),
@@ -40,7 +40,12 @@ fn main() {
             eprintln!("Bad argument count: {}", count);
             std::process::exit(0);
         }
-    };
+    }
+}
+
+fn main() {
+    let args: Vec<String> = std::env::args().collect();
+    let (mode, rom) = parse_args(&args);
 
     let cartridge = match Cartridge::new(rom) {
         Ok(cart) => cart,
