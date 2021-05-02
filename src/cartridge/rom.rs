@@ -43,6 +43,10 @@ impl INesHeader {
         }
     }
 
+    pub fn four_screen(&self) -> bool {
+        self.bytes[6] & 0x8 != 0
+    }
+
     pub fn mapper_id(&self) -> u8 {
         (self.bytes[7] & 0xF0) | (self.bytes[6] >> 4)
     }

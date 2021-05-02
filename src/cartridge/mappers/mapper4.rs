@@ -132,7 +132,7 @@ impl Mapper for Mapper4 {
         if self.rom.header.chr_count() == 0 {
             return self.rom.chr[addr as usize];
         }
-        
+
         let reg_index = match addr {
             0x0000..=0x03FF => 0,
             0x0400..=0x07FF => 1,
@@ -155,7 +155,10 @@ impl Mapper for Mapper4 {
     }
 
     fn mirror_mode(&self) -> MirrorMode {
-        self.mirror_mode
+        match self.rom.header.four_screen() {
+            true => MirrorMode::FourScreen,
+            false => self.mirror_mode,
+        }
     }
 
     fn reset(&mut self) {

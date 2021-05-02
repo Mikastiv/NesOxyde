@@ -8,7 +8,7 @@ const ROM_START: u16 = 0x0000;
 const ROM_END: u16 = 0x1FFF;
 
 const NTA_SIZE: u16 = 0x400;
-const VRAM_SIZE: usize = 0x800;
+const VRAM_SIZE: usize = 0x800 * 2;
 const VRAM_START: u16 = 0x2000;
 const VRAM_END: u16 = 0x3EFF;
 
@@ -93,6 +93,7 @@ impl PpuBus {
             },
             MirrorMode::OneScreenLo => index & 0x3FF,
             MirrorMode::OneScreenHi => (index & 0x3FF) + NTA_SIZE,
+            MirrorMode::FourScreen => index,
         }
     }
 }
