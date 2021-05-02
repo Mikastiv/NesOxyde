@@ -26,9 +26,12 @@ SyncMode: -A (default) or -V
 
 R -> Reset  
 Esc -> Close emulator
+1 -> Volume down
+2 -> Volume up
 
 Key mappings can be changed in main.rs  
 Defaults:
+
 - A -> B
 - S -> A
 - Z -> Select

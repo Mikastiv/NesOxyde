@@ -19,6 +19,8 @@ static WINDOW_TITLE: &str = "NesOxyde";
 pub const WIDTH: u32 = 256;
 pub const HEIGHT: u32 = 240;
 
+const VOLUME_STEP: f32 = 0.05;
+
 mod trace;
 
 #[derive(Debug)]
@@ -60,6 +62,7 @@ where
     queue.resume();
 
     let mut samples = vec![0.0; 1024];
+    let mut volume = 1.0;
 
     let mut reverbs = [
         Reverb::new(330, sample_rate, 0.15),
@@ -84,6 +87,17 @@ where
     let mut cpu = Cpu::new(bus);
     cpu.reset();
 
+    let update_vol = |vol, step| {
+        let new_vol = vol + step;
+        let out = match step < 0.0 {
+            true => f32::max(0.0, new_vol),
+            false => f32::min(1.0, new_vol),
+        };
+
+        println!("Volume: {:.0}", out * 100.0);
+        out
+    };
+
     let mut timer = Timer::new();
     'nes: loop {
         for event in event_pump.poll_iter() {
@@ -93,6 +107,14 @@ where
                     keycode: Some(Keycode::Escape),
                     ..
                 } => break 'nes,
+                Event::KeyDown {
+                    keycode: Some(Keycode::Num1),
+                    ..
+                } => volume = update_vol(volume, -VOLUME_STEP),
+                Event::KeyDown {
+                    keycode: Some(Keycode::Num2),
+                    ..
+                } => volume = update_vol(volume, VOLUME_STEP),
                 Event::KeyDown {
                     keycode: Some(Keycode::R),
                     ..
@@ -135,19 +157,21 @@ where
                     timer.reset();
                     timer.wait(Duration::from_micros(10));
                 }
-                
+
                 while cpu.sample_count() < sample_size as usize {
                     cpu.clock();
                 }
             }
         }
-        
+
         samples.append(&mut cpu.samples());
-        
+
         for r in reverbs.iter_mut() {
             r.apply(&mut samples);
         }
-        
+
+        samples.iter_mut().for_each(|s| *s *= volume);
+
         queue.queue(&samples);
         samples.clear();
     }
