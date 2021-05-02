@@ -38,7 +38,7 @@ where
     let video_subsystem = sdl_context.video().unwrap();
     let audio_subsystem = sdl_context.audio().unwrap();
     let window = video_subsystem
-        .window(WINDOW_TITLE, WIDTH * 2, HEIGHT * 2)
+        .window(&format!("{}{}", WINDOW_TITLE, cartridge.filename()), WIDTH * 2, HEIGHT * 2)
         .position_centered()
         .resizable()
         .build()
