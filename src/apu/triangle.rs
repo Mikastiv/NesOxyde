@@ -110,7 +110,12 @@ impl Triangle {
     }
 
     pub fn output(&self) -> u8 {
-        if !self.enabled || self.length_counter == 0 || self.linear_counter == 0 {
+        if !self.enabled
+            || self.length_counter == 0
+            || self.linear_counter == 0
+            // Remove screaming noise from megaman 1 and 2 (Emulator does not behave like real hardware)
+            || self.timer_period < 2
+        {
             return 0;
         }
 
