@@ -4,18 +4,28 @@ use std::rc::Rc;
 use crate::cartridge::{Cartridge, MirrorMode};
 use crate::ppu;
 
+/// First address of the ROM memory space
 const ROM_START: u16 = 0x0000;
+/// Last address of the ROM memory space
 const ROM_END: u16 = 0x1FFF;
 
+/// Size of one nametable
 const NTA_SIZE: u16 = 0x400;
+/// Size of the VRAM (Doubled to handle some games which use 4screen mapping)
 const VRAM_SIZE: usize = 0x800 * 2;
+/// First address of the VRAM memory space
 const VRAM_START: u16 = 0x2000;
+/// Last address of the VRAM memory space
 const VRAM_END: u16 = 0x3EFF;
 
+/// Size of the palette RAM
 const PALETTE_RAM_SIZE: usize = 0x20;
+/// First address of the palette RAM memory space
 const PALETTE_START: u16 = 0x3F00;
+/// Last address of the palette RAM memory space
 const PALETTE_END: u16 = 0x3FFF;
 
+/// Memory bus of the Ppu
 pub struct PpuBus {
     cartridge: Rc<RefCell<Cartridge>>,
     pal_ram: [u8; PALETTE_RAM_SIZE],
@@ -77,22 +87,86 @@ impl PpuBus {
         }
     }
 
+    /// Returns the address mirrored based on the current mirroring mode
     fn mirrored_vaddr(&self, addr: u16) -> u16 {
+        // Mask because 0x2000 - 0x2FFF mirrors 0x3000 - 0x3EFF
         let addr = addr & 0x2FFF;
+        // Substract the memory map offset to have real memory index
         let index = addr - VRAM_START;
+        // Calculate which nametable we are in
         let nta = index / NTA_SIZE;
         match self.cartridge.borrow().mirror_mode() {
+            // |---------|---------|  |---------|---------|
+            // |         |         |  |         |         |
+            // |  0 - A  |  1 - B  |  |    0    |    1    | The hardware has space for only 2 nametables
+            // |         |         |  |         |         |
+            // |---------|---------|  |---------|---------|
+            // |         |         |
+            // |  2 - A  |  3 - B  |
+            // |         |         |
+            // |---------|---------|
+            // Here 2 mirrors 0 and 3 mirrors 1
+            // I simply substract the size of the first two nametables if we are in 2 or 3.
+            // Otherwise I return the index because nametables 0 and 1 are already mapped correctly
             MirrorMode::Vertical => match nta {
                 2 | 3 => index - (NTA_SIZE * 2),
                 _ => index,
             },
+            // |---------|---------|  |---------|---------|
+            // |         |         |  |         |         |
+            // |  0 - A  |  1 - A  |  |    0    |    1    | The hardware has space for only 2 nametables
+            // |         |         |  |         |         |
+            // |---------|---------|  |---------|---------|
+            // |         |         |
+            // |  2 - B  |  3 - B  |
+            // |         |         |
+            // |---------|---------|
+            // Here 1 mirrors 0 and 3 mirrors 2. 
+            // I want to map nametable 0 to hardware nametable 0 and nametable 2 to hardware nametable 1.
+            // Nametable 0 is already mapped
+            // Because nametable 1 mirrors 0, I can simply substract the nametable size.
+            // Then I want to map nametable 2 to hardware nametable 1, so I also can substract the size.
+            // Finally for nametable 3, because it is a mirror of nametable 2, it should map onto hardware nametable 1.
+            // So I substract twice the size of a nametable
             MirrorMode::Horizontal => match nta {
                 1 | 2 => index - NTA_SIZE,
                 3 => index - (NTA_SIZE * 2),
                 _ => index,
             },
+            // |---------|---------|  |---------|---------|
+            // |         |         |  |         |         |
+            // |  0 - A  |  1 - A  |  |    0    |    1    | The hardware has space for only 2 nametables
+            // |         |         |  |         |         |
+            // |---------|---------|  |---------|---------|
+            // |         |         |
+            // |  2 - A  |  3 - A  |
+            // |         |         |
+            // |---------|---------|
+            // This setting maps everthing to hardware nametable 0
             MirrorMode::OneScreenLo => index & 0x3FF,
+            // |---------|---------|  |---------|---------|
+            // |         |         |  |         |         |
+            // |  0 - A  |  1 - A  |  |    0    |    1    | The hardware has space for only 2 nametables
+            // |         |         |  |         |         |
+            // |---------|---------|  |---------|---------|
+            // |         |         |
+            // |  2 - A  |  3 - A  |
+            // |         |         |
+            // |---------|---------|
+            // This setting maps everthing to hardware nametable 1. 
+            // I simply add the size after masking the address
             MirrorMode::OneScreenHi => (index & 0x3FF) + NTA_SIZE,
+            // |---------|---------|  |---------|---------|
+            // |         |         |  |         |         |
+            // |  0 - A  |  1 - B  |  |    0    |    1    | The hardware has space for only 2 nametables
+            // |         |         |  |         |         |
+            // |---------|---------|  |---------|---------|
+            // |         |         |  |         |         |
+            // |  2 - C  |  3 - D  |  |    2    |    3    | The extra nametables were on the cartridge PCB
+            // |         |         |  |         |         |
+            // |---------|---------|  |---------|---------|
+            // Real hardware would use memory on the cartridge but, I simply 
+            // allocated a Vec of twice the size of VRAM and use the index directly
             MirrorMode::FourScreen => index,
         }
     }

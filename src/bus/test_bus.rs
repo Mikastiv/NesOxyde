@@ -2,6 +2,7 @@
 
 use crate::cpu::Interface;
 
+/// Bus used for easier cpu testing
 pub struct TestBus {
     ram: [u8; 0x800],
     program: Vec<u8>,
@@ -31,6 +32,7 @@ impl TestBus {
         }
     }
 
+    /// Sets a value at a RAM address
     pub fn set_ram(&mut self, addr: u16, data: u8) {
         self.ram[(addr & 0x7FF) as usize] = data;
     }

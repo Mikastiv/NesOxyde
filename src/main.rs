@@ -17,7 +17,7 @@ mod reverb;
 mod snake_game;
 mod timer;
 
-/// Parse program arguments
+/// Parses program arguments
 fn parse_args(args: &[String]) -> (Mode, &String) {
     if args.len() != 2 && args.len() != 3 {
         eprintln!(
