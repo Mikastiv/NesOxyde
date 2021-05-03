@@ -14,8 +14,11 @@ const STACK_PAGE: u16 = 0x0100;
 const STACK_RESET: u8 = 0xFD;
 /// Reset value of the status register
 const STATUS_RESET: u8 = Flags::U.bits() | Flags::I.bits();
+/// Non-maskable interrupt vector
 const NMI_VECTOR: u16 = 0xFFFA;
+/// Reset vector
 const RESET_VECTOR: u16 = 0xFFFC;
+/// Interrupt request vector
 const IRQ_VECTOR: u16 = 0xFFFE;
 
 /// Cpu's interface to the rest of the components
@@ -68,6 +71,7 @@ pub trait Interface {
 }
 
 bitflags! {
+    /// Cpu Flags
     struct Flags: u8 {
         /// Negative
         const N = 0b10000000;
@@ -154,6 +158,7 @@ impl<'a> Cpu<'a> {
         self.p.bits()
     }
 
+    /// Cpu cycles passed
     pub fn cycles(&self) -> u64 {
         self.cycles
     }
@@ -174,8 +179,8 @@ impl<'a> Cpu<'a> {
         // Set pc to value at reset vector
         self.pc = self.mem_read_word(RESET_VECTOR);
         self.ins_cycles = 0;
-        self.bus.tick(7);
         // Reset takes 7 cycles
+        self.bus.tick(7);
         self.cycles = 7;
     }
 
@@ -474,7 +479,7 @@ impl<'a> Cpu<'a> {
                 let hi = self.mem_read(ptr.wrapping_add(1) as u16);
                 // Add value in register Y to the result
                 let addr = u16::from_le_bytes([lo, hi]).wrapping_add(self.y() as u16);
-                
+
                 // If a page is crossed (e.g. when the first byte is at 0x04FF and the second at 0x0500) it takes an extra cycle
                 if Self::page_crossed(u16::from_le_bytes([lo, hi]), addr) {
                     self.ins_cycles += 1;
@@ -550,22 +555,22 @@ impl<'a> Cpu<'a> {
         // Update flags Z and N
         self.set_z_n(v);
     }
-    
-    /// Sets the X register to v 
+
+    /// Sets the X register to v
     fn set_x(&mut self, v: u8) {
         self.x = v;
         // Update flags Z and N
         self.set_z_n(v);
     }
 
-    /// Sets the X register to v 
+    /// Sets the X register to v
     fn set_y(&mut self, v: u8) {
         self.y = v;
         // Update flags Z and N
         self.set_z_n(v);
     }
 
-    /// Sets the status register to v 
+    /// Sets the status register to v
     fn set_p(&mut self, v: u8) {
         // Always set U flag and never the B flag
         self.p.bits = (v | Flags::U.bits()) & !Flags::B.bits();
@@ -627,54 +632,67 @@ impl<'a> Cpu<'a> {
         self.set_x(self.a());
     }
 
+    /// Transfer accumulator to Y register
     fn tay(&mut self, _mode: AddrMode) {
         self.set_y(self.a());
     }
 
+    /// Transfer stack pointer to X register
     fn tsx(&mut self, _mode: AddrMode) {
         self.set_x(self.s());
     }
 
+    /// Transfer X register to accumulator
     fn txa(&mut self, _mode: AddrMode) {
         self.set_a(self.x());
     }
 
+    /// Transfer X register to stack pointer
     fn txs(&mut self, _mode: AddrMode) {
         self.s = self.x();
     }
 
+    /// Transfer Y register to accumulator
     fn tya(&mut self, _mode: AddrMode) {
         self.set_a(self.y());
     }
 
+    /// Clear carry
     fn clc(&mut self, _mode: AddrMode) {
         self.p.remove(Flags::C);
     }
 
+    /// Clear decimal
     fn cld(&mut self, _mode: AddrMode) {
         self.p.remove(Flags::D);
     }
 
+    /// Clear interrupt
     fn cli(&mut self, _mode: AddrMode) {
         self.p.remove(Flags::I);
     }
 
+    /// Clear overflow
     fn clv(&mut self, _mode: AddrMode) {
         self.p.remove(Flags::V);
     }
 
+    /// Set carry
     fn sec(&mut self, _mode: AddrMode) {
         self.p.insert(Flags::C);
     }
 
+    /// Set decimal
     fn sed(&mut self, _mode: AddrMode) {
         self.p.insert(Flags::D);
     }
 
+    /// Set interrupt
     fn sei(&mut self, _mode: AddrMode) {
         self.p.insert(Flags::I);
     }
 
+    /// Increment memory
     fn inc(&mut self, mode: AddrMode) {
         let addr = self.operand_addr(mode);
         let v = self.fetch_operand(addr, mode).wrapping_add(1);
@@ -682,14 +700,17 @@ impl<'a> Cpu<'a> {
         self.mem_write(addr, v);
     }
 
+    /// Increment X register
     fn inx(&mut self, _mode: AddrMode) {
         self.set_x(self.x().wrapping_add(1));
     }
 
+    /// Increment Y register
     fn iny(&mut self, _mode: AddrMode) {
         self.set_y(self.y().wrapping_add(1));
     }
 
+    /// Decrement memory
     fn dec(&mut self, mode: AddrMode) {
         let addr = self.operand_addr(mode);
         let v = self.fetch_operand(addr, mode).wrapping_sub(1);
@@ -697,75 +718,91 @@ impl<'a> Cpu<'a> {
         self.mem_write(addr, v);
     }
 
+    /// Decrement X register
     fn dex(&mut self, _mode: AddrMode) {
         self.set_x(self.x().wrapping_sub(1));
     }
 
+    /// Decrement Y register
     fn dey(&mut self, _mode: AddrMode) {
         self.set_y(self.y().wrapping_sub(1));
     }
 
+    /// Compare
     fn cmp(&mut self, v1: u8, v2: u8) {
         let result = v1.wrapping_sub(v2);
         self.p.set(Flags::C, v1 >= v2);
         self.set_z_n(result);
     }
 
+    /// Compare with accumulator
     fn cpa(&mut self, mode: AddrMode) {
         let addr = self.operand_addr(mode);
         let v = self.fetch_operand(addr, mode);
         self.cmp(self.a(), v);
     }
 
+    /// Compare with X register
     fn cpx(&mut self, mode: AddrMode) {
         let addr = self.operand_addr(mode);
         let v = self.fetch_operand(addr, mode);
         self.cmp(self.x(), v);
     }
 
+    /// Compare with Y register
     fn cpy(&mut self, mode: AddrMode) {
         let addr = self.operand_addr(mode);
         let v = self.fetch_operand(addr, mode);
         self.cmp(self.y(), v);
     }
 
+    /// Branch if carry set
     fn bcs(&mut self, _mode: AddrMode) {
         self.branch(self.p.contains(Flags::C));
     }
 
+    /// Branch if carry clear
     fn bcc(&mut self, _mode: AddrMode) {
         self.branch(!self.p.contains(Flags::C));
     }
 
+    /// Branch if equal
     fn beq(&mut self, _mode: AddrMode) {
         self.branch(self.p.contains(Flags::Z));
     }
 
+    /// Branch if not equal
     fn bne(&mut self, _mode: AddrMode) {
         self.branch(!self.p.contains(Flags::Z));
     }
 
+    /// Branch if minus
     fn bmi(&mut self, _mode: AddrMode) {
         self.branch(self.p.contains(Flags::N));
     }
 
+    /// Branch if positive
     fn bpl(&mut self, _mode: AddrMode) {
         self.branch(!self.p.contains(Flags::N));
     }
 
+    /// Branch if overflow set
     fn bvs(&mut self, _mode: AddrMode) {
         self.branch(self.p.contains(Flags::V));
     }
 
+    /// Branch if overflow clear
     fn bvc(&mut self, _mode: AddrMode) {
         self.branch(!self.p.contains(Flags::V));
     }
 
+    /// Jump absolute
     fn jmp_abs(&mut self, mode: AddrMode) {
         let addr = self.operand_addr(mode);
         self.pc = addr;
     }
 
+    /// Jump indirect
     fn jmp_ind(&mut self, mode: AddrMode) {
         let addr = self.operand_addr(mode);
         let lo = self.mem_read(addr);
@@ -773,6 +810,7 @@ impl<'a> Cpu<'a> {
         self.pc = u16::from_le_bytes([lo, hi]);
     }
 
+    /// Break
     fn brk(&mut self, _mode: AddrMode) {
         if !self.p.contains(Flags::I) {
             self.increment_pc();
@@ -783,35 +821,42 @@ impl<'a> Cpu<'a> {
         }
     }
 
+    /// Push accumulator
     fn pha(&mut self, _mode: AddrMode) {
         self.push_byte(self.a());
     }
 
+    /// Push status
     fn php(&mut self, _mode: AddrMode) {
         self.push_byte((self.p | Flags::B).bits());
     }
 
+    /// Pull accumulator
     fn pla(&mut self, _mode: AddrMode) {
         let v = self.pop_byte();
         self.set_a(v);
     }
 
+    /// Pull status
     fn plp(&mut self, _mode: AddrMode) {
         let v = self.pop_byte();
         self.set_p(v);
     }
 
+    /// Jump to subroutine
     fn jsr(&mut self, mode: AddrMode) {
         let addr = self.operand_addr(mode);
         self.push_word(self.pc.wrapping_sub(1));
         self.pc = addr;
     }
 
+    /// Return from subroutine
     fn rts(&mut self, _mode: AddrMode) {
         let addr = self.pop_word();
         self.pc = addr.wrapping_add(1);
     }
 
+    /// Return from interrupt
     fn rti(&mut self, _mode: AddrMode) {
         let v = self.pop_byte();
         let addr = self.pop_word();
@@ -819,6 +864,7 @@ impl<'a> Cpu<'a> {
         self.pc = addr;
     }
 
+    /// No-op
     fn nop(&mut self, mode: AddrMode) {
         match mode {
             AddrMode::Imp => {}
@@ -829,6 +875,7 @@ impl<'a> Cpu<'a> {
         }
     }
 
+    /// Bit test
     fn bit(&mut self, mode: AddrMode) {
         let addr = self.operand_addr(mode);
         let v = self.fetch_operand(addr, mode);
@@ -838,24 +885,28 @@ impl<'a> Cpu<'a> {
         self.p.set(Flags::N, v & 0x80 != 0);
     }
 
+    /// Bitwise AND
     fn and(&mut self, mode: AddrMode) {
         let addr = self.operand_addr(mode);
         let v = self.fetch_operand(addr, mode);
         self.set_a(self.a() & v);
     }
 
+    /// Exclusive OR
     fn eor(&mut self, mode: AddrMode) {
         let addr = self.operand_addr(mode);
         let v = self.fetch_operand(addr, mode);
         self.set_a(self.a() ^ v);
     }
 
+    /// Bitwise OR
     fn ora(&mut self, mode: AddrMode) {
         let addr = self.operand_addr(mode);
         let v = self.fetch_operand(addr, mode);
         self.set_a(self.a() | v);
     }
 
+    /// Arithmetic shift left
     fn asl(&mut self, v: u8) -> u8 {
         self.p.set(Flags::C, v & 0x80 != 0);
         let result = v << 1;
@@ -863,11 +914,13 @@ impl<'a> Cpu<'a> {
         result
     }
 
+    /// Arithmetic shift left on accumulator
     fn asl_acc(&mut self, _mode: AddrMode) {
         let v = self.asl(self.a());
         self.set_a(v);
     }
 
+    /// Arithmetic shift left on memory
     fn asl_mem(&mut self, mode: AddrMode) {
         let addr = self.operand_addr(mode);
         let v = self.fetch_operand(addr, mode);
@@ -875,6 +928,7 @@ impl<'a> Cpu<'a> {
         self.mem_write(addr, result);
     }
 
+    /// Logical shift right
     fn lsr(&mut self, v: u8) -> u8 {
         self.p.set(Flags::C, v & 0x01 != 0);
         let result = v >> 1;
@@ -882,11 +936,13 @@ impl<'a> Cpu<'a> {
         result
     }
 
+    /// Logical shift right on accumulator
     fn lsr_acc(&mut self, _mode: AddrMode) {
         let v = self.lsr(self.a());
         self.set_a(v);
     }
 
+    /// Logical shift right on memory
     fn lsr_mem(&mut self, mode: AddrMode) {
         let addr = self.operand_addr(mode);
         let v = self.fetch_operand(addr, mode);
@@ -894,6 +950,7 @@ impl<'a> Cpu<'a> {
         self.mem_write(addr, result);
     }
 
+    /// Rotate left
     fn rol(&mut self, v: u8) -> u8 {
         let c = self.p.contains(Flags::C) as u8;
         self.p.set(Flags::C, v & 0x80 != 0);
@@ -903,11 +960,13 @@ impl<'a> Cpu<'a> {
         result
     }
 
+    /// Rotate left on accumulator
     fn rol_acc(&mut self, _mode: AddrMode) {
         let v = self.rol(self.a());
         self.set_a(v);
     }
 
+    /// Rotate left on memory
     fn rol_mem(&mut self, mode: AddrMode) {
         let addr = self.operand_addr(mode);
         let v = self.fetch_operand(addr, mode);
@@ -915,6 +974,7 @@ impl<'a> Cpu<'a> {
         self.mem_write(addr, result);
     }
 
+    /// Rotate right
     fn ror(&mut self, v: u8) -> u8 {
         let c = self.p.contains(Flags::C) as u8;
         self.p.set(Flags::C, v & 0x01 != 0);
@@ -924,11 +984,13 @@ impl<'a> Cpu<'a> {
         result
     }
 
+    /// Rotate right on accumulator
     fn ror_acc(&mut self, _mode: AddrMode) {
         let v = self.ror(self.a());
         self.set_a(v);
     }
 
+    /// Rotate right on memory
     fn ror_mem(&mut self, mode: AddrMode) {
         let addr = self.operand_addr(mode);
         let v = self.fetch_operand(addr, mode);
@@ -936,6 +998,7 @@ impl<'a> Cpu<'a> {
         self.mem_write(addr, result);
     }
 
+    /// Performs addition with on accumulator value
     fn add(&mut self, v: u8) {
         let c = self.p.contains(Flags::C);
         let sum = self.a() as u16 + v as u16 + c as u16;
@@ -947,28 +1010,35 @@ impl<'a> Cpu<'a> {
         self.set_a(result);
     }
 
+    /// Performs substraction on accumulator with value
+    ///
+    /// Substraction is adding with all the bits flipped
     fn sub(&mut self, v: u8) {
-        self.add(v ^ 0xFF);
+        self.add(!v);
     }
 
+    /// Add with carry
     fn adc(&mut self, mode: AddrMode) {
         let addr = self.operand_addr(mode);
         let v = self.fetch_operand(addr, mode);
         self.add(v);
     }
 
+    /// Sub with carry
     fn sbc(&mut self, mode: AddrMode) {
         let addr = self.operand_addr(mode);
         let v = self.fetch_operand(addr, mode);
         self.sub(v);
     }
 
+    // ----------- Illegal opcodes -----------
+    
+    /// Illegal operation which halts the cpu
     fn kil(&mut self, _mode: AddrMode) {
         panic!("KIL opcode called");
     }
 
-    // ----------- Illegal opcodes -----------
-
+    /// ASL & ORA
     fn slo(&mut self, mode: AddrMode) {
         let addr = self.operand_addr(mode);
         let v = self.fetch_operand(addr, mode);
@@ -978,6 +1048,7 @@ impl<'a> Cpu<'a> {
         self.mem_write(addr, result);
     }
 
+    /// ROL & AND
     fn rla(&mut self, mode: AddrMode) {
         let addr = self.operand_addr(mode);
         let v = self.fetch_operand(addr, mode);
@@ -987,6 +1058,7 @@ impl<'a> Cpu<'a> {
         self.mem_write(addr, result);
     }
 
+    /// LSR & EOR
     fn sre(&mut self, mode: AddrMode) {
         let addr = self.operand_addr(mode);
         let v = self.fetch_operand(addr, mode);
@@ -996,6 +1068,7 @@ impl<'a> Cpu<'a> {
         self.mem_write(addr, result);
     }
 
+    /// ROR & ADC
     fn rra(&mut self, mode: AddrMode) {
         let addr = self.operand_addr(mode);
         let v = self.fetch_operand(addr, mode);
@@ -1005,17 +1078,20 @@ impl<'a> Cpu<'a> {
         self.mem_write(addr, result);
     }
 
+    /// STA & STX
     fn sax(&mut self, mode: AddrMode) {
         let addr = self.operand_addr(mode);
         self.mem_write(addr, self.a() & self.x());
     }
 
+    /// STA & STX & (High byte + 1)
     fn ahx(&mut self, mode: AddrMode) {
         let addr = self.operand_addr(mode);
         let hi = ((addr >> 8) as u8).wrapping_add(1);
         self.mem_write(addr, hi & self.a() & self.x());
     }
 
+    /// LDA & LDX
     fn lax(&mut self, mode: AddrMode) {
         let addr = self.operand_addr(mode);
         let v = self.fetch_operand(addr, mode);
@@ -1024,6 +1100,7 @@ impl<'a> Cpu<'a> {
         self.set_a(v);
     }
 
+    /// DEC & CMP
     fn dcp(&mut self, mode: AddrMode) {
         let addr = self.operand_addr(mode);
         let v = self.fetch_operand(addr, mode).wrapping_sub(1);
@@ -1032,6 +1109,7 @@ impl<'a> Cpu<'a> {
         self.mem_write(addr, v);
     }
 
+    /// INC & SBC
     fn isb(&mut self, mode: AddrMode) {
         let addr = self.operand_addr(mode);
         let v = self.fetch_operand(addr, mode).wrapping_add(1);
@@ -1040,6 +1118,7 @@ impl<'a> Cpu<'a> {
         self.mem_write(addr, v);
     }
 
+    /// AND with Carry flag
     fn anc(&mut self, mode: AddrMode) {
         let addr = self.operand_addr(mode);
         let v = self.fetch_operand(addr, mode);
@@ -1048,6 +1127,7 @@ impl<'a> Cpu<'a> {
         self.p.set(Flags::C, self.p.contains(Flags::N));
     }
 
+    /// AND with Carry flag & LSR
     fn alr(&mut self, mode: AddrMode) {
         let addr = self.operand_addr(mode);
         let v = self.fetch_operand(addr, mode);
@@ -1056,6 +1136,7 @@ impl<'a> Cpu<'a> {
         self.p.set(Flags::C, self.a() & 0x01 != 0);
         self.set_a(self.a() >> 1);
     }
+
 
     fn arr(&mut self, mode: AddrMode) {
         let addr = self.operand_addr(mode);

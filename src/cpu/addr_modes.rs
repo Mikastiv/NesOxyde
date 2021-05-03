@@ -1,3 +1,4 @@
+/// Cpu addressing modes
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum AddrMode {
     None, // For KIL operations

@@ -1,6 +1,6 @@
 use std::time::{Duration, Instant};
 
-/// Helper struct to video/audio timing
+/// Helper struct for video/audio timing
 pub struct Timer {
     start: Instant,
 }

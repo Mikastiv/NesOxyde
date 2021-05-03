@@ -3,6 +3,7 @@ use std::collections::HashMap;
 
 use super::{AddrMode, Cpu};
 
+/// Cpu instruction information
 #[derive(Clone, Copy)]
 pub struct Instruction {
     pub opcode: u8,
@@ -31,6 +32,7 @@ impl Instruction {
 }
 
 lazy_static! {
+    /// List of all the possible instructions
     pub static ref INSTRUCTIONS: Vec<Instruction> = vec![
         Instruction::new(0xA9, LDA, |cpu, mode| cpu.lda(mode), AddrMode::Imm, 2),
         Instruction::new(0xA5, LDA, |cpu, mode| cpu.lda(mode), AddrMode::Zp0, 3),
@@ -342,6 +344,7 @@ lazy_static! {
         Instruction::new(0x9E, SHX, |cpu, mode| cpu.shx(mode), AddrMode::AbyW, 5),
     ];
 
+    /// HashMap of the instructions
     pub static ref OPTABLE: HashMap<u8, &'static Instruction> = {
         let mut map = HashMap::<u8, &'static Instruction>::new();
 

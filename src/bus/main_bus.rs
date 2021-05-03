@@ -167,6 +167,7 @@ impl<'a> MainBus<'a> {
             let addr = self.apu.dmc_sample_address();
             let sample = self.read(addr);
             self.apu.set_dmc_sample(sample);
+            self.tick(2);
         }
     }
 }
