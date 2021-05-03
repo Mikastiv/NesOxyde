@@ -34,10 +34,14 @@ pub struct PpuBus {
 
 impl ppu::Interface for PpuBus {
     fn read(&self, addr: u16) -> u8 {
+        // The ppu bus only maps from 0x0000 to 0x3FFF;
         let addr = addr & 0x3FFF;
         match addr {
+            // ROM memory space: read from CHR ROM on the cartridge
             ROM_START..=ROM_END => self.cartridge.borrow_mut().read_chr(addr),
+            // VRAM memory space: read from VRAM
             VRAM_START..=VRAM_END => {
+                // Mirror the address first
                 let index = self.mirrored_vaddr(addr) as usize;
                 self.vram[index]
             }

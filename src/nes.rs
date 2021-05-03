@@ -2,6 +2,7 @@ use sdl2::audio::AudioSpecDesired;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::pixels::PixelFormatEnum;
+use spin_sleep::SpinSleeper;
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::time::Duration;
@@ -110,6 +111,7 @@ where
     };
 
     let mut timer = Timer::new();
+    let spin_sleeper = SpinSleeper::default();
     'nes: loop {
         for event in event_pump.poll_iter() {
             match event {
@@ -165,8 +167,7 @@ where
             }
             Mode::AudioSync => {
                 while queue.size() > sample_size as u32 * 4 {
-                    timer.reset();
-                    timer.wait(Duration::from_micros(10));
+                    spin_sleeper.sleep(Duration::from_micros(256));
                 }
 
                 while cpu.sample_count() < sample_size as usize {
