@@ -45,11 +45,18 @@ impl ppu::Interface for PpuBus {
                 let index = self.mirrored_vaddr(addr) as usize;
                 self.vram[index]
             }
+            // Palette RAM memory space:
             PALETTE_START..=PALETTE_END => {
                 let mut index = addr;
+                // This check is because
+                // 0x3F10 == 0x3F00
+                // 0x3F14 == 0x3F04
+                // 0x3F18 == 0x3F08
+                // 0x3F1C == 0x3F0C
                 if index % 4 == 0 {
                     index &= 0x0F;
                 }
+                // Palette mirrors every 0x20 (32)
                 index &= 0x1F;
                 self.pal_ram[index as usize]
             }
@@ -58,18 +65,29 @@ impl ppu::Interface for PpuBus {
     }
 
     fn write(&mut self, addr: u16, data: u8) {
+        // The ppu bus only maps from 0x0000 to 0x3FFF;
         let addr = addr & 0x3FFF;
         match addr {
+            // ROM memory space: read from CHR ROM on the cartridge
             ROM_START..=ROM_END => self.cartridge.borrow_mut().write_chr(addr, data),
+            // VRAM memory space: read from VRAM
             VRAM_START..=VRAM_END => {
+                // Mirror the address first
                 let index = self.mirrored_vaddr(addr) as usize;
                 self.vram[index] = data;
             }
+            // Palette RAM memory space:
             PALETTE_START..=PALETTE_END => {
                 let mut index = addr;
+                // This check is because
+                // 0x3F10 == 0x3F00
+                // 0x3F14 == 0x3F04
+                // 0x3F18 == 0x3F08
+                // 0x3F1C == 0x3F0C
                 if index % 4 == 0 {
                     index &= 0x0F;
                 }
+                // Palette mirrors every 0x20 (32)
                 index &= 0x1F;
                 self.pal_ram[index as usize] = data;
             }
@@ -77,6 +95,7 @@ impl ppu::Interface for PpuBus {
         }
     }
 
+    // Signals a new scanline was rendered to the cartridge
     fn inc_scanline(&mut self) {
         self.cartridge.borrow_mut().inc_scanline()
     }

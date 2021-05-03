@@ -6,30 +6,50 @@ use triangle::Triangle;
 use crate::decay::Decay;
 use crate::filters::{Filter, HighPass, LowPass};
 
+/// Square channel 1 volume register
 const SQ1_VOL: u16 = 0x4000;
+/// Square channel 1 sweep register
 const SQ1_SWEEP: u16 = 0x4001;
+/// Square channel 1 timer low register
 const SQ1_LO: u16 = 0x4002;
+/// Square channel 1 timer high register
 const SQ1_HI: u16 = 0x4003;
 
+/// Square channel 2 volume register
 const SQ2_VOL: u16 = 0x4004;
+/// Square channel 2 sweep register
 const SQ2_SWEEP: u16 = 0x4005;
+/// Square channel 2 timer low register
 const SQ2_LO: u16 = 0x4006;
+/// Square channel 2 timer high register
 const SQ2_HI: u16 = 0x4007;
 
+/// Triangle channel linear counter register
 const TRI_LINEAR: u16 = 0x4008;
+/// Triangle channel timer low register
 const TRI_LO: u16 = 0x400A;
+/// Triangle channel timer high register
 const TRI_HI: u16 = 0x400B;
 
+/// Noise channel volume register
 const NOISE_VOL: u16 = 0x400C;
+/// Noise channel timer low register
 const NOISE_LO: u16 = 0x400E;
+/// Noise channel timer high register
 const NOISE_HI: u16 = 0x400F;
 
+// DMC frequency register
 const DMC_FREQ: u16 = 0x4010;
+// DMC raw sample register
 const DMC_RAW: u16 = 0x4011;
+// DMC start (address) register
 const DMC_START: u16 = 0x4012;
+// DMC length register
 const DMC_LEN: u16 = 0x4013;
 
+/// Sound status / enable register
 const SND_CHN: u16 = 0x4015;
+/// Frame counter register
 const FRAME_COUNTER: u16 = 0x4017;
 
 mod dmc;
@@ -37,11 +57,13 @@ mod noise;
 mod square;
 mod triangle;
 
+/// Sequencer stepping mode
 enum SequencerMode {
     FourStep,
     FiveStep,
 }
 
+/// NES audio processing unit
 pub struct Apu {
     cycles: u32,
     frame_counter: u32,
@@ -63,9 +85,9 @@ pub struct Apu {
 impl Apu {
     pub fn new(sample_rate: f32) -> Self {
         let filters: Vec<Box<dyn Filter>> = vec![
-            Box::new(LowPass::new(14000.0, sample_rate, 2.0f32.sqrt())),
             Box::new(HighPass::new(90.0, sample_rate, 2.0f32.sqrt())),
-            //Box::new(HighPass::new(440.0, sample_rate, 2.0f32.sqrt())),
+            // Box::new(HighPass::new(440.0, sample_rate, 2.0f32.sqrt())),
+            Box::new(LowPass::new(14000.0, sample_rate, 2.0f32.sqrt())),
         ];
 
         Self {
@@ -88,8 +110,18 @@ impl Apu {
     }
 
     pub fn read(&mut self, addr: u16) -> u8 {
+        // The Apu can only be read from the status register
         match addr {
             SND_CHN => {
+                // Returns IF-D NT21
+                // I: DMC Interrupt requested and clears it if set
+                // F: Apu interrupt flag and clears it if set
+                // D: 1 if DMC length counter > 0
+                // N: 1 if noise length counter > 0
+                // T: 1 if triangle length counter > 0
+                // 2: 1 if square 2 length counter > 0
+                // 1: 1 if square 1 length counter > 0
+
                 let sq1 = (self.sq1.length_counter() > 0) as u8;
                 let sq2 = (self.sq2.length_counter() > 0) as u8;
                 let tri = (self.tri.length_counter() > 0) as u8;
@@ -130,6 +162,8 @@ impl Apu {
             DMC_LEN => self.dmc.write_len(data),
 
             SND_CHN => {
+                // ---D NT21
+                // Enables or disable a channel based on the bits of data
                 self.sq1.set_enabled(data & 0x1 != 0);
                 self.sq2.set_enabled(data & 0x2 != 0);
                 self.tri.set_enabled(data & 0x4 != 0);
@@ -137,18 +171,23 @@ impl Apu {
                 self.dmc.set_enabled(data & 0x10 != 0);
             }
             FRAME_COUNTER => {
+                // MI-- ---
+                // Sets the stepping based on M
                 self.mode = match data & 0x80 == 0 {
                     true => SequencerMode::FiveStep,
                     false => SequencerMode::FourStep,
                 };
 
+                // If five step mode, clock everything once
                 if let SequencerMode::FiveStep = self.mode {
                     self.tick_envelopes();
                     self.tick_lengths();
                     self.tick_sweep();
                 }
 
+                // Sets the IRQ disable bit based on I
                 self.irq_off = data & 0x40 != 0;
+                // Clear the IRQ flag if set to disable
                 if self.irq_off {
                     self.pending_irq = None;
                 }
@@ -157,19 +196,40 @@ impl Apu {
         }
     }
 
+    /// Clocks the Apu once
     pub fn clock(&mut self) {
+        // Count the cycles
         self.cycles = self.cycles.wrapping_add(1);
 
+        // The triangle channel's timer is clocked at Cpu rate
         self.tri.tick_timer();
+        // The DMC rate counter is also clocked at Cpu rate
         self.dmc.tick();
+
+        // Instructions below happen at half the Cpu rate
         if self.cycles % 2 == 0 {
-            self.noise.tick_timer();
+            // Clock timers
             self.sq1.tick_timer();
             self.sq2.tick_timer();
+            self.noise.tick_timer();
 
+            // Count frame
             self.frame_counter += 1;
+
+            // The magic numbers below are specific to the sequencer.
+            // Things should happen at a certain rate.
+            // The NES frame counter runs at 240Hz
+            //
+            // (1,789,773Hz / 2) / 240Hz = ~14916
+            // Cpu clock / 2 -> a frame is counted on every other clock
+            // 240 -> Rate of the frame counter
+            //
+            // The sequencer operates on a 4 step update process
+            // 14914 / 4 = ~3729
+            // Thus the steps are: 3729 | 14914 / 2 | 3729 + 14914 / 2 | 14914
             if let 3729 | 7457 | 11186 | 14916 = self.frame_counter {
                 self.tick_sequencer();
+                // If on last step, restart the counter
                 if self.frame_counter == 14916 {
                     self.frame_counter = 0;
                 }
@@ -178,6 +238,7 @@ impl Apu {
     }
 
     pub fn poll_irq(&mut self) -> bool {
+        // IRQ can be requested by the Apu or the DMC
         self.pending_irq.take().is_some() | self.dmc.poll_irq().is_some()
     }
 
@@ -201,6 +262,7 @@ impl Apu {
         self.cycles = 0;
         self.frame_counter = 0;
         self.sequencer = 0;
+        self.pending_irq = None;
         self.mode = SequencerMode::FourStep;
         self.sq1.reset();
         self.sq2.reset();
@@ -210,10 +272,15 @@ impl Apu {
     }
 
     fn output(&mut self) -> f32 {
+        // Mix the audio according to NesDev
+        // http://wiki.nesdev.com/w/index.php/APU_Mixer
+
         let sq1 = self.sq1.output();
         let sq2 = self.sq2.output();
         let pulse = 95.88 / (100.0 + (8128.0 / (sq1 as f32 + sq2 as f32)));
 
+        // I apply a "decay" on the triangle channel to reduce audio pops
+        // Is only applied if the volume goes from a high value to zero
         let tri = self.tri_decay.decay(self.tri.output() as f32);
         let noise = self.noise.output() as f32;
         let dmc = self.dmc.output() as f32;
@@ -222,6 +289,11 @@ impl Apu {
 
         let sample = pulse + tnd;
 
+        // Apply filters
+        // The has 3 filters applied
+        // High-pass at 90Hz
+        // High-pass at 440Hz (I removed this one because the bass sounds way better without it)
+        // Low-pass at 14000Hz
         self.filters
             .iter_mut()
             .fold(sample, |sample, filter| filter.filter(sample))
@@ -230,6 +302,12 @@ impl Apu {
     fn tick_sequencer(&mut self) {
         match self.mode {
             SequencerMode::FourStep => {
+                // mode 0:    function
+                // --------- -----------------------------
+                //  0 1 2 3
+                //  - - - f   IRQ (if bit 6 is clear)
+                //  - l - l   Length counter and sweep
+                //  e e e e   Envelope and linear counter
                 match self.sequencer {
                     0 | 2 => self.tick_envelopes(),
                     value => {
@@ -243,9 +321,16 @@ impl Apu {
                     }
                 }
 
+                // Repeats every 4 steps
                 self.sequencer = (self.sequencer + 1) % 4;
             }
             SequencerMode::FiveStep => {
+                // mode 1:       function
+                // -----------  -----------------------------
+                //  0 1 2 3 4
+                //  - - - - -    IRQ (if bit 6 is clear)
+                //  - l - - l    Length counter and sweep
+                //  e e e - e    Envelope and linear counter
                 match self.sequencer {
                     0 | 2 => self.tick_envelopes(),
                     1 | 4 => {
@@ -255,6 +340,8 @@ impl Apu {
                     }
                     _ => {}
                 }
+
+                // Repeats every 5 steps
                 self.sequencer = (self.sequencer + 1) % 5;
             }
         }
