@@ -38,13 +38,13 @@ const NOISE_LO: u16 = 0x400E;
 /// Noise channel timer high register
 const NOISE_HI: u16 = 0x400F;
 
-// DMC frequency register
+/// DMC frequency register
 const DMC_FREQ: u16 = 0x4010;
-// DMC raw sample register
+/// DMC raw sample register
 const DMC_RAW: u16 = 0x4011;
-// DMC start (address) register
+/// DMC start (address) register
 const DMC_START: u16 = 0x4012;
-// DMC length register
+/// DMC length register
 const DMC_LEN: u16 = 0x4013;
 
 /// Sound status / enable register
@@ -58,6 +58,7 @@ mod square;
 mod triangle;
 
 /// Sequencer stepping mode
+#[derive(PartialEq)]
 enum SequencerMode {
     FourStep,
     FiveStep,
@@ -66,7 +67,7 @@ enum SequencerMode {
 /// NES audio processing unit
 pub struct Apu {
     cycles: u32,
-    frame_counter: u32,
+    hz240_counter: u16,
     irq_off: bool,
     pending_irq: Option<bool>,
 
@@ -92,7 +93,7 @@ impl Apu {
 
         Self {
             cycles: 0,
-            frame_counter: 0,
+            hz240_counter: 0,
             irq_off: false,
             pending_irq: None,
 
@@ -178,17 +179,13 @@ impl Apu {
                     false => SequencerMode::FourStep,
                 };
 
-                // If five step mode, clock everything once
-                if let SequencerMode::FiveStep = self.mode {
-                    self.tick_envelopes();
-                    self.tick_lengths();
-                    self.tick_sweep();
-                }
+                self.hz240_counter = 0;
 
                 // Sets the IRQ disable bit based on I
                 self.irq_off = data & 0x40 != 0;
-                // Clear the IRQ flag if set to disable
+                // Clear the IRQ flag if set to disabled
                 if self.irq_off {
+                    self.dmc.poll_irq();
                     self.pending_irq = None;
                 }
             }
@@ -200,67 +197,77 @@ impl Apu {
     pub fn clock(&mut self) {
         // Count the cycles
         self.cycles = self.cycles.wrapping_add(1);
-
+        
         // The triangle channel's timer is clocked at Cpu rate
-        self.tri.tick_timer();
         // The DMC rate counter is also clocked at Cpu rate
+        self.tri.tick_timer();
         self.dmc.tick();
-
-        // Instructions below happen at half the Cpu rate
         if self.cycles % 2 == 0 {
-            // Clock timers
             self.sq1.tick_timer();
             self.sq2.tick_timer();
             self.noise.tick_timer();
+        }
 
-            // Count frame
-            self.frame_counter += 1;
+        self.hz240_counter += 2;
+        if self.hz240_counter >= 14915 {
+            self.hz240_counter -= 14915;
 
-            // The magic numbers below are specific to the sequencer.
-            // Things should happen at a certain rate.
-            // The NES frame counter runs at 240Hz
-            //
-            // (1,789,773Hz / 2) / 240Hz = ~14916
-            // Cpu clock / 2 -> a frame is counted on every other clock
-            // 240 -> Rate of the frame counter
-            //
-            // The sequencer operates on a 4 step update process
-            // 14914 / 4 = ~3729
-            // Thus the steps are: 3729 | 14914 / 2 | 3729 + 14914 / 2 | 14914
-            if let 3729 | 7457 | 11186 | 14916 = self.frame_counter {
-                self.tick_sequencer();
-                // If on last step, restart the counter
-                if self.frame_counter == 14916 {
-                    self.frame_counter = 0;
-                }
+            self.sequencer += 1;
+            match self.mode {
+                SequencerMode::FourStep => self.sequencer %= 4,
+                SequencerMode::FiveStep => self.sequencer %= 5,
+            }
+
+            if !self.irq_off && self.mode == SequencerMode::FourStep && self.sequencer == 0 {
+                self.pending_irq = Some(true);
+            }
+
+            let half_tick = (self.hz240_counter & 0x5) == 1;
+            let full_tick = self.sequencer < 4;
+
+            if half_tick {
+                self.sq1.tick_length();
+                self.sq2.tick_length();
+                self.sq1.tick_sweep(square::Channel::One);
+                self.sq2.tick_sweep(square::Channel::Two);
+                self.tri.tick_length();
+                self.noise.tick_length();
+            }
+
+            if full_tick {
+                self.sq1.tick_envelope();
+                self.sq2.tick_envelope();
+                self.noise.tick_envelope();
+                self.tri.tick_counter();
             }
         }
     }
 
+    /// Polls the IRQ flag
     pub fn poll_irq(&mut self) -> bool {
         // IRQ can be requested by the Apu or the DMC
         self.pending_irq.take().is_some() | self.dmc.poll_irq().is_some()
     }
 
+    /// Returns if the DMC needs a new audio sample or not
     pub fn need_dmc_sample(&mut self) -> bool {
         self.dmc.need_sample().is_some()
     }
 
+    /// Sets the audio sample of the DMC
     pub fn set_dmc_sample(&mut self, sample: u8) {
         self.dmc.set_sample(sample);
     }
 
+    /// Gets the address of the next DMC audio sample
     pub fn dmc_sample_address(&self) -> u16 {
         self.dmc.address()
     }
 
-    pub fn sample(&mut self) -> f32 {
-        self.output()
-    }
-
+    /// Resets the Apu and its channels
     pub fn reset(&mut self) {
         self.cycles = 0;
-        self.frame_counter = 0;
+        self.hz240_counter = 0;
         self.sequencer = 0;
         self.pending_irq = None;
         self.mode = SequencerMode::FourStep;
@@ -271,7 +278,8 @@ impl Apu {
         self.dmc.reset();
     }
 
-    fn output(&mut self) -> f32 {
+    /// Gets an audio sample
+    pub fn output(&mut self) -> f32 {
         // Mix the audio according to NesDev
         // http://wiki.nesdev.com/w/index.php/APU_Mixer
 
@@ -297,72 +305,5 @@ impl Apu {
         self.filters
             .iter_mut()
             .fold(sample, |sample, filter| filter.filter(sample))
-    }
-
-    fn tick_sequencer(&mut self) {
-        match self.mode {
-            SequencerMode::FourStep => {
-                // mode 0:    function
-                // --------- -----------------------------
-                //  0 1 2 3
-                //  - - - f   IRQ (if bit 6 is clear)
-                //  - l - l   Length counter and sweep
-                //  e e e e   Envelope and linear counter
-                match self.sequencer {
-                    0 | 2 => self.tick_envelopes(),
-                    value => {
-                        self.tick_envelopes();
-                        self.tick_lengths();
-                        self.tick_sweep();
-
-                        if value == 3 {
-                            self.pending_irq = if !self.irq_off { Some(true) } else { None };
-                        }
-                    }
-                }
-
-                // Repeats every 4 steps
-                self.sequencer = (self.sequencer + 1) % 4;
-            }
-            SequencerMode::FiveStep => {
-                // mode 1:       function
-                // -----------  -----------------------------
-                //  0 1 2 3 4
-                //  - - - - -    IRQ (if bit 6 is clear)
-                //  - l - - l    Length counter and sweep
-                //  e e e - e    Envelope and linear counter
-                match self.sequencer {
-                    0 | 2 => self.tick_envelopes(),
-                    1 | 4 => {
-                        self.tick_envelopes();
-                        self.tick_lengths();
-                        self.tick_sweep();
-                    }
-                    _ => {}
-                }
-
-                // Repeats every 5 steps
-                self.sequencer = (self.sequencer + 1) % 5;
-            }
-        }
-    }
-
-    fn tick_envelopes(&mut self) {
-        self.sq1.tick_envelope();
-        self.sq2.tick_envelope();
-        self.tri.tick_counter();
-        self.noise.tick_envelope();
-    }
-
-    fn tick_lengths(&mut self) {
-        self.sq1.tick_length();
-        self.sq2.tick_length();
-        self.tri.tick_length();
-        self.noise.tick_length();
-    }
-
-    fn tick_sweep(&mut self) {
-        self.sq1.tick_sweep(square::Channel::One);
-        self.sq2.tick_sweep(square::Channel::Two);
     }
 }

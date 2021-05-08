@@ -161,7 +161,7 @@ impl Interface for MainBus<'_> {
                 // needs to be generated.
                 self.audio_time -= self.time_per_sample;
                 // Generate a new sample
-                let sample = self.apu.sample();
+                let sample = self.apu.output();
                 // Add it to the vec of samples
                 self.samples.push(sample);
             }
