@@ -180,6 +180,7 @@ impl Apu {
                 };
 
                 self.hz240_counter = 0;
+                self.sequencer = 0;
 
                 // Sets the IRQ disable bit based on I
                 self.irq_off = data & 0x40 != 0;
