@@ -140,7 +140,7 @@ impl Square {
         match self.timer == 0 {
             true => {
                 self.timer = self.timer_period + 1;
-                self.duty_phase = (self.duty_phase + 1) & 0x7;
+                self.duty_phase = (self.duty_phase + 1) % 8;
             }
             false => self.timer -= 1,
         }
@@ -170,28 +170,25 @@ impl Square {
     pub fn tick_sweep(&mut self, channel: Channel) {
         match self.sweep > 0 {
             true => self.sweep -= 1,
-            false => self.sweep = self.sweep_period + 1,
-        }
-
-        if self.sweep_enabled && self.timer_period > 7 && self.sweep_shift > 0 {
-            self.sweep(channel);
+            false => {
+                self.sweep = self.sweep_period + 1;
+                if self.sweep_enabled && self.timer_period > 7 && self.sweep_shift > 0 {
+                    self.sweep(channel);
+                }
+            }
         }
     }
 
     fn sweep(&mut self, channel: Channel) {
         let delta = self.timer_period >> self.sweep_shift;
 
-        let wl = match self.sweep_negate {
+        self.timer_period = match self.sweep_negate {
             true => match channel {
-                Channel::One => self.timer_period + !delta,
+                Channel::One => self.timer_period - delta - 1,
                 Channel::Two => self.timer_period - delta,
-            } 
-            false => self.timer_period +  delta
+            },
+            false => self.timer_period + delta,
         };
-
-        if wl < 0x800 {
-            self.timer_period = wl;
-        }
     }
 
     pub fn output(&self) -> u8 {

@@ -86,7 +86,7 @@ impl Triangle {
         match self.timer == 0 {
             true => {
                 self.timer = self.timer_period + 1;
-                if self.length_counter > 0 && self.linear_counter > 0 {
+                if self.length_counter > 0 && self.linear_counter > 0 && self.timer_period > 1 {
                     self.duty = (self.duty + 1) % 32;
                 }
             }
@@ -113,13 +113,7 @@ impl Triangle {
     }
 
     pub fn output(&self) -> u8 {
-        if !self.enabled
-            || self.length_counter == 0
-            || self.linear_counter == 0
-            // Remove screaming noise from megaman 1 and 2 (Emulator does not behave like real hardware
-            // and I don't know how to fix it)
-            || self.timer_period < 2
-        {
+        if !self.enabled || self.length_counter == 0 || self.linear_counter == 0 {
             return 0;
         }
 
