@@ -66,6 +66,9 @@ impl Triangle {
     pub fn write_linear(&mut self, data: u8) {
         self.length_halt = data & 0x80 != 0;
         self.counter_period = data & 0x7F;
+        if self.length_halt {
+            self.linear_counter = self.counter_period;
+        }
     }
 
     pub fn write_lo(&mut self, data: u8) {
