@@ -19,7 +19,6 @@ pub struct Noise {
     constant_volume: bool,
     volume: u8,
 
-    envelope_reload: bool,
     envelope_divider: u8,
     envelope_volume: u8,
 
@@ -41,7 +40,6 @@ impl Noise {
             constant_volume: false,
             volume: 0,
 
-            envelope_reload: false,
             envelope_divider: 0,
             envelope_volume: 0,
 
@@ -62,8 +60,6 @@ impl Noise {
         self.constant_volume = false;
         self.volume = 0;
 
-        self.envelope_reload = false;
-        self.envelope_divider = 0;
         self.envelope_volume = 0;
 
         self.shift = 1;
@@ -88,8 +84,9 @@ impl Noise {
     }
 
     pub fn write_hi(&mut self, data: u8) {
-        self.envelope_reload = true;
         self.length_counter = LENGTH_TABLE[(data >> 3) as usize];
+        self.envelope_volume = 15;
+        self.envelope_divider = self.volume + 1;
     }
 
     pub fn tick_timer(&mut self) {
@@ -116,13 +113,8 @@ impl Noise {
     }
 
     pub fn tick_envelope(&mut self) {
-        match self.envelope_reload {
-            true => {
-                self.envelope_volume = 15;
-                self.envelope_divider = self.volume + 1;
-                self.envelope_reload = false;
-            }
-            false if self.envelope_divider > 0 => self.envelope_divider -= 1,
+        match self.envelope_divider > 0 {
+            true => self.envelope_divider -= 1,
             false => {
                 if self.envelope_volume > 0 {
                     self.envelope_volume -= 1;

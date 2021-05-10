@@ -179,11 +179,13 @@ impl Apu {
                     false => SequencerMode::FourStep,
                 };
 
+                // Reset counter and sequencer
                 self.hz240_counter = 0;
                 self.sequencer = 0;
 
                 // Sets the IRQ disable bit based on I
                 self.irq_off = data & 0x40 != 0;
+
                 // Clear the IRQ flag if set to disabled
                 if self.irq_off {
                     self.dmc.poll_irq();
@@ -203,12 +205,17 @@ impl Apu {
         // The DMC rate counter is also clocked at Cpu rate
         self.tri.tick_timer();
         self.dmc.tick();
+
+        // Square and noise tick at half the cpu clock
         if self.cycles % 2 == 0 {
             self.sq1.tick_timer();
             self.sq2.tick_timer();
             self.noise.tick_timer();
         }
 
+        // The frame counter runs at 240Hz.
+        // We need to divide the cpu clock to get the right timing
+        // (1,789,773Hz / 2) / 240Hz = ~14915
         self.hz240_counter += 2;
         if self.hz240_counter >= 14915 {
             self.hz240_counter -= 14915;
@@ -219,13 +226,17 @@ impl Apu {
                 SequencerMode::FiveStep => self.sequencer %= 5,
             }
 
+            // Four step mode can request an interrupt on the last step
             if !self.irq_off && self.mode == SequencerMode::FourStep && self.sequencer == 0 {
                 self.pending_irq = Some(true);
             }
 
+            // Half tick happens on step 1 and 3
             let half_tick = (self.hz240_counter & 0x5) == 1;
+            // Full tick happens on every step (Step 5 mode does nothing on last step)
             let full_tick = self.sequencer < 4;
 
+            // Sweep tick and length tick
             if half_tick {
                 self.sq1.tick_length();
                 self.sq2.tick_length();
@@ -235,6 +246,7 @@ impl Apu {
                 self.noise.tick_length();
             }
 
+            // Envelope and linear (triangle only) tick 
             if full_tick {
                 self.sq1.tick_envelope();
                 self.sq2.tick_envelope();

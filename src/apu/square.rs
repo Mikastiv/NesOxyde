@@ -35,7 +35,6 @@ pub struct Square {
 
     sweep_enabled: bool,
     sweep_negate: bool,
-    sweep_reload: bool,
     sweep_period: u8,
     sweep_shift: u8,
     sweep: u8,
@@ -67,7 +66,6 @@ impl Square {
 
             sweep_enabled: false,
             sweep_negate: false,
-            sweep_reload: false,
             sweep_period: 0,
             sweep_shift: 0,
             sweep: 0,
@@ -94,7 +92,6 @@ impl Square {
 
         self.sweep_enabled = false;
         self.sweep_negate = false;
-        self.sweep_reload = false;
         self.sweep_period = 0;
         self.sweep_shift = 0;
         self.sweep = 0;
@@ -124,8 +121,7 @@ impl Square {
         self.sweep_period = (data & 0x70) >> 4;
         self.sweep_negate = data & 0x8 != 0;
         self.sweep_shift = data & 0x7;
-
-        self.sweep_reload = true;
+        self.sweep = self.sweep_period + 1;
     }
 
     pub fn write_lo(&mut self, data: u8) {
@@ -144,7 +140,7 @@ impl Square {
         match self.timer == 0 {
             true => {
                 self.timer = self.timer_period + 1;
-                self.duty_phase = (self.duty_phase + 1) % 8;
+                self.duty_phase = (self.duty_phase + 1) & 0x7;
             }
             false => self.timer -= 1,
         }
@@ -172,37 +168,29 @@ impl Square {
     }
 
     pub fn tick_sweep(&mut self, channel: Channel) {
-        match self.sweep_reload {
-            true => {
-                if self.sweep_enabled && self.sweep == 0 {
-                    self.sweep(channel);
-                }
+        match self.sweep > 0 {
+            true => self.sweep -= 1,
+            false => self.sweep = self.sweep_period + 1,
+        }
 
-                self.sweep = self.sweep_period + 1;
-                self.sweep_reload = false;
-            }
-            false if self.sweep > 0 => self.sweep -= 1,
-            false => {
-                if self.sweep_enabled {
-                    self.sweep(channel);
-                }
-
-                self.sweep = self.sweep_period + 1;
-            }
+        if self.sweep_enabled && self.timer_period > 7 && self.sweep_shift > 0 {
+            self.sweep(channel);
         }
     }
 
     fn sweep(&mut self, channel: Channel) {
         let delta = self.timer_period >> self.sweep_shift;
 
-        if self.sweep_negate {
-            self.timer_period -= delta;
+        let wl = match self.sweep_negate {
+            true => match channel {
+                Channel::One => self.timer_period + !delta,
+                Channel::Two => self.timer_period - delta,
+            } 
+            false => self.timer_period +  delta
+        };
 
-            if let Channel::One = channel {
-                self.timer_period -= 1;
-            }
-        } else {
-            self.timer_period += delta;
+        if wl < 0x800 {
+            self.timer_period = wl;
         }
     }
 
