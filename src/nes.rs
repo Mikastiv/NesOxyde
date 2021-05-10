@@ -73,7 +73,7 @@ where
     queue.resume();
 
     let mut samples = vec![0.0; 1024];
-    let mut volume = 1.0;
+    let mut volume = 0.5;
 
     let mut reverbs = [
         Reverb::new(330, sample_rate, 0.15),
