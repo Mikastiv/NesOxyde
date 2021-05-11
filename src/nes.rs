@@ -101,13 +101,16 @@ where
     cpu.reset();
 
     let update_vol = |vol, step| {
+        let old = (vol * 100.0) as u32;
         let new_vol = vol + step;
         let out = match step < 0.0 {
             true => f32::max(0.0, new_vol),
             false => f32::min(1.0, new_vol),
         };
 
-        println!("Volume: {:.0}", out * 100.0);
+        if old != (out * 100.0) as u32 {
+            println!("Volume: {:.0}", out * 100.0);
+        }
         out
     };
 
