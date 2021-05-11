@@ -27,10 +27,10 @@ pub struct Cartridge {
 
 impl Cartridge {
     pub fn new<P: AsRef<Path> + Display>(romfile: P) -> io::Result<Self> {
-        let filename = match romfile.as_ref().file_stem() {
-            Some(name) => Some(name.to_string_lossy().to_string()),
-            None => None,
-        };
+        let filename = romfile
+            .as_ref()
+            .file_stem()
+            .map(|name| name.to_string_lossy().to_string());
 
         let rom = Rom::new(romfile)?;
         let mapper: Box<dyn Mapper> = match rom.header.mapper_id() {

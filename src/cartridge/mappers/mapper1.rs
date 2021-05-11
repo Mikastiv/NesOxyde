@@ -139,11 +139,6 @@ impl Mapper for Mapper1 {
             },
             false => self.chr_8k as usize * 0x2000 + (addr & 0x1FFF) as usize,
         };
-        if index > self.rom.chr.len() {
-            println!("{}", chr_4k_mode);
-            println!("{}", self.chr_8k);
-            println!("{}", index);
-        }
         self.rom.chr[index]
     }
 

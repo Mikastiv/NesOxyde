@@ -311,7 +311,7 @@ impl Apu {
         let sample = pulse + tnd;
 
         // Apply filters
-        // The has 3 filters applied
+        // The NES has 3 filters applied
         // High-pass at 90Hz
         // High-pass at 440Hz (I removed this one because the bass sounds way better without it)
         // Low-pass at 14000Hz
