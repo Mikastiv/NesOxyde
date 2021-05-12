@@ -37,7 +37,7 @@ pub struct Square {
     sweep_negate: bool,
     sweep_period: u8,
     sweep_shift: u8,
-    sweep: u8,
+    sweep_timer: u8,
 
     envelope_loop: bool,
     envelope_period: u8,
@@ -69,7 +69,7 @@ impl Square {
             sweep_negate: false,
             sweep_period: 0,
             sweep_shift: 0,
-            sweep: 0,
+            sweep_timer: 0,
 
             envelope_loop: false,
             envelope_period: 0,
@@ -97,7 +97,7 @@ impl Square {
         self.sweep_negate = false;
         self.sweep_period = 0;
         self.sweep_shift = 0;
-        self.sweep = 0;
+        self.sweep_timer = 0;
 
         self.envelope_loop = false;
         self.envelope_period = 0;
@@ -142,7 +142,7 @@ impl Square {
         self.sweep_negate = data & 0x8 != 0;
         self.sweep_shift = data & 0x7;
         // A write to this register reloads the sweep
-        self.sweep = self.sweep_period + 1;
+        self.sweep_timer = self.sweep_period + 1;
     }
 
     /// Sets register 0x4002 / 0x4006
@@ -159,7 +159,7 @@ impl Square {
         // T: Timer period high
         self.timer_period = ((data & 0x7) as u16) << 8 | (self.timer_period & 0xFF);
         self.length_counter = LENGTH_TABLE[(data >> 3) as usize];
-        // A write to this register resets the duty phase and the envelope
+        // A write to this register resets the duty phase and the envelope volume + timer
         self.duty_phase = 0;
         self.envelope_volume = 15;
         self.envelope_timer = self.envelope_period + 1;
@@ -169,7 +169,7 @@ impl Square {
     pub fn tick_timer(&mut self) {
         // The timer counts down clocks and makes something happen
         // when it its 0. For the square channel, it increments the duty phase.
-        // We can think of it as the timer period like 
+        // We can think of it as the timer period like
         // "how many cpu clocks between each phase increment"
         match self.timer == 0 {
             // When the timer hits 0, we reset it to the timer period + 1
@@ -186,8 +186,8 @@ impl Square {
     /// Clocks the length counter
     pub fn tick_length(&mut self) {
         // The length counter is a simple gate which lets the channel output
-        // a signal when it is not 0. It can only be reloaded by writing to 
-        // register 0x4003 / 0x4007. 
+        // a signal when it is not 0. It can only be reloaded by writing to
+        // register 0x4003 / 0x4007.
         // It is like "for how many clocks the channel can output a signal"
 
         // If the length halt flag is not set and the counter is greater than
@@ -199,15 +199,36 @@ impl Square {
 
     /// Clocks the envelope
     pub fn tick_envelope(&mut self) {
+        // The envelope generator controls the volume of the channel.
+        // It can generate constant volume (square wave)
+        // _________       _________
+        // |       |       |       |
+        // |       |       |       |
+        // |       |_______|       |
+        //
+        // Or a decreasing saw envelope (saw wave)
+        //
+        // |\      |\      |\
+        // |  \    |  \    |  \
+        // |    \  |    \  |    \
+        //
+        // Similar to the timer, the envelope timer makes something
+        // happen when it hits 0.
         match self.envelope_timer > 0 {
+            // If the timer is not 0, decrement it.
             true => self.envelope_timer -= 1,
+            // If it is 0...
             false => {
+                // If the volume is not 0, decrement it
                 if self.envelope_volume > 0 {
                     self.envelope_volume -= 1;
-                } else if self.length_halt {
+                // Otherwise if it is 0 and the loop flag is set,
+                // reset it to 15
+                } else if self.envelope_loop {
                     self.envelope_volume = 15;
                 }
 
+                // Reset the timer to its period value + 1
                 self.envelope_timer = self.envelope_period + 1;
             }
         }
@@ -215,49 +236,79 @@ impl Square {
 
     /// Clocks the sweep unit
     pub fn tick_sweep(&mut self, channel: Channel) {
-        match self.sweep > 0 {
-            true => self.sweep -= 1,
+        // The sweep unit can make the audio frequency of the channel
+        // increase rapidly or decrease rapidly. This causes a sweeping sound
+        // to be output. The easiest example to understand this is the sound
+        // when Mario slides down the flag pole.
+
+        // Again, similar to the timer, the sweep timer makes something
+        // happen when it hits 0.
+        match self.sweep_timer > 0 {
+            // If the timer is not 0, decrement it.
+            true => self.sweep_timer -= 1,
+            // If it is 0...
             false => {
-                self.sweep = self.sweep_period + 1;
+                // If all the conditions below are met, we apply the sweep
                 if self.sweep_enabled && self.timer_period > 7 && self.sweep_shift > 0 {
                     self.sweep(channel);
                 }
+
+                // Reset the timer to its period + 1
+                self.sweep_timer = self.sweep_period + 1;
             }
         }
     }
 
     /// Applies a sweep to the timer period
     fn sweep(&mut self, channel: Channel) {
+        // Sweeping affects the channel's timer
+
+        // We first calculate the delta with the sweep shift value
         let delta = self.timer_period >> self.sweep_shift;
 
+        // The delta is then applied to the channel's timer
+        // based on the negate flag
         self.timer_period = match self.sweep_negate {
+            // If it is set, we substract the delta from the timer
             true => match channel {
+                // Channel 1 substracts by adding the one's complement
                 Channel::One => self.timer_period + !delta,
+                // Channel 2 substracts by adding the two's complement
                 Channel::Two => self.timer_period - delta,
             },
+            // If it isn't set, add the delta
             false => self.timer_period + delta,
         };
     }
 
     /// Returns the output volume of the channel
     pub fn output(&self) -> u8 {
+        // Check the duty cycle, 1 outputs a signal and 0 doesn't (see duty table at the top)
         let duty = (DUTY_TABLE[self.duty as usize] & (1 << self.duty_phase)) != 0;
 
+        // All the conditions below silence the channel
+        // Disabled ?
         if !self.enabled
+        // Timer period overflowed as a result of the sweep add operation
             || self.timer_period > 0x7FF
+            // The length counter is 0
             || self.length_counter == 0
+            // The timer period is smaller than 8
             || self.timer_period < 8
+            // The duty is false (on a 0 bit in the duty cycle)
             || !duty
         {
             return 0;
         }
 
+        // Check if we should output constant volume or the envelope volume
         match self.constant_volume {
             true => self.volume,
             false => self.envelope_volume,
         }
     }
 
+    /// Returns the length counter value
     pub fn length_counter(&self) -> u8 {
         self.length_counter
     }
