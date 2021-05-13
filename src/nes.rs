@@ -109,7 +109,7 @@ where
         };
 
         if old != (out * 100.0) as u32 {
-            println!("Volume: {:.0}", out * 100.0);
+            println!("Vol: {:.0}", out * 100.0);
         }
         out
     };
