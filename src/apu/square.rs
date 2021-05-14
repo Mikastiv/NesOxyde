@@ -1,3 +1,6 @@
+// The square channels produced square waves and were generally used for the
+// melody of the songs
+
 use super::LENGTH_TABLE;
 
 // 0 - 0 1 0 0 0 0 0 0 (12.5%)
@@ -166,6 +169,7 @@ impl Square {
         // when it its 0. For the square channel, it increments the duty phase.
         // We can think of it as the timer period like
         // "how many cpu clocks between each phase increment"
+        // A smaller period produces a higher frequency audio wave
         match self.timer == 0 {
             // When the timer hits 0, we reset it to the timer period + 1
             // and we advance the duty phase by 1, wrapping to 0 if over 7

@@ -1,3 +1,6 @@
+// The triangle channel produced triangle waves and was generally used for
+// the baseline of the songs
+
 use super::LENGTH_TABLE;
 
 /// Table of the channel's output volume values
