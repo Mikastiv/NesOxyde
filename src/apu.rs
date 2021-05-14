@@ -6,6 +6,13 @@ use triangle::Triangle;
 use crate::decay::Decay;
 use crate::filters::{Filter, HighPass, LowPass};
 
+// http://wiki.nesdev.com/w/index.php/APU_Length_Counter
+/// Length counter values table
+const LENGTH_TABLE: [u8; 32] = [
+    10, 254, 20, 2, 40, 4, 80, 6, 160, 8, 60, 10, 14, 12, 26, 14, 12, 16, 24, 18, 48, 20, 96, 22,
+    192, 24, 72, 26, 16, 28, 32, 30,
+];
+
 /// Square channel 1 volume register
 const SQ1_VOL: u16 = 0x4000;
 /// Square channel 1 sweep register
@@ -200,7 +207,7 @@ impl Apu {
     pub fn clock(&mut self) {
         // Count the cycles
         self.cycles = self.cycles.wrapping_add(1);
-        
+
         // The triangle channel's timer is clocked at Cpu rate
         // The DMC rate counter is also clocked at Cpu rate
         self.tri.tick_timer();
@@ -246,7 +253,7 @@ impl Apu {
                 self.noise.tick_length();
             }
 
-            // Envelope and linear (triangle only) tick 
+            // Envelope and linear (triangle only) tick
             if full_tick {
                 self.sq1.tick_envelope();
                 self.sq2.tick_envelope();

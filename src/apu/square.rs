@@ -1,16 +1,11 @@
+use super::LENGTH_TABLE;
+
 // 0 - 0 1 0 0 0 0 0 0 (12.5%)
 // 1 - 0 1 1 0 0 0 0 0 (25%)
 // 2 - 0 1 1 1 1 0 0 0 (50%)
 // 3 - 1 0 0 1 1 1 1 1 (25% negated)
 /// Table of the different duty cycles
 const DUTY_TABLE: [u8; 4] = [0b0100_0000, 0b0110_0000, 0b0111_1000, 0b1001_1111];
-
-// http://wiki.nesdev.com/w/index.php/APU_Length_Counter
-/// Length counter values table
-const LENGTH_TABLE: [u8; 32] = [
-    10, 254, 20, 2, 40, 4, 80, 6, 160, 8, 60, 10, 14, 12, 26, 14, 12, 16, 24, 18, 48, 20, 96, 22,
-    192, 24, 72, 26, 16, 28, 32, 30,
-];
 
 /// Channel 1 or 2
 pub enum Channel {
@@ -261,7 +256,7 @@ impl Square {
 
     /// Applies a sweep to the timer period
     fn sweep(&mut self, channel: Channel) {
-        // Sweeping affects the channel's timer
+        // Sweeping affects the channel's timer period
 
         // We first calculate the delta with the sweep shift value
         let delta = self.timer_period >> self.sweep_shift;
@@ -283,10 +278,10 @@ impl Square {
 
     /// Returns the output volume of the channel
     pub fn output(&self) -> u8 {
-        // Check the duty cycle, 1 outputs a signal and 0 doesn't (see duty table at the top)
+        // Check the phase of the duty cycle, 1 outputs a signal and 0 doesn't (see duty table at the top)
         let duty = (DUTY_TABLE[self.duty as usize] & (1 << self.duty_phase)) != 0;
 
-        // All the conditions below silence the channel
+        // All the conditions below silence the channel.
         // Disabled ?
         if !self.enabled
         // Timer period overflowed as a result of the sweep add operation
