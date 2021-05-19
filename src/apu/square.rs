@@ -209,7 +209,7 @@ impl Square {
         //  _
         // | \    _
         // |  |  | \    _
-        // |  |  |  |  | \
+        // |  |__|  |__| \
         //
         // Similar to the timer, the envelope timer makes something
         // happen when it hits 0.

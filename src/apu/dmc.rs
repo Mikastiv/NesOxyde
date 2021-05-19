@@ -77,61 +77,98 @@ impl Dmc {
         }
     }
 
+    /// Sets register 0x4010
     pub fn write_freq(&mut self, data: u8) {
+        // IL-- RRRR
+        // I: IRQ enable
+        // L: Loop flag
+        // R: Rate index (frequency)
         self.rate = RATE_TABLE[(data & 0xF) as usize];
         self.loop_flag = data & 0x40 != 0;
         self.irq = data & 0x80 != 0;
     }
 
+    /// Sets register 0x4011
     pub fn write_raw(&mut self, data: u8) {
+        // -DDD DDDD
+        // D: Raw PCM sample
         self.output_level = data & 0x7F;
     }
 
+    /// Sets register 0x4012
     pub fn write_start(&mut self, data: u8) {
+        // AAAA AAAA
+        // A: Sample start address
         self.address = data;
+        // The address is always calculated like below
         self.curr_address = 0xC000 + (data as u16 * 64);
     }
 
+    /// Sets register 0x4013
     pub fn write_len(&mut self, data: u8) {
+        // LLLL LLLL
+        // L: Sample length (how many samples to play)
         self.pcm_length = data as u16;
+        // The number of samples to play is calculated like below
         self.length_counter = self.pcm_length * 16 + 1;
     }
 
+    /// Clocks the DMC
     pub fn tick(&mut self) {
         match self.rate_counter == 0 {
+            // If the counter is 0, clock the timer and reset counter
             true => {
                 self.tick_timer();
                 self.rate_counter = self.rate;
             }
+            // Otherwise decrement
             false => self.rate_counter -= 1,
         }
     }
 
+    /// Clocks the DMC timer
     fn tick_timer(&mut self) {
+        // If the phase == 0, the PCM or DPCM sample has been played
         if self.phase == 0 {
+            // If the length counter == 0 (all the samples have been played)
+            // and the loop flag is set, we load the start address and
+            // reset the length counter
             if self.length_counter == 0 && self.loop_flag {
                 self.length_counter = self.pcm_length * 16 + 1;
                 self.curr_address = 0xC000 + (self.address as u16 * 64);
             }
             match self.length_counter > 0 {
+                // If if is greater than 0, load the next sample,
+                // reset the phase to 8 (sample are only 7 bits) 
+                // and decrement the counter
                 true => {
                     self.pending_read = Some(true);
                     self.phase = 8;
                     self.length_counter -= 1;
                 }
+                // Otherwise, set the IRQ flag is enabled
                 false => match self.irq {
                     true => self.pending_irq = Some(true),
+                    // Disable the channel if IRQ is disabled
                     false => self.enabled = false,
                 },
             }
         }
+        // Here, the current sample is not done playing
         if self.phase != 0 {
+            // Decrement the phase
             self.phase -= 1;
+            // Check the bit of the current phase
             let delta = (self.buffer & (0x80 >> self.phase)) != 0;
+            // The new output volume is simply incremented or decremented
+            // by 2 based on the phase bit
             let v = match delta {
-                true => self.output_level + 2,
-                false => self.output_level - 2,
+                // If the bit is set, add 2
+                true => self.output_level.wrapping_add(2),
+                // Otherwise, subtract 2
+                false => self.output_level.wrapping_sub(2),
             };
+            // The output is only changed if it stays between 0 and 127
             if (0..=0x7F).contains(&v) && self.enabled {
                 self.output_level = v;
             }
