@@ -1,6 +1,7 @@
 use bitflags::bitflags;
 
 bitflags! {
+    /// Ppu control register
     pub struct Controller: u8 {
         const NMI_ENABLED    = 0b10000000;
         const MASTER_SLAVE   = 0b01000000;
@@ -14,10 +15,12 @@ bitflags! {
 }
 
 impl Controller {
+    /// Set all the register bits at once
     pub fn set_raw(&mut self, v: u8) {
         self.bits = v;
     }
 
+    /// Returns the address increment value
     pub fn increment(&self) -> u16 {
         if self.contains(Self::VRAM_INCREMENT) {
             32
@@ -26,6 +29,7 @@ impl Controller {
         }
     }
 
+    /// Return the backgrounds base address
     pub fn bg_base_addr(&self) -> u16 {
         match self.contains(Self::BG_ADDRESS) {
             true => 0x1000,
@@ -33,6 +37,7 @@ impl Controller {
         }
     }
 
+    /// Return the sprites base address
     pub fn sp_base_addr(&self) -> u16 {
         match self.contains(Self::SP_ADDRESS) {
             true => 0x1000,
@@ -40,24 +45,29 @@ impl Controller {
         }
     }
 
+    /// Returns the NMI enabled flag value
     pub fn nmi_enabled(&self) -> bool {
         self.contains(Self::NMI_ENABLED)
     }
 
+    /// Returns the nametable H flag value
     pub fn nta_h(&self) -> bool {
         self.contains(Self::NAMETABLE_H)
     }
 
+    /// Returns the nametable V flag value
     pub fn nta_v(&self) -> bool {
         self.contains(Self::NAMETABLE_V)
     }
 
+    /// Returns the sprite size flag value
     pub fn sprite_size(&self) -> bool {
         self.contains(Self::SPRITE_SIZE)
     }
 }
 
 bitflags! {
+    /// Ppu mask register
     pub struct Mask: u8 {
         const EMPH_BLUE  = 0b10000000;
         const EMPH_GREEN = 0b01000000;
@@ -71,26 +81,32 @@ bitflags! {
 }
 
 impl Mask {
+    /// Set all the register bits at once
     pub fn set_raw(&mut self, v: u8) {
         self.bits = v;
     }
 
+    /// Returns the render background flag value
     pub fn render_bg(&self) -> bool {
         self.contains(Self::SHOW_BG)
     }
 
+    /// Returns the render sprites flag value
     pub fn render_sp(&self) -> bool {
         self.contains(Self::SHOW_SP)
     }
 
+    /// Returns the render left 8 background pixels value
     pub fn render_bg8(&self) -> bool {
         self.contains(Self::SHOW_BG8)
     }
 
+    /// Returns the render left 8 sprites pixels value
     pub fn render_sp8(&self) -> bool {
         self.contains(Self::SHOW_SP8)
     }
 
+    /// Returns the greyscale mask value
     pub fn greyscale_mask(&self) -> u8 {
         match self.contains(Self::GREYSCALE) {
             true => 0x30,
@@ -100,6 +116,7 @@ impl Mask {
 }
 
 bitflags! {
+    /// Ppu status register
     pub struct Status: u8 {
         const IN_VBLANK   = 0b10000000;
         const SP_0_HIT    = 0b01000000;
@@ -109,14 +126,17 @@ bitflags! {
 }
 
 impl Status {
+    /// Sets the vblank flag value
     pub fn set_vblank(&mut self, v: bool) {
         self.set(Self::IN_VBLANK, v);
     }
 
+    /// Sets the sprite zero hit value
     pub fn set_sp_0_hit(&mut self, v: bool) {
         self.set(Self::SP_0_HIT, v);
     }
 
+    /// Sets the sprite overflow value
     pub fn set_sp_overflow(&mut self, v: bool) {
         self.set(Self::SP_OVERFLOW, v);
     }
@@ -135,6 +155,7 @@ const NTA_V_SHIFT: u16 = 11;
 const YFINE_SHIFT: u16 = 12;
 
 #[derive(Default, Clone, Copy)]
+/// Loopy Ppu register
 pub struct Loopy {
     xcoarse: u8,
     ycoarse: u8,
@@ -148,56 +169,69 @@ impl Loopy {
         Self::default()
     }
 
+    /// X coarse value
     pub fn xcoarse(&self) -> u8 {
         self.xcoarse
     }
 
+    /// Set x coarse value
     pub fn set_xcoarse(&mut self, v: u8) {
         self.xcoarse = v & XCOARSE_MASK as u8;
     }
 
+    /// Y coarse value
     pub fn ycoarse(&self) -> u8 {
         self.ycoarse
     }
 
+    /// Set y coarse value
     pub fn set_ycoarse(&mut self, v: u8) {
         self.ycoarse = v & YCOARSE_MASK as u8;
     }
 
+    /// Y fine value
     pub fn yfine(&self) -> u8 {
         self.yfine
     }
 
+    /// Set y fine value
     pub fn set_yfine(&mut self, v: u8) {
         self.yfine = v & YFINE_MASK as u8;
     }
 
+    /// Nametable H value
     pub fn nta_h(&self) -> bool {
         self.nta_h
     }
 
+    /// Set nametable H value
     pub fn set_nta_h(&mut self, v: bool) {
         self.nta_h = v;
     }
 
+    /// Nametable V value
     pub fn nta_v(&self) -> bool {
         self.nta_v
     }
 
+    /// Set nametable V value
     pub fn set_nta_v(&mut self, v: bool) {
         self.nta_v = v;
     }
 
+    /// Nametable address
     pub fn nta_addr(&self) -> u16 {
         ((self.nta_v as u16) << NTA_V_SHIFT) | ((self.nta_h as u16) << NTA_H_SHIFT)
     }
 
+    /// Set address low bits
     pub fn set_addr_lo(&mut self, v: u8) {
         self.xcoarse = v & 0b0001_1111;
         self.ycoarse &= 0b0001_1000;
         self.ycoarse |= v >> 5;
     }
 
+    /// Set address high bits
     pub fn set_addr_hi(&mut self, v: u8) {
         self.ycoarse &= 0b0000_0111;
         self.ycoarse |= (v & 0b0000_0011) << 3;
@@ -207,6 +241,19 @@ impl Loopy {
         self.yfine &= 0b0000_0111;
     }
 
+    /// Returns the raw address value
+    ///
+    /// -yyy VHYY YYYX XXXX
+    ///
+    /// X: X coarse
+    ///
+    /// Y: Y coarse
+    ///
+    /// H: Nametable H
+    ///
+    /// V: Nametable V
+    ///
+    /// y: Y fine
     pub fn raw(&self) -> u16 {
         (self.xcoarse as u16) << XCOARSE_SHIFT
             | (self.ycoarse as u16) << YCOARSE_SHIFT
@@ -215,6 +262,7 @@ impl Loopy {
             | (self.yfine as u16) << YFINE_SHIFT
     }
 
+    /// Set all the register bits at once
     pub fn set_raw(&mut self, v: u16) {
         self.xcoarse = ((v & (XCOARSE_MASK << XCOARSE_SHIFT)) >> XCOARSE_SHIFT) as u8;
         self.ycoarse = ((v & (YCOARSE_MASK << YCOARSE_SHIFT)) >> YCOARSE_SHIFT) as u8;

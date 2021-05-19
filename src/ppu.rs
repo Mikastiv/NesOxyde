@@ -1,15 +1,14 @@
 use registers::{Controller, Loopy, Mask, Status};
 
 use self::frame::Frame;
-use self::tile::Tile;
 
 pub mod frame;
 mod registers;
-mod tile;
 
 #[derive(Clone, Copy)]
 pub struct Rgb(u8, u8, u8);
 
+/// NES color palette
 #[rustfmt::skip]
 static NES_PALETTE: [Rgb; 0x40] = [
     Rgb(84, 84, 84),    Rgb(0, 30, 116),    Rgb(8, 16, 144),    Rgb(48, 0, 136),    Rgb(68, 0, 100),    Rgb(92, 0, 48),     Rgb(84, 4, 0),      Rgb(60, 24, 0),
@@ -25,6 +24,16 @@ static NES_PALETTE: [Rgb; 0x40] = [
     Rgb(204, 210, 120), Rgb(180, 222, 120), Rgb(168, 226, 144), Rgb(152, 226, 180), Rgb(160, 214, 228), Rgb(160, 162, 160), Rgb(0, 0, 0),       Rgb(0, 0, 0),
 ];
 
+/// Background tile
+#[derive(Clone, Copy, Default, Debug)]
+struct Tile {
+    pub lo: u8,
+    pub hi: u8,
+    pub attr: u8,
+    pub id: u8,
+}
+
+/// Sprite attributes
 #[derive(Clone, Copy, Default, Debug)]
 struct SpriteInfo {
     y: u8,
@@ -46,12 +55,14 @@ const PPU_DATA: u16 = 0x7;
 const OAM_SIZE: usize = 0x100;
 const OAM2_SIZE: usize = 0x8;
 
+/// Ppu memory interface
 pub trait Interface {
     fn read(&self, addr: u16) -> u8;
     fn write(&mut self, addr: u16, data: u8);
     fn inc_scanline(&mut self);
 }
 
+/// 2C02 Ppu
 pub struct Ppu<'a> {
     ctrl: Controller,
     mask: Mask,
@@ -121,7 +132,7 @@ impl<'a> Ppu<'a> {
 
             scanline: 0,
             cycle: 0,
-            next_tile: Tile::new(),
+            next_tile: Tile::default(),
             bg_lo_shift: 0,
             bg_hi_shift: 0,
             bg_attr_lo_shift: 0,
@@ -159,7 +170,7 @@ impl<'a> Ppu<'a> {
 
         self.scanline = 0;
         self.cycle = 0;
-        self.next_tile = Tile::new();
+        self.next_tile = Tile::default();
         self.bg_lo_shift = 0;
         self.bg_hi_shift = 0;
         self.bg_attr_lo_shift = 0;

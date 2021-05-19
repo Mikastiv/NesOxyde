@@ -1,6 +1,7 @@
 use super::Rgb;
 use crate::nes::{HEIGHT, WIDTH};
 
+/// Helper struct for pixel buffer
 pub struct Frame {
     pixels: Vec<u8>,
 }
@@ -12,10 +13,12 @@ impl Frame {
         }
     }
 
+    /// Returns the pixel buffer
     pub fn pixels(&self) -> &[u8] {
         &self.pixels
     }
 
+    /// Set a pixel at coords x, y
     pub fn set_pixel(&mut self, x: usize, y: usize, pixel: Rgb) {
         let index = (y * 3 * WIDTH as usize) + (x * 3);
         self.pixels[index] = pixel.0;
