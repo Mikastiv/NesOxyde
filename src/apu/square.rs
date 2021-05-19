@@ -200,16 +200,16 @@ impl Square {
     pub fn tick_envelope(&mut self) {
         // The envelope generator controls the volume of the channel.
         // It can generate constant volume (square wave)
-        // _________       _________
-        // |       |       |       |
-        // |       |       |       |
-        // |       |_______|       |
+        // _____   _____   _____
+        // |   |   |   |   |   |
+        // |   |   |   |   |   |
+        // |   |___|   |___|   |
         //
-        // Or a decreasing saw envelope (saw wave)
-        //
-        // |\      |\      |\
-        // |  \    |  \    |  \
-        // |    \  |    \  |    \
+        // Or a decreasing saw envelope
+        //  _
+        // | \    _
+        // |  |  | \    _
+        // |  |  |  |  | \
         //
         // Similar to the timer, the envelope timer makes something
         // happen when it hits 0.

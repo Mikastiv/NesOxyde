@@ -2,6 +2,7 @@ const RATE_TABLE: [u16; 16] = [
     428, 380, 340, 320, 286, 254, 226, 214, 190, 160, 142, 128, 106, 84, 72, 54,
 ];
 
+/// Delta modulation channel
 pub struct Dmc {
     enabled: bool,
 
@@ -45,6 +46,7 @@ impl Dmc {
         }
     }
 
+    /// Resets the channel state
     pub fn reset(&mut self) {
         self.enabled = false;
 
@@ -65,6 +67,7 @@ impl Dmc {
         self.pcm_length = 0;
     }
 
+    /// Enables or disables the channel
     pub fn set_enabled(&mut self, v: bool) {
         self.enabled = v;
         match v {
@@ -135,27 +138,35 @@ impl Dmc {
         }
     }
 
+    /// Returns the address of the next sample
     pub fn address(&self) -> u16 {
         self.curr_address
     }
 
+    /// Sets the audio sample of the channel
     pub fn set_sample(&mut self, sample: u8) {
         self.buffer = sample;
+        // Increments the address after updating the sample
+        // Note that bit 15 is always set
         self.curr_address = self.curr_address.wrapping_add(1) | 0x8000;
     }
 
-    pub fn need_sample(&mut self) -> Option<bool> {
-        self.pending_read.take()
+    /// Returns if the channel needs a sample or not
+    pub fn need_sample(&mut self) -> bool {
+        self.pending_read.take().is_some()
     }
 
-    pub fn poll_irq(&mut self) -> Option<bool> {
-        self.pending_irq.take()
+    /// Polls the IRQ flag
+    pub fn poll_irq(&mut self) -> bool {
+        self.pending_irq.take().is_some()
     }
 
+    /// Returns the length counter value
     pub fn length_counter(&self) -> u16 {
         self.length_counter
     }
 
+    /// Returns the output volume of the channel
     pub fn output(&self) -> u8 {
         self.output_level
     }

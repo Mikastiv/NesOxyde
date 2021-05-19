@@ -136,7 +136,7 @@ impl Apu {
                 let noise = (self.noise.length_counter() > 0) as u8;
                 let dmc = (self.dmc.length_counter() > 0) as u8;
                 let irq = self.pending_irq.take().is_some() as u8;
-                let dmc_irq = self.dmc.poll_irq().is_some() as u8;
+                let dmc_irq = self.dmc.poll_irq() as u8;
 
                 dmc_irq << 7 | irq << 6 | dmc << 4 | noise << 3 | tri << 2 | sq2 << 1 | sq1
             }
@@ -266,12 +266,12 @@ impl Apu {
     /// Polls the IRQ flag
     pub fn poll_irq(&mut self) -> bool {
         // IRQ can be requested by the Apu or the DMC
-        self.pending_irq.take().is_some() | self.dmc.poll_irq().is_some()
+        self.pending_irq.take().is_some() | self.dmc.poll_irq()
     }
 
     /// Returns if the DMC needs a new audio sample or not
     pub fn need_dmc_sample(&mut self) -> bool {
-        self.dmc.need_sample().is_some()
+        self.dmc.need_sample()
     }
 
     /// Sets the audio sample of the DMC
