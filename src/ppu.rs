@@ -317,13 +317,24 @@ impl<'a> Ppu<'a> {
             PPU_SCROLL => {}
             PPU_ADDR => {}
             PPU_DATA => {
+                // Reading data takes 2 reads to get the data. The first read put the data
+                // in a buffer amd the second read puts the buffer data on the bus
+
+                // Put the buffer data on the bus
                 data = self.read_buffer;
+                // Read new data into the buffer
                 self.read_buffer = self.mem_read(self.v_addr.raw());
+
+                // If the data read in from palette RAM, it only takes 1 read
                 if (self.v_addr.raw() & 0x3F00) == 0x3F00 {
+                    // Put the buffer data which was just read on the bus
                     data = (self.open_bus & 0xC0) | (self.read_buffer & 0x3F);
+                    // Add the geryscale mask if enabled
                     data &= self.mask.greyscale_mask();
                 }
+                // Refresh the open bus value
                 self.refresh_open_bus(data);
+                // Every read automatically increments the Ppu address register
                 self.increment_vaddr();
             }
             _ => {}
@@ -331,95 +342,131 @@ impl<'a> Ppu<'a> {
         data
     }
 
+    /// Ppu register write
     pub fn write(&mut self, addr: u16, data: u8) {
+        // Refresh the open bus value
         self.refresh_open_bus(data);
         match addr {
             PPU_CTRL => {
+                // Set the register to data
                 self.ctrl.set_raw(data);
+                // Update scroll nametable
                 self.scroll.set_nta_h(self.ctrl.nta_h());
                 self.scroll.set_nta_v(self.ctrl.nta_v());
             }
             PPU_MASK => {
+                // Set the register to data
                 self.mask.set_raw(data);
             }
             PPU_STATUS => {}
             OAM_ADDR => {
+                // Set the OAM address to data
                 self.oam_addr = data;
             }
             OAM_DATA => {
+                // Write the data into OAM
                 self.oam_data[self.oam_addr as usize] = data;
+                // Write to OAM auto increments the address
                 self.oam_addr = self.oam_addr.wrapping_add(1);
             }
             PPU_SCROLL => {
+                // Writing to the scroll register uses the same latch as the address register
                 match self.addr_toggle {
+                    // If it is set, write Y scroll values
                     true => {
                         self.scroll.set_yfine(data & 0x7);
                         self.scroll.set_ycoarse(data >> 3);
                     }
+                    // Otherwise, write X scroll values
                     false => {
                         self.xfine = data & 0x7;
                         self.scroll.set_xcoarse(data >> 3);
                     }
                 }
+                // Update the toggle
                 self.addr_toggle = !self.addr_toggle;
             }
             PPU_ADDR => {
+                // Because the Ppu address is a 14 bit address and the Cpu uses
+                // an 8 bit bus, we have to write in two steps. The Ppu uses a toggle
+                // to choose which part of the address to write. I am using Loopy's
+                // implementation of the scroll and address register
                 match self.addr_toggle {
+                    // If it is set, set the lower bits of the address in the scroll (loopy's t register)
+                    // and then set the address register (v register) to the scroll
                     true => {
                         self.scroll.set_addr_lo(data);
                         self.v_addr = self.scroll;
                     }
+                    // Otherwise, set the high bits of the scroll
                     false => self.scroll.set_addr_hi(data & 0x3F),
                 }
+                // Update the toggle
                 self.addr_toggle = !self.addr_toggle;
             }
             PPU_DATA => {
+                // Write on the memory bus at the current address
                 self.mem_write(self.v_addr.raw(), data);
+                // Refresh open bus
                 self.refresh_open_bus(data);
+                // Writing to Ppu data also auto increments the address
                 self.increment_vaddr();
             }
             _ => {}
         }
     }
 
+    /// Poll the NMI flag set by the Ppu
     pub fn poll_nmi(&mut self) -> bool {
         self.pending_nmi.take().is_some()
     }
 
+    /// Clock the Ppu once
     pub fn clock(&mut self) {
+        // Update the open bus timer
         self.update_open_bus();
 
-        if self.odd_frame && self.scanline == 0 && self.cycle == 0 && self.mask.render_bg() {
+        // Every odd frame on the first scanline, the first cycle is skipped if background rendering is enabled
+        // A flag is updated every frame
+        if self.odd_frame && self.scanline == 0 && self.cycle == 0 && self.rendering_enabled() {
             self.cycle = 1;
         }
 
+        // To not have to write self. every time
         let cycle = self.cycle;
         let scanline = self.scanline;
 
+        // Pre render scanline
         if scanline == -1 && cycle == 1 {
+            // Clear NMI and reset status register
             self.pending_nmi = None;
             self.status.set_sp_0_hit(false);
             self.status.set_sp_overflow(false);
             self.status.set_vblank(false);
+            // Clear sprite shifters
             self.fg_lo_shift.fill(0);
             self.fg_hi_shift.fill(0);
         }
 
+        // 0..=240 -> rendering scanline
         if scanline < 240 && self.rendering_enabled() {
             self.process_rendering_scanline();
         }
 
+        // Set NMI if enabled on cycle 241
         if scanline == 241 && cycle == 1 {
             self.status.set_vblank(true);
             if self.ctrl.nmi_enabled() {
                 self.pending_nmi = Some(true)
             }
 
+            // A new frame is done rendering
             self.frame_count = self.frame_count.wrapping_add(1);
             // Render in window (in this case, using SDL2)
             (self.render_fn)(self.frame.pixels());
         }
 
+        // Calculate the pixel color
         if (0..240).contains(&scanline) && (1..257).contains(&cycle) {
             let (bg_pixel, bg_palette) = self.get_bg_pixel_info();
             // little hack to fix random sprite colors on left of first scanline
@@ -428,35 +475,55 @@ impl<'a> Ppu<'a> {
                 false => (0, 0, 0),
             };
 
+            // Pixel priority logic
             let (pixel, palette) = match bg_pixel {
+                // Both foreground and background are 0, result is 0
                 0 if fg_pixel == 0 => (0, 0),
+                // Only background is 0, output foreground
                 0 if fg_pixel > 0 => (fg_pixel, fg_palette),
+                // Only foreground is 0, output background
                 1..=3 if fg_pixel == 0 => (bg_pixel, bg_palette),
+                // Both are non zero
                 _ => {
+                    // Collision is possible
                     self.update_sprite_zero_hit();
+                    // The result is choosen based on the sprite priority attribute
+                    // If it is 0, output foreground
                     if fg_priority != 0 {
                         (fg_pixel, fg_palette)
+                    // If it is 1, output background
                     } else {
                         (bg_pixel, bg_palette)
                     }
                 }
             };
 
+            // Get the color from palette RAM
             let color = self.get_color(palette, pixel);
+            // Set the pixel
             self.frame.set_pixel(cycle - 1, scanline as usize, color);
         }
 
+        // Update cycle count
         self.cycle += 1;
 
+        // Signal the cartridge a new scanline was done (this is not how it worked on the NES).
+        // The mapper 4 (MMC3) uses this
         if self.rendering_enabled() && self.cycle == 260 && scanline < 240 {
             self.bus.inc_scanline();
         }
 
+        // Last cycle
         if self.cycle > 340 {
+            // Reset back to 0
             self.cycle = 0;
+            // Increment scanline
             self.scanline += 1;
+            // Last scanline
             if self.scanline > 260 {
+                // Reset back to -1 (pre render scanline)
                 self.scanline = -1;
+                // Toggle odd frame flag
                 self.odd_frame = !self.odd_frame;
             }
         }
