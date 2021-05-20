@@ -25,4 +25,9 @@ impl Frame {
         self.pixels[index + 1] = pixel.1;
         self.pixels[index + 2] = pixel.2;
     }
+
+    /// Sets all pixels to black
+    pub fn clear(&mut self) {
+        self.pixels.fill(0);
+    }
 }

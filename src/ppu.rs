@@ -71,6 +71,7 @@ pub struct Ppu<'a> {
     bus: Box<dyn Interface>,
     pending_nmi: Option<bool>,
     open_bus: u8,
+    open_bus_timer: u32,
 
     oam_data: [u8; OAM_SIZE],
     oam2_data: [SpriteInfo; OAM2_SIZE],
@@ -114,6 +115,7 @@ impl<'a> Ppu<'a> {
             bus,
             pending_nmi: None,
             open_bus: 0,
+            open_bus_timer: 0,
 
             oam_data: [0; OAM_SIZE],
             oam2_data: [SpriteInfo::default(); OAM2_SIZE],
@@ -145,6 +147,7 @@ impl<'a> Ppu<'a> {
         }
     }
 
+    /// Resets the state of the Ppu
     pub fn reset(&mut self) {
         self.ctrl = Controller::from_bits_truncate(0);
         self.mask = Mask::from_bits_truncate(0);
@@ -152,6 +155,7 @@ impl<'a> Ppu<'a> {
 
         self.pending_nmi = None;
         self.open_bus = 0;
+        self.open_bus_timer = 0;
 
         self.oam_data = [0; OAM_SIZE];
         self.oam2_data = [SpriteInfo::default(); OAM2_SIZE];
@@ -176,11 +180,12 @@ impl<'a> Ppu<'a> {
         self.bg_attr_lo_shift = 0;
         self.bg_attr_hi_shift = 0;
 
-        self.frame = Frame::new();
+        self.frame.clear();
         self.frame_count = 0;
         self.odd_frame = false;
     }
 
+    /// Debug function to show the cartridge CHR Patterns
     #[allow(dead_code)]
     fn render_chr_pattern(&mut self) {
         for tile_y in 0..16 {
@@ -232,6 +237,7 @@ impl<'a> Ppu<'a> {
         }
     }
 
+    /// Debug function to show the nametable 0
     #[allow(dead_code)]
     fn render_nametable_0(&mut self) {
         for addr in 0..0x3C0 {
@@ -271,25 +277,42 @@ impl<'a> Ppu<'a> {
         }
     }
 
+    /// Returns how many frames have been rendered
     pub fn frame_count(&self) -> u128 {
         self.frame_count
     }
 
+    /// Ppu register read
     pub fn read(&mut self, addr: u16) -> u8 {
+        // The ppu bus would latch data for a few cycles, so there might
+        // be data on the bus
         let mut data = self.open_bus;
         match addr {
             PPU_CTRL => {}
             PPU_MASK => {}
             PPU_STATUS => {
+                // Only the upper 3 bits are the status data
+                // The rest is set to what was on the open bus
                 data = self.status.bits() | (self.open_bus & 0x1F);
+                // Reading status removes the vblank flag
                 self.status.remove(Status::IN_VBLANK);
                 self.pending_nmi = None;
+                // Also resets the address toggle
                 self.addr_toggle = false;
             }
             OAM_ADDR => {}
             OAM_DATA => match self.clearing_oam {
+                // Always returns 0xFF when clearing secondary OAM
                 true => data = 0xFF,
-                false => data = self.oam_data[self.oam_addr as usize],
+                false => {
+                    // Bits 2, 3 and 4 do not exist in the Ppu if reading byte 2
+                    let mask = match self.oam_addr & 0x3 {
+                        2 => 0xE3,
+                        _ => 0xFF,
+                    };
+                    // Read from OAM and refresh open bus
+                    data = self.refresh_open_bus(self.oam_data[self.oam_addr as usize] & mask);
+                }
             },
             PPU_SCROLL => {}
             PPU_ADDR => {}
@@ -300,7 +323,7 @@ impl<'a> Ppu<'a> {
                     data = (self.open_bus & 0xC0) | (self.read_buffer & 0x3F);
                     data &= self.mask.greyscale_mask();
                 }
-                self.open_bus = data;
+                self.refresh_open_bus(data);
                 self.increment_vaddr();
             }
             _ => {}
@@ -309,7 +332,7 @@ impl<'a> Ppu<'a> {
     }
 
     pub fn write(&mut self, addr: u16, data: u8) {
-        self.open_bus = data;
+        self.refresh_open_bus(data);
         match addr {
             PPU_CTRL => {
                 self.ctrl.set_raw(data);
@@ -352,6 +375,7 @@ impl<'a> Ppu<'a> {
             }
             PPU_DATA => {
                 self.mem_write(self.v_addr.raw(), data);
+                self.refresh_open_bus(data);
                 self.increment_vaddr();
             }
             _ => {}
@@ -363,6 +387,8 @@ impl<'a> Ppu<'a> {
     }
 
     pub fn clock(&mut self) {
+        self.update_open_bus();
+
         if self.odd_frame && self.scanline == 0 && self.cycle == 0 && self.mask.render_bg() {
             self.cycle = 1;
         }
@@ -433,6 +459,19 @@ impl<'a> Ppu<'a> {
                 self.scanline = -1;
                 self.odd_frame = !self.odd_frame;
             }
+        }
+    }
+
+    fn refresh_open_bus(&mut self, data: u8) -> u8 {
+        self.open_bus = data;
+        self.open_bus_timer = 7777;
+        data
+    }
+
+    fn update_open_bus(&mut self) {
+        match self.open_bus_timer > 0 {
+            true => self.open_bus_timer -= 1,
+            false => self.open_bus = 0,
         }
     }
 
