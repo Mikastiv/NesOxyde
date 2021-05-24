@@ -529,12 +529,14 @@ impl<'a> Ppu<'a> {
         }
     }
 
+    /// Refresh open bus latch value
     fn refresh_open_bus(&mut self, data: u8) -> u8 {
         self.open_bus = data;
         self.open_bus_timer = 7777;
         data
     }
 
+    /// Refresh open bus latch timer
     fn update_open_bus(&mut self) {
         match self.open_bus_timer > 0 {
             true => self.open_bus_timer -= 1,
@@ -542,8 +544,14 @@ impl<'a> Ppu<'a> {
         }
     }
 
+    /// Update the sprite 0 hit flag
     fn update_sprite_zero_hit(&mut self) {
+        // Sprite 0 hit is a collision between a non 0 sprite pixel and bg pixel
+        // To be possible, we have to be drawing a sprite 0 pixel and both
+        // sprite and background rendering has to be enable
         if self.sprite_0_rendering && self.mask.render_bg() && self.mask.render_sp() {
+            // If either bg or sprite left most pixels are disabled, don't check
+            // first 8 pixels
             if !(self.mask.render_bg8() | self.mask.render_sp8()) {
                 if (9..256).contains(&self.cycle) {
                     self.status.set_sp_0_hit(true);
@@ -554,25 +562,59 @@ impl<'a> Ppu<'a> {
         }
     }
 
+    /// Process the current cycle of a rendering scanline
     fn process_rendering_scanline(&mut self) {
+        // To not have to write self. every time
         let cycle = self.cycle;
         let scanline = self.scanline;
 
+        // Update scroll on prerender scanline
         if scanline == -1 && cycle == 304 && self.mask.render_bg() {
             self.v_addr = self.scroll;
         }
 
         // Background
         if (2..258).contains(&cycle) || (321..338).contains(&cycle) {
+            // Update bg shifters
             self.shift_bg();
 
+            // Background operations repeat every 8 cycles
             match (cycle - 1) % 8 {
                 0 => {
+                    // Load next tile in the shifters
                     self.load_next_tile();
+                    // Get the address of the next tile
+                    // 0x2000 to offset in VRAM space
+                    // The lower 12 bits of the address register represent an index
+                    // in one of the four nametables
+                    //
+                    // VHYY YYYX XXXX
+                    // V: Nametable V
+                    // H: Nametable H
+                    // Y: Coarse Y
+                    // X: Coarse X
+                    //
+                    //   0                1
+                    // 0 +----------------+----------------+
+                    //   |                |                |
+                    //   |                |                |
+                    //   |    (32x32)     |    (32x32)     |
+                    //   |                |                |
+                    //   |                |                |
+                    // 1 +----------------+----------------+
+                    //   |                |                |
+                    //   |                |                |
+                    //   |    (32x32)     |    (32x32)     |
+                    //   |                |                |
+                    //   |                |                |
+                    //   +----------------+----------------+
+                    //
                     let vaddr = 0x2000 | (self.v_addr.raw() & 0xFFF);
+                    // At the address is the id of the pattern to draw
                     self.next_tile.id = self.mem_read(vaddr);
                 }
                 2 => {
+                    // Get the address of the attribute of the tile
                     let vaddr = 0x23C0
                         | self.v_addr.nta_addr()
                         | ((self.v_addr.ycoarse() >> 2) << 3) as u16
@@ -608,6 +650,7 @@ impl<'a> Ppu<'a> {
             }
         }
 
+        // Increment vertical scrolling
         if cycle == 256 {
             self.increment_yscroll();
         }
