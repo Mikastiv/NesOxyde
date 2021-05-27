@@ -270,6 +270,47 @@ impl Loopy {
         self.nta_v = (v & (NTA_V_MASK << NTA_V_SHIFT)) != 0;
         self.yfine = ((v & (YFINE_MASK << YFINE_SHIFT)) >> YFINE_SHIFT) as u8;
     }
+
+    /// Address of the next tile
+    //
+    // 0x2000 to offset in VRAM space
+    // The lower 12 bits of the address register represent an index
+    // in one of the four nametables
+    //
+    /// 0010 VHYY YYYX XXXX
+    ///
+    /// V: Nametable V
+    ///
+    /// H: Nametable H
+    ///
+    /// Y: Coarse Y
+    ///
+    /// X: Coarse X
+    //
+    //   0                1
+    // 0 +----------------+----------------+
+    //   |                |                |
+    //   |                |                |
+    //   |    (32x32)     |    (32x32)     |
+    //   |                |                |
+    //   |                |                |
+    // 1 +----------------+----------------+
+    //   |                |                |
+    //   |                |                |
+    //   |    (32x32)     |    (32x32)     |
+    //   |                |                |
+    //   |                |                |
+    //   +----------------+----------------+
+    pub fn tile_addr(&self) -> u16 {
+        0x2000 | (self.raw() & 0xFFF)
+    }
+
+    pub fn tile_attr_addr(&self) -> u16 {
+        0x23C0
+            | self.nta_addr()
+            | ((self.ycoarse() & 0x1C) << 1) as u16
+            | (self.xcoarse() >> 2) as u16
+    }
 }
 
 #[cfg(test)]

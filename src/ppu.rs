@@ -584,50 +584,37 @@ impl<'a> Ppu<'a> {
                     // Load next tile in the shifters
                     self.load_next_tile();
                     // Get the address of the next tile
-                    // 0x2000 to offset in VRAM space
-                    // The lower 12 bits of the address register represent an index
-                    // in one of the four nametables
-                    //
-                    // VHYY YYYX XXXX
-                    // V: Nametable V
-                    // H: Nametable H
-                    // Y: Coarse Y
-                    // X: Coarse X
-                    //
-                    //   0                1
-                    // 0 +----------------+----------------+
-                    //   |                |                |
-                    //   |                |                |
-                    //   |    (32x32)     |    (32x32)     |
-                    //   |                |                |
-                    //   |                |                |
-                    // 1 +----------------+----------------+
-                    //   |                |                |
-                    //   |                |                |
-                    //   |    (32x32)     |    (32x32)     |
-                    //   |                |                |
-                    //   |                |                |
-                    //   +----------------+----------------+
-                    //
-                    let vaddr = 0x2000 | (self.v_addr.raw() & 0xFFF);
+                    let vaddr = self.v_addr.tile_addr();
                     // At the address is the id of the pattern to draw
                     self.next_tile.id = self.mem_read(vaddr);
                 }
                 2 => {
-                    // Get the address of the attribute of the tile
-                    let vaddr = 0x23C0
-                        | self.v_addr.nta_addr()
-                        | ((self.v_addr.ycoarse() >> 2) << 3) as u16
-                        | (self.v_addr.xcoarse() >> 2) as u16;
+                    // The attribute byte is one of the hardest thing to
+                    // understand. It is well explained here: 
+                    // https://bugzmanov.github.io/nes_ebook/chapter_6_4.html
 
+                    // Get the address of the tile attribute
+                    let vaddr = self.v_addr.tile_attr_addr();
+                    // Get the attribute byte
                     self.next_tile.attr = self.mem_read(vaddr);
 
+                    // Attribute byte: BRBL TRTL
+                    // BR: Bottom right metatile
+                    // BL: Bottom left metatile
+                    // TR: Top right metatile
+                    // TL: Top left metatile
+
+                    // Bottom part of the nametable?
                     if self.v_addr.ycoarse() & 0x2 != 0 {
+                        // If so shift by 4
                         self.next_tile.attr >>= 4;
                     }
+                    // Right part of the nametable?
                     if self.v_addr.xcoarse() & 0x2 != 0 {
+                        // If so shift by 2
                         self.next_tile.attr >>= 2;
                     }
+                    // Attribute is only two bits
                     self.next_tile.attr &= 0x3;
                 }
                 4 => {
