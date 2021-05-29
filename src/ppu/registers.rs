@@ -113,6 +113,32 @@ impl Mask {
             false => 0xFF,
         }
     }
+
+    /// Return the color emphasis factors
+    pub fn emph_factors(&self) -> (f64, f64, f64) {
+        let mut r_factor = 1.0;
+        let mut g_factor = 1.0;
+        let mut b_factor = 1.0;
+
+        if self.contains(Self::EMPH_RED) {
+            g_factor = 0.75;
+            b_factor = 0.75;
+        }
+        if self.contains(Self::EMPH_GREEN) {
+            r_factor = 0.75;
+            b_factor = 0.75;
+        }
+        if self.contains(Self::EMPH_BLUE) {
+            r_factor = 0.75;
+            g_factor = 0.75;
+        }
+        (r_factor, g_factor, b_factor)
+    }
+
+    /// Returns true if one of the color emphasis bits is set
+    pub fn color_emph_enabled(&self) -> bool {
+        self.intersects(Self::EMPH_RED | Self::EMPH_GREEN | Self::EMPH_BLUE)
+    }
 }
 
 bitflags! {
@@ -272,7 +298,7 @@ impl Loopy {
     }
 
     /// Address of the next tile
-    //
+    ///
     // 0x2000 to offset in VRAM space
     // The lower 12 bits of the address register represent an index
     // in one of the four nametables
@@ -305,6 +331,13 @@ impl Loopy {
         0x2000 | (self.raw() & 0xFFF)
     }
 
+    /// Address of the next tile attribute byte
+    ///
+    /// 0010 0011 11YY YXXX
+    ///
+    /// Y: Higher 3 bits of Y coarse
+    ///
+    /// X: Higher 3 bits of X coarse
     pub fn tile_attr_addr(&self) -> u16 {
         0x23C0
             | self.nta_addr()

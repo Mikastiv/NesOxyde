@@ -590,7 +590,7 @@ impl<'a> Ppu<'a> {
                 }
                 2 => {
                     // The attribute byte is one of the hardest thing to
-                    // understand. It is well explained here: 
+                    // understand. It is well explained here:
                     // https://bugzmanov.github.io/nes_ebook/chapter_6_4.html
 
                     // Get the address of the tile attribute
@@ -799,7 +799,19 @@ impl<'a> Ppu<'a> {
     fn get_color(&mut self, palette: u8, pixel: u8) -> Rgb {
         let index = self.mem_read(0x3F00 + ((palette as u16) << 2) + pixel as u16)
             & self.mask.greyscale_mask();
-        NES_PALETTE[(index as usize) & 0x3F]
+        let c = NES_PALETTE[(index as usize) & 0x3F];
+
+        match self.mask.color_emph_enabled() {
+            false => c,
+            true => {
+                let (r_factor, g_factor, b_factor) = self.mask.emph_factors();
+                Rgb(
+                    (c.0 as f64 * r_factor) as u8,
+                    (c.1 as f64 * g_factor) as u8,
+                    (c.2 as f64 * b_factor) as u8,
+                )
+            }
+        }
     }
 
     fn increment_xscroll(&mut self) {
