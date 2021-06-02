@@ -27,7 +27,9 @@ SyncMode: -A (default) or -V
 R -> Reset  
 Esc -> Close emulator  
 1 -> Volume down  
-2 -> Volume up
+2 -> Volume up  
+F1 -> Save state  
+F2 -> Load state
 
 Key mappings can be changed in main.rs  
 Defaults:
@@ -40,10 +42,6 @@ Defaults:
 - DownArrow -> Down
 - LeftArrow -> Left
 - RightArrow -> Right
-
-## TODOs
-
-- Add a save/load state system
 
 ## Screenshots
 
