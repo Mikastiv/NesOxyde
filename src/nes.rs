@@ -4,7 +4,6 @@ use sdl2::keyboard::Keycode;
 use sdl2::pixels::PixelFormatEnum;
 use spin_sleep::SpinSleeper;
 use std::cell::RefCell;
-use std::fs;
 use std::fs::File;
 use std::rc::Rc;
 use std::time::Duration;
