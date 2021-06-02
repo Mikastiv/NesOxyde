@@ -2,7 +2,9 @@
 
 use std::usize;
 
+use crate::cpu::CpuInterface;
 use crate::cpu::Interface;
+use crate::savable::Savable;
 
 const RESET_VECTOR: u16 = 0xFFFC;
 
@@ -21,6 +23,8 @@ impl Interface for SnakeBus {
     }
 }
 
+impl CpuInterface for SnakeBus {}
+
 impl SnakeBus {
     pub fn new() -> Self {
         Self {
@@ -34,3 +38,5 @@ impl SnakeBus {
         self.write(RESET_VECTOR + 1, 0x06);
     }
 }
+
+impl Savable for SnakeBus {}

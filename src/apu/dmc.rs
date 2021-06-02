@@ -1,8 +1,11 @@
+use serde::{Deserialize, Serialize};
+
 const RATE_TABLE: [u16; 16] = [
     428, 380, 340, 320, 286, 254, 226, 214, 190, 160, 142, 128, 106, 84, 72, 54,
 ];
 
 /// Delta modulation channel
+#[derive(Serialize, Deserialize)]
 pub struct Dmc {
     enabled: bool,
 
@@ -139,7 +142,7 @@ impl Dmc {
             }
             match self.length_counter > 0 {
                 // If if is greater than 0, load the next sample,
-                // reset the phase to 8 (sample are only 7 bits) 
+                // reset the phase to 8 (sample are only 7 bits)
                 // and decrement the counter
                 true => {
                     self.pending_read = Some(true);

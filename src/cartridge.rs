@@ -1,8 +1,12 @@
 use core::panic;
 use std::fmt::Display;
+use std::fs::File;
 use std::io;
 use std::path::Path;
 
+use serde::{Deserialize, Serialize};
+
+use crate::savable::Savable;
 use mappers::{Mapper, Mapper0, Mapper1, Mapper10, Mapper2, Mapper3, Mapper4, Mapper7, Mapper9};
 use rom::Rom;
 
@@ -10,7 +14,7 @@ mod mappers;
 mod rom;
 
 /// Mirroring modes for the VRAM
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub enum MirrorMode {
     Vertical,
     Horizontal,
@@ -19,9 +23,11 @@ pub enum MirrorMode {
     FourScreen,
 }
 
+pub trait RomMapper: Mapper + Savable {}
+
 /// NES ROM cartridge
 pub struct Cartridge {
-    mapper: Box<dyn Mapper>,
+    mapper: Box<dyn RomMapper>,
     filename: Option<String>,
 }
 
@@ -33,7 +39,7 @@ impl Cartridge {
             .map(|name| name.to_string_lossy().to_string());
 
         let rom = Rom::new(romfile)?;
-        let mapper: Box<dyn Mapper> = match rom.header.mapper_id() {
+        let mapper: Box<dyn RomMapper> = match rom.header.mapper_id() {
             0 => Box::new(Mapper0::new(rom)),
             1 => Box::new(Mapper1::new(rom)),
             2 => Box::new(Mapper2::new(rom)),
@@ -82,8 +88,16 @@ impl Cartridge {
 
     pub fn filename(&self) -> String {
         match self.filename {
-            Some(ref name) => format!(" - {}", name.clone()),
+            Some(ref name) => name.clone(),
             None => "".to_string(),
         }
+    }
+
+    pub fn save(&self, output: &File) -> bincode::Result<()> {
+        self.mapper.save(output)
+    }
+
+    pub fn load(&mut self, input: &File) -> bincode::Result<()> {
+        self.mapper.load(input)
     }
 }

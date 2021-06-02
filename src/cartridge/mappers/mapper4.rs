@@ -1,4 +1,7 @@
-use crate::cartridge::{MirrorMode, Rom};
+use std::fs::File;
+
+use crate::cartridge::{MirrorMode, Rom, RomMapper};
+use crate::savable::Savable;
 
 use super::Mapper;
 
@@ -43,6 +46,54 @@ impl Mapper4 {
 
             ram: vec![0; 0x2000],
         }
+    }
+}
+
+impl RomMapper for Mapper4 {}
+
+impl Savable for Mapper4 {
+    fn save(&self, output: &File) -> bincode::Result<()> {
+        bincode::serialize_into(output, &self.target)?;
+        bincode::serialize_into(output, &self.prg_mode)?;
+        bincode::serialize_into(output, &self.chr_invert)?;
+        bincode::serialize_into(output, &self.mirror_mode)?;
+        bincode::serialize_into(output, &self.irq_reload)?;
+        bincode::serialize_into(output, &self.irq_counter)?;
+        bincode::serialize_into(output, &self.irq_enable)?;
+        bincode::serialize_into(output, &self.pending_irq)?;
+        for i in 0..8 {
+            bincode::serialize_into(output, &self.registers[i])?;
+            bincode::serialize_into(output, &self.chr_banks[i])?;
+        }
+        for i in 0..4 {
+            bincode::serialize_into(output, &self.prg_banks[i])?;
+        }
+        for i in 0..0x2000 {
+            bincode::serialize_into(output, &self.ram[i])?;
+        }
+        Ok(())
+    }
+
+    fn load(&mut self, input: &File) -> bincode::Result<()> {
+        self.target = bincode::deserialize_from(input)?;
+        self.prg_mode = bincode::deserialize_from(input)?;
+        self.chr_invert = bincode::deserialize_from(input)?;
+        self.mirror_mode = bincode::deserialize_from(input)?;
+        self.irq_reload = bincode::deserialize_from(input)?;
+        self.irq_counter = bincode::deserialize_from(input)?;
+        self.irq_enable = bincode::deserialize_from(input)?;
+        self.pending_irq = bincode::deserialize_from(input)?;
+        for i in 0..8 {
+            self.registers[i] = bincode::deserialize_from(input)?;
+            self.chr_banks[i] = bincode::deserialize_from(input)?;
+        }
+        for i in 0..4 {
+            self.prg_banks[i] = bincode::deserialize_from(input)?;
+        }
+        for i in 0..0x2000 {
+            self.ram[i] = bincode::deserialize_from(input)?;
+        }
+        Ok(())
     }
 }
 

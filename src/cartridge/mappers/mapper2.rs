@@ -1,5 +1,8 @@
+use std::fs::File;
+
 use crate::cartridge::rom::PRG_PAGE_SIZE;
-use crate::cartridge::{MirrorMode, Rom};
+use crate::cartridge::{MirrorMode, Rom, RomMapper};
+use crate::savable::Savable;
 
 use super::Mapper;
 
@@ -11,6 +14,20 @@ pub struct Mapper2 {
 impl Mapper2 {
     pub fn new(rom: Rom) -> Self {
         Self { rom, bank: 0 }
+    }
+}
+
+impl RomMapper for Mapper2 {}
+
+impl Savable for Mapper2 {
+    fn save(&self, output: &File) -> bincode::Result<()> {
+        bincode::serialize_into(output, &self.bank)?;
+        Ok(())
+    }
+
+    fn load(&mut self, input: &File) -> bincode::Result<()> {
+        self.bank = bincode::deserialize_from(input)?;
+        Ok(())
     }
 }
 

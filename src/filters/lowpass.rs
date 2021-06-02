@@ -29,6 +29,11 @@ impl Filter for LowPass {
 
         output
     }
+
+    fn reset(&mut self) {
+        self.out_history.iter_mut().for_each(|v| *v = 0.0);
+        self.in_history.iter_mut().for_each(|v| *v = 0.0);
+    }
 }
 
 impl LowPass {

@@ -1,6 +1,8 @@
 // The noise channels produced white noise and was generally used for the
 // percussions of the songs
 
+use serde::{Deserialize, Serialize};
+
 use super::LENGTH_TABLE;
 
 /// Table of the different timer periods
@@ -9,6 +11,7 @@ const TIMER_TABLE: [u16; 16] = [
 ];
 
 /// Audio noise channel
+#[derive(Serialize, Deserialize)]
 pub struct Noise {
     enabled: bool,
     mode: bool,
@@ -127,7 +130,7 @@ impl Noise {
 
     /// Clocks the length counter
     pub fn tick_length(&mut self) {
-         // The length counter is a simple gate which lets the channel output
+        // The length counter is a simple gate which lets the channel output
         // a signal when it is not 0. It can only be reloaded by writing to
         // register 0x400F.
         // It is like "for how many clocks the channel can output a signal"

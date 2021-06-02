@@ -1,3 +1,7 @@
+use std::fs::File;
+
+use serde::{Deserialize, Serialize};
+
 use dmc::Dmc;
 use noise::Noise;
 use square::Square;
@@ -5,6 +9,7 @@ use triangle::Triangle;
 
 use crate::decay::Decay;
 use crate::filters::{Filter, HighPass, LowPass};
+use crate::savable::Savable;
 
 // http://wiki.nesdev.com/w/index.php/APU_Length_Counter
 /// Length counter values table
@@ -65,7 +70,7 @@ mod square;
 mod triangle;
 
 /// Sequencer stepping mode
-#[derive(PartialEq)]
+#[derive(PartialEq, Serialize, Deserialize)]
 enum SequencerMode {
     FourStep,
     FiveStep,
@@ -90,14 +95,49 @@ pub struct Apu {
     filters: Vec<Box<dyn Filter>>,
 }
 
+impl Savable for Apu {
+    fn save(&self, output: &File) -> bincode::Result<()> {
+        bincode::serialize_into(output, &self.cycles)?;
+        bincode::serialize_into(output, &self.hz240_counter)?;
+        bincode::serialize_into(output, &self.irq_off)?;
+        bincode::serialize_into(output, &self.pending_irq)?;
+        bincode::serialize_into(output, &self.sq1)?;
+        bincode::serialize_into(output, &self.sq2)?;
+        bincode::serialize_into(output, &self.tri)?;
+        bincode::serialize_into(output, &self.noise)?;
+        bincode::serialize_into(output, &self.dmc)?;
+        bincode::serialize_into(output, &self.sequencer)?;
+        bincode::serialize_into(output, &self.mode)?;
+        Ok(())
+    }
+
+    fn load(&mut self, input: &File) -> bincode::Result<()> {
+        self.cycles = bincode::deserialize_from(input)?;
+        self.hz240_counter = bincode::deserialize_from(input)?;
+        self.irq_off = bincode::deserialize_from(input)?;
+        self.pending_irq = bincode::deserialize_from(input)?;
+        self.sq1 = bincode::deserialize_from(input)?;
+        self.sq2 = bincode::deserialize_from(input)?;
+        self.tri = bincode::deserialize_from(input)?;
+        self.noise = bincode::deserialize_from(input)?;
+        self.dmc = bincode::deserialize_from(input)?;
+        self.sequencer = bincode::deserialize_from(input)?;
+        self.mode = bincode::deserialize_from(input)?;
+        self.filters.iter_mut().for_each(|f| f.reset());
+        Ok(())
+    }
+}
+
 impl Apu {
-    pub fn new(sample_rate: f32) -> Self {
-        let filters: Vec<Box<dyn Filter>> = vec![
+    fn new_filters(sample_rate: f32) -> Vec<Box<dyn Filter>> {
+        vec![
             Box::new(HighPass::new(90.0, sample_rate, 2.0f32.sqrt())),
             // Box::new(HighPass::new(440.0, sample_rate, 2.0f32.sqrt())),
             Box::new(LowPass::new(14000.0, sample_rate, 2.0f32.sqrt())),
-        ];
+        ]
+    }
 
+    pub fn new(sample_rate: f32) -> Self {
         Self {
             cycles: 0,
             hz240_counter: 0,
@@ -113,7 +153,7 @@ impl Apu {
             mode: SequencerMode::FourStep,
 
             tri_decay: Decay::new(0.1),
-            filters,
+            filters: Self::new_filters(sample_rate),
         }
     }
 

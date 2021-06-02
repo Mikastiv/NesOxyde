@@ -8,4 +8,5 @@ mod lowpass;
 pub trait Filter {
     /// Filters an audio signal
     fn filter(&mut self, input: f32) -> f32;
+    fn reset(&mut self);
 }

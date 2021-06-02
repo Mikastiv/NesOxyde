@@ -1,4 +1,7 @@
-use crate::cartridge::{MirrorMode, Rom};
+use std::fs::File;
+
+use crate::cartridge::{MirrorMode, Rom, RomMapper};
+use crate::savable::Savable;
 
 use super::Mapper;
 
@@ -16,6 +19,22 @@ impl Mapper7 {
             bank: 0,
             mirror_mode: MirrorMode::OneScreenLo,
         }
+    }
+}
+
+impl RomMapper for Mapper7 {}
+
+impl Savable for Mapper7 {
+    fn save(&self, output: &File) -> bincode::Result<()> {
+        bincode::serialize_into(output, &self.bank)?;
+        bincode::serialize_into(output, &self.mirror_mode)?;
+        Ok(())
+    }
+
+    fn load(&mut self, input: &File) -> bincode::Result<()> {
+        self.bank = bincode::deserialize_from(input)?;
+        self.mirror_mode = bincode::deserialize_from(input)?;
+        Ok(())
     }
 }
 

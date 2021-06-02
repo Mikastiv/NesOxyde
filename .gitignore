@@ -2,3 +2,4 @@
 SDL2.dll
 /roms
 !/roms/nestest.nes
+*.save

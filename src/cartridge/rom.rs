@@ -9,7 +9,7 @@ use super::MirrorMode;
 pub const PRG_PAGE_SIZE: usize = 0x4000;
 /// Size of one CHR bank
 pub const CHR_PAGE_SIZE: usize = 0x2000;
-/// Size of the iNES header 
+/// Size of the iNES header
 const HEADER_SIZE: usize = 16;
 /// iNES header tag. Must be at the start of the file
 const NES_TAG: [u8; 4] = [b'N', b'E', b'S', 0x1A];

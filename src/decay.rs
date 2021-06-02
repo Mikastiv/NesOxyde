@@ -1,4 +1,6 @@
+use serde::{Deserialize, Serialize};
 
+#[derive(Serialize, Deserialize)]
 pub struct Decay {
     max_diff: f32,
     prev: f32,

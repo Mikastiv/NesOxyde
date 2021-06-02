@@ -1,6 +1,10 @@
+use std::fs::File;
+
 use bitflags::bitflags;
+use serde::{Deserialize, Serialize};
 
 use crate::joypad::{Button, JoyPort};
+use crate::savable::Savable;
 
 pub use addr_modes::AddrMode;
 pub use instructions::OPTABLE;
@@ -20,6 +24,8 @@ const NMI_VECTOR: u16 = 0xFFFA;
 const RESET_VECTOR: u16 = 0xFFFC;
 /// Interrupt request vector
 const IRQ_VECTOR: u16 = 0xFFFE;
+
+pub trait CpuInterface: Interface + Savable {}
 
 /// Cpu's interface to the rest of the components
 pub trait Interface {
@@ -72,6 +78,7 @@ pub trait Interface {
 
 bitflags! {
     /// Cpu Flags
+    #[derive(Serialize, Deserialize)]
     struct Flags: u8 {
         /// Negative
         const N = 0b10000000;
@@ -108,17 +115,45 @@ pub struct Cpu<'a> {
     pc: u16,
 
     /// Memory bus
-    bus: Box<dyn Interface + 'a>,
+    bus: Box<dyn CpuInterface + 'a>,
     /// Current instruction duration in cycles
     ins_cycles: u64,
     /// Cycles elapsed
     cycles: u64,
 }
 
+impl Savable for Cpu<'_> {
+    fn save(&self, output: &File) -> bincode::Result<()> {
+        self.bus.save(output)?;
+        bincode::serialize_into(output, &self.a)?;
+        bincode::serialize_into(output, &self.x)?;
+        bincode::serialize_into(output, &self.y)?;
+        bincode::serialize_into(output, &self.s)?;
+        bincode::serialize_into(output, &self.p)?;
+        bincode::serialize_into(output, &self.pc)?;
+        bincode::serialize_into(output, &self.ins_cycles)?;
+        bincode::serialize_into(output, &self.cycles)?;
+        Ok(())
+    }
+
+    fn load(&mut self, input: &File) -> bincode::Result<()> {
+        self.bus.load(input)?;
+        self.a = bincode::deserialize_from(input)?;
+        self.x = bincode::deserialize_from(input)?;
+        self.y = bincode::deserialize_from(input)?;
+        self.s = bincode::deserialize_from(input)?;
+        self.p = bincode::deserialize_from(input)?;
+        self.pc = bincode::deserialize_from(input)?;
+        self.ins_cycles = bincode::deserialize_from(input)?;
+        self.cycles = bincode::deserialize_from(input)?;
+        Ok(())
+    }
+}
+
 impl<'a> Cpu<'a> {
     pub fn new<I>(bus: I) -> Self
     where
-        I: Interface + 'a,
+        I: CpuInterface + 'a,
     {
         Self {
             a: 0,
@@ -1032,7 +1067,7 @@ impl<'a> Cpu<'a> {
     }
 
     // ----------- Illegal opcodes -----------
-    
+
     /// Illegal operation which halts the cpu
     fn kil(&mut self, _mode: AddrMode) {
         panic!("KIL opcode called");
@@ -1136,7 +1171,6 @@ impl<'a> Cpu<'a> {
         self.p.set(Flags::C, self.a() & 0x01 != 0);
         self.set_a(self.a() >> 1);
     }
-
 
     fn arr(&mut self, mode: AddrMode) {
         let addr = self.operand_addr(mode);

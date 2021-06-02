@@ -1,12 +1,15 @@
 use std::cell::RefCell;
+use std::fs::File;
 use std::rc::Rc;
 
 use super::PpuBus;
 use crate::apu::Apu;
 use crate::cartridge::Cartridge;
+use crate::cpu::CpuInterface;
 use crate::cpu::Interface;
 use crate::joypad::{Button, JoyPad, JoyPort};
 use crate::ppu::{Ppu, OAM_DATA};
+use crate::savable::Savable;
 
 /// Size of the RAM
 const RAM_SIZE: usize = 0x800;
@@ -61,6 +64,34 @@ pub struct MainBus<'a> {
     audio_time: f64,
     time_per_sample: f64,
     samples: Vec<f32>,
+}
+
+impl CpuInterface for MainBus<'_> {}
+
+impl Savable for MainBus<'_> {
+    fn save(&self, output: &File) -> bincode::Result<()> {
+        self.apu.save(output)?;
+        self.ppu.save(output)?;
+        self.cartridge.borrow().save(output)?;
+        for i in 0..RAM_SIZE {
+            bincode::serialize_into(output, &self.ram[i])?;
+        }
+        bincode::serialize_into(output, &self.audio_time)?;
+        bincode::serialize_into(output, &self.samples)?;
+        Ok(())
+    }
+
+    fn load(&mut self, input: &File) -> bincode::Result<()> {
+        self.apu.load(input)?;
+        self.ppu.load(input)?;
+        self.cartridge.borrow_mut().load(input)?;
+        for i in 0..RAM_SIZE {
+            self.ram[i] = bincode::deserialize_from(input)?;
+        }
+        self.audio_time = bincode::deserialize_from(input)?;
+        self.samples = bincode::deserialize_from(input)?;
+        Ok(())
+    }
 }
 
 impl Interface for MainBus<'_> {
@@ -141,12 +172,12 @@ impl Interface for MainBus<'_> {
 
     fn tick(&mut self, cycles: u64) {
         for _ in 0..cycles {
-            // Ppu is clocked at 3 times the speed of the Cpu 
+            // Ppu is clocked at 3 times the speed of the Cpu
             for _ in 0..3 {
                 self.ppu.clock();
             }
 
-            // Apu is clocked at the same speed as the Cpu 
+            // Apu is clocked at the same speed as the Cpu
             self.apu.clock();
             // Check if DMC channel needs a new sample
             self.update_dmc_sample();

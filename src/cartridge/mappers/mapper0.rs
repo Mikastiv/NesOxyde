@@ -1,5 +1,6 @@
 use super::Mapper;
-use crate::cartridge::{MirrorMode, Rom};
+use crate::cartridge::{MirrorMode, Rom, RomMapper};
+use crate::savable::Savable;
 
 pub struct Mapper0 {
     rom: Rom,
@@ -14,6 +15,10 @@ impl Mapper0 {
         }
     }
 }
+
+impl RomMapper for Mapper0 {}
+
+impl Savable for Mapper0 {}
 
 impl Mapper for Mapper0 {
     fn read_prg(&mut self, addr: u16) -> u8 {

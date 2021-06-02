@@ -14,6 +14,7 @@ mod joypad;
 mod nes;
 mod ppu;
 mod reverb;
+mod savable;
 mod snake_game;
 mod timer;
 

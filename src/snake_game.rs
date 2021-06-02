@@ -11,8 +11,8 @@ use sdl2::pixels::PixelFormatEnum;
 use sdl2::EventPump;
 use std::time::Instant;
 
-use crate::cpu::Cpu;
 use crate::bus::SnakeBus;
+use crate::cpu::Cpu;
 
 const NS_BETWEEN_INS: u128 = 100_000;
 
@@ -86,7 +86,7 @@ fn read_screen_state(cpu: &mut Cpu, frame: &mut [u8; 32 * 3 * 32]) -> bool {
 
 /// Run a 6502 asm snake game
 pub fn run() {
-	let sdl_context = sdl2::init().unwrap();
+    let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
     let window = video_subsystem
         .window("Snake game", (32.0 * 10.0) as u32, (32.0 * 10.0) as u32)

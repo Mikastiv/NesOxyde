@@ -35,4 +35,9 @@ impl Reverb {
             }
         }
     }
+
+    /// Clears the reverb buffer
+    pub fn clear(&mut self) {
+        self.buf.clear();
+    }
 }

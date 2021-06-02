@@ -1,4 +1,7 @@
-use crate::cartridge::{MirrorMode, Rom};
+use std::fs::File;
+
+use crate::cartridge::{MirrorMode, Rom, RomMapper};
+use crate::savable::Savable;
 
 use super::Mapper;
 
@@ -49,6 +52,46 @@ impl Mapper9 {
 
             ram: vec![0; 0x2000],
         }
+    }
+}
+
+impl RomMapper for Mapper9 {}
+
+impl Savable for Mapper9 {
+    fn save(&self, output: &File) -> bincode::Result<()> {
+        bincode::serialize_into(output, &self.latch0)?;
+        bincode::serialize_into(output, &self.latch1)?;
+        bincode::serialize_into(output, &self.prg_bank)?;
+        bincode::serialize_into(output, &self.prg_fixed0)?;
+        bincode::serialize_into(output, &self.prg_fixed1)?;
+        bincode::serialize_into(output, &self.prg_fixed2)?;
+        bincode::serialize_into(output, &self.chr_lo_fd)?;
+        bincode::serialize_into(output, &self.chr_lo_fe)?;
+        bincode::serialize_into(output, &self.chr_hi_fd)?;
+        bincode::serialize_into(output, &self.chr_hi_fe)?;
+        bincode::serialize_into(output, &self.mirror_mode)?;
+        for i in 0..0x2000 {
+            bincode::serialize_into(output, &self.ram[i])?;
+        }
+        Ok(())
+    }
+
+    fn load(&mut self, input: &File) -> bincode::Result<()> {
+        self.latch0 = bincode::deserialize_from(input)?;
+        self.latch1 = bincode::deserialize_from(input)?;
+        self.prg_bank = bincode::deserialize_from(input)?;
+        self.prg_fixed0 = bincode::deserialize_from(input)?;
+        self.prg_fixed1 = bincode::deserialize_from(input)?;
+        self.prg_fixed2 = bincode::deserialize_from(input)?;
+        self.chr_lo_fd = bincode::deserialize_from(input)?;
+        self.chr_lo_fe = bincode::deserialize_from(input)?;
+        self.chr_hi_fd = bincode::deserialize_from(input)?;
+        self.chr_hi_fe = bincode::deserialize_from(input)?;
+        self.mirror_mode = bincode::deserialize_from(input)?;
+        for i in 0..0x2000 {
+            self.ram[i] = bincode::deserialize_from(input)?;
+        }
+        Ok(())
     }
 }
 

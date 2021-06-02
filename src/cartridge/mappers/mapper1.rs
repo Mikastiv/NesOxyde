@@ -1,5 +1,8 @@
+use std::fs::File;
+
 use super::Mapper;
-use crate::cartridge::{MirrorMode, Rom};
+use crate::cartridge::{MirrorMode, Rom, RomMapper};
+use crate::savable::Savable;
 
 pub struct Mapper1 {
     rom: Rom,
@@ -39,6 +42,44 @@ impl Mapper1 {
             ram: vec![0; 0x2000],
             mirror_mode: MirrorMode::Vertical,
         }
+    }
+}
+
+impl RomMapper for Mapper1 {}
+
+impl Savable for Mapper1 {
+    fn save(&self, output: &File) -> bincode::Result<()> {
+        bincode::serialize_into(output, &self.chr_lo)?;
+        bincode::serialize_into(output, &self.chr_hi)?;
+        bincode::serialize_into(output, &self.chr_8k)?;
+        bincode::serialize_into(output, &self.prg_lo)?;
+        bincode::serialize_into(output, &self.prg_hi)?;
+        bincode::serialize_into(output, &self.prg_32k)?;
+        bincode::serialize_into(output, &self.control)?;
+        bincode::serialize_into(output, &self.count)?;
+        bincode::serialize_into(output, &self.load)?;
+        bincode::serialize_into(output, &self.mirror_mode)?;
+        for i in 0..0x2000 {
+            bincode::serialize_into(output, &self.ram[i])?;
+        }
+        Ok(())
+    }
+
+    fn load(&mut self, input: &File) -> bincode::Result<()> {
+        self.chr_lo = bincode::deserialize_from(input)?;
+        self.chr_hi = bincode::deserialize_from(input)?;
+        self.chr_8k = bincode::deserialize_from(input)?;
+        self.prg_lo = bincode::deserialize_from(input)?;
+        self.prg_hi = bincode::deserialize_from(input)?;
+        self.prg_32k = bincode::deserialize_from(input)?;
+        self.control = bincode::deserialize_from(input)?;
+        self.count = bincode::deserialize_from(input)?;
+        self.load = bincode::deserialize_from(input)?;
+        self.mirror_mode = bincode::deserialize_from(input)?;
+        for i in 0..0x2000 {
+            self.ram[i] = bincode::deserialize_from(input)?;
+        }
+        Ok(())
     }
 }
 

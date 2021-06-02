@@ -1,8 +1,10 @@
 use std::cell::RefCell;
+use std::fs::File;
 use std::rc::Rc;
 
 use crate::cartridge::{Cartridge, MirrorMode};
-use crate::ppu;
+use crate::ppu::{self, PpuInterface};
+use crate::savable::Savable;
 
 /// First address of the ROM memory space
 const ROM_START: u16 = 0x0000;
@@ -30,6 +32,30 @@ pub struct PpuBus {
     cartridge: Rc<RefCell<Cartridge>>,
     pal_ram: [u8; PALETTE_RAM_SIZE],
     vram: [u8; VRAM_SIZE],
+}
+
+impl PpuInterface for PpuBus {}
+
+impl Savable for PpuBus {
+    fn save(&self, output: &File) -> bincode::Result<()> {
+        for i in 0..PALETTE_RAM_SIZE {
+            bincode::serialize_into(output, &self.pal_ram[i])?;
+        }
+        for i in 0..VRAM_SIZE {
+            bincode::serialize_into(output, &self.vram[i])?;
+        }
+        Ok(())
+    }
+
+    fn load(&mut self, input: &File) -> bincode::Result<()> {
+        for i in 0..PALETTE_RAM_SIZE {
+            self.pal_ram[i] = bincode::deserialize_from(input)?;
+        }
+        for i in 0..VRAM_SIZE {
+            self.vram[i] = bincode::deserialize_from(input)?;
+        }
+        Ok(())
+    }
 }
 
 impl ppu::Interface for PpuBus {
@@ -144,7 +170,7 @@ impl PpuBus {
             // |  2 - B  |  3 - B  |
             // |         |         |
             // |---------|---------|
-            // Here 1 mirrors 0 and 3 mirrors 2. 
+            // Here 1 mirrors 0 and 3 mirrors 2.
             // I want to map nametable 0 to hardware nametable 0 and nametable 2 to hardware nametable 1.
             // Nametable 0 is already mapped
             // Because nametable 1 mirrors 0, I can simply substract the nametable size.
@@ -176,7 +202,7 @@ impl PpuBus {
             // |  2 - A  |  3 - A  |
             // |         |         |
             // |---------|---------|
-            // This setting maps everthing to hardware nametable 1. 
+            // This setting maps everthing to hardware nametable 1.
             // I simply add the size after masking the address
             MirrorMode::OneScreenHi => (index & 0x3FF) + NTA_SIZE,
             // |---------|---------|  |---------|---------|
@@ -188,7 +214,7 @@ impl PpuBus {
             // |  2 - C  |  3 - D  |  |    2    |    3    | The extra nametables were on the cartridge PCB
             // |         |         |  |         |         |
             // |---------|---------|  |---------|---------|
-            // Real hardware would use memory on the cartridge but, I simply 
+            // Real hardware would use memory on the cartridge but, I simply
             // allocated a Vec of twice the size of VRAM and use the index directly
             MirrorMode::FourScreen => index,
         }

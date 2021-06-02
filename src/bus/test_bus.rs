@@ -1,6 +1,8 @@
 #![allow(dead_code)]
 
+use crate::cpu::CpuInterface;
 use crate::cpu::Interface;
+use crate::savable::Savable;
 
 /// Bus used for easier cpu testing
 pub struct TestBus {
@@ -24,6 +26,8 @@ impl Interface for TestBus {
     }
 }
 
+impl CpuInterface for TestBus {}
+
 impl TestBus {
     pub fn new(program: Vec<u8>) -> Self {
         Self {
@@ -37,3 +41,5 @@ impl TestBus {
         self.ram[(addr & 0x7FF) as usize] = data;
     }
 }
+
+impl Savable for TestBus {}

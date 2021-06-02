@@ -1,6 +1,8 @@
 // The square channels produced square waves and were generally used for the
 // melody of the songs
 
+use serde::{Deserialize, Serialize};
+
 use super::LENGTH_TABLE;
 
 // 0 - 0 1 0 0 0 0 0 0 (12.5%)
@@ -17,6 +19,7 @@ pub enum Channel {
 }
 
 /// Audio square channel
+#[derive(Serialize, Deserialize)]
 pub struct Square {
     enabled: bool,
 

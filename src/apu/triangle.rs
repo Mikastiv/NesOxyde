@@ -1,6 +1,8 @@
 // The triangle channel produced triangle waves and was generally used for
 // the baseline of the songs
 
+use serde::{Deserialize, Serialize};
+
 use super::LENGTH_TABLE;
 
 /// Table of the channel's output volume values
@@ -10,6 +12,7 @@ const OUTPUT_TABLE: [u8; 32] = [
 ];
 
 /// Audio triangle channel
+#[derive(Serialize, Deserialize)]
 pub struct Triangle {
     enabled: bool,
     phase: u8,

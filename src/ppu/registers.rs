@@ -152,6 +152,11 @@ bitflags! {
 }
 
 impl Status {
+    /// Set all the register bits at once
+    pub fn set_raw(&mut self, v: u8) {
+        self.bits = v;
+    }
+
     /// Sets the vblank flag value
     pub fn set_vblank(&mut self, v: bool) {
         self.set(Self::IN_VBLANK, v);
@@ -338,6 +343,8 @@ impl Loopy {
     /// Y: Higher 3 bits of Y coarse
     ///
     /// X: Higher 3 bits of X coarse
+    //
+    // The last 2 row (last 64 bytes) of each nametable columns are attribute bytes
     pub fn tile_attr_addr(&self) -> u16 {
         0x23C0
             | self.nta_addr()

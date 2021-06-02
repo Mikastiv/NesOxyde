@@ -4,6 +4,8 @@ use sdl2::keyboard::Keycode;
 use sdl2::pixels::PixelFormatEnum;
 use spin_sleep::SpinSleeper;
 use std::cell::RefCell;
+use std::fs;
+use std::fs::File;
 use std::rc::Rc;
 use std::time::Duration;
 
@@ -12,6 +14,7 @@ use crate::cartridge::Cartridge;
 use crate::cpu::Cpu;
 use crate::joypad::{Button, JoyPort};
 use crate::reverb::Reverb;
+use crate::savable::Savable;
 use crate::timer::Timer;
 
 /// Time between each frame (at 60fps)
@@ -44,9 +47,16 @@ where
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
     let audio_subsystem = sdl_context.audio().unwrap();
+    let filename = cartridge.filename();
+    let savestate_file = format!("{}.save", &filename);
+    let formated_name = if filename.is_empty() {
+        "".to_string()
+    } else {
+        format!("- {}", &filename)
+    };
     let window = video_subsystem
         .window(
-            &format!("{}{}", WINDOW_TITLE, cartridge.filename()),
+            &format!("{}{}", WINDOW_TITLE, &formated_name),
             WIDTH * 2,
             HEIGHT * 2,
         )
@@ -143,6 +153,31 @@ where
                     keycode: Some(Keycode::R),
                     ..
                 } => cpu.reset(),
+                Event::KeyDown {
+                    keycode: Some(Keycode::F1),
+                    ..
+                } => match File::create(&savestate_file) {
+                    Ok(file) => match cpu.save(&file) {
+                        Ok(_) => println!("State saved!"),
+                        Err(e) => println!("Error while saving state: {}", e),
+                    },
+                    Err(e) => println!("Error while saving state: {} -> {}", e, &savestate_file),
+                },
+                Event::KeyDown {
+                    keycode: Some(Keycode::F2),
+                    ..
+                } => match File::open(&savestate_file) {
+                    Ok(file) => match cpu.load(&file) {
+                        Ok(_) => {
+                            println!("State loaded!");
+                            samples.clear();
+                            queue.clear();
+                            reverbs.iter_mut().for_each(|r| r.clear());
+                        }
+                        Err(e) => println!("Error while loading state: {}", e),
+                    },
+                    Err(e) => println!("Error while loading state: {} -> {}", e, &savestate_file),
+                },
                 Event::KeyDown {
                     keycode: Some(key), ..
                 } => {

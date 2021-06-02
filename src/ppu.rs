@@ -1,4 +1,10 @@
+use std::fs::File;
+
+use serde::{Deserialize, Serialize};
+
 use registers::{Controller, Loopy, Mask, Status};
+
+use crate::savable::Savable;
 
 use self::frame::Frame;
 
@@ -25,7 +31,7 @@ static NES_PALETTE: [Rgb; 0x40] = [
 ];
 
 /// Background tile
-#[derive(Clone, Copy, Default, Debug)]
+#[derive(Clone, Copy, Default, Debug, Serialize, Deserialize)]
 struct Tile {
     pub lo: u8,
     pub hi: u8,
@@ -34,7 +40,7 @@ struct Tile {
 }
 
 /// Sprite attributes
-#[derive(Clone, Copy, Default, Debug)]
+#[derive(Clone, Copy, Default, Debug, Serialize, Deserialize)]
 struct SpriteInfo {
     y: u8,
     id: u8,
@@ -62,13 +68,15 @@ pub trait Interface {
     fn inc_scanline(&mut self);
 }
 
+pub trait PpuInterface: Interface + Savable {}
+
 /// 2C02 Ppu
 pub struct Ppu<'a> {
     ctrl: Controller,
     mask: Mask,
     status: Status,
 
-    bus: Box<dyn Interface>,
+    bus: Box<dyn PpuInterface>,
     pending_nmi: Option<bool>,
     open_bus: u8,
     open_bus_timer: u32,
@@ -102,8 +110,87 @@ pub struct Ppu<'a> {
     render_fn: Box<dyn FnMut(&[u8]) + 'a>,
 }
 
+impl Savable for Ppu<'_> {
+    fn save(&self, output: &File) -> bincode::Result<()> {
+        self.bus.save(output)?;
+        bincode::serialize_into(output, &self.ctrl.bits())?;
+        bincode::serialize_into(output, &self.mask.bits())?;
+        bincode::serialize_into(output, &self.status.bits())?;
+        bincode::serialize_into(output, &self.pending_nmi)?;
+        bincode::serialize_into(output, &self.open_bus)?;
+        bincode::serialize_into(output, &self.open_bus_timer)?;
+        // bincode::serialize_into(output, &self.oam_data[..])?;
+        // bincode::serialize_into(output, &self.oam2_data[..])?;
+        bincode::serialize_into(output, &self.oam_addr)?;
+        bincode::serialize_into(output, &self.clearing_oam)?;
+        bincode::serialize_into(output, &self.sprite_0_rendering)?;
+        bincode::serialize_into(output, &self.sprite_count)?;
+        bincode::serialize_into(output, &self.fg_lo_shift)?;
+        bincode::serialize_into(output, &self.fg_hi_shift)?;
+        bincode::serialize_into(output, &self.addr_toggle)?;
+        bincode::serialize_into(output, &self.read_buffer)?;
+        bincode::serialize_into(output, &self.xfine)?;
+        bincode::serialize_into(output, &self.v_addr.raw())?;
+        bincode::serialize_into(output, &self.scroll.raw())?;
+        bincode::serialize_into(output, &self.scanline)?;
+        bincode::serialize_into(output, &self.cycle)?;
+        bincode::serialize_into(output, &self.next_tile)?;
+        bincode::serialize_into(output, &self.bg_lo_shift)?;
+        bincode::serialize_into(output, &self.bg_hi_shift)?;
+        bincode::serialize_into(output, &self.bg_attr_lo_shift)?;
+        bincode::serialize_into(output, &self.bg_attr_hi_shift)?;
+        // bincode::serialize_into(output, &self.frame)?;
+        bincode::serialize_into(output, &self.frame_count)?;
+        bincode::serialize_into(output, &self.odd_frame)?;
+        Ok(())
+    }
+
+    fn load(&mut self, input: &File) -> bincode::Result<()> {
+        self.bus.load(input)?;
+        let byte: u8 = bincode::deserialize_from(input)?;
+        self.ctrl.set_raw(byte);
+        let byte: u8 = bincode::deserialize_from(input)?;
+        self.mask.set_raw(byte);
+        let byte: u8 = bincode::deserialize_from(input)?;
+        self.status.set_raw(byte);
+        self.pending_nmi = bincode::deserialize_from(input)?;
+        self.open_bus = bincode::deserialize_from(input)?;
+        self.open_bus_timer = bincode::deserialize_from(input)?;
+        // for i in 0..OAM_SIZE {
+        //     self.oam_data[i] = bincode::deserialize_from(input)?;
+        // }
+        // for i in 0..OAM2_SIZE {
+        //     self.oam2_data[i] = bincode::deserialize_from(input)?;
+        // }
+        self.oam_addr = bincode::deserialize_from(input)?;
+        self.clearing_oam = bincode::deserialize_from(input)?;
+        self.sprite_0_rendering = bincode::deserialize_from(input)?;
+        self.sprite_count = bincode::deserialize_from(input)?;
+        self.fg_lo_shift = bincode::deserialize_from(input)?;
+        self.fg_hi_shift = bincode::deserialize_from(input)?;
+        self.addr_toggle = bincode::deserialize_from(input)?;
+        self.read_buffer = bincode::deserialize_from(input)?;
+        self.xfine = bincode::deserialize_from(input)?;
+        let word: u16 = bincode::deserialize_from(input)?;
+        self.v_addr.set_raw(word);
+        let word: u16 = bincode::deserialize_from(input)?;
+        self.scroll.set_raw(word);
+        self.scanline = bincode::deserialize_from(input)?;
+        self.cycle = bincode::deserialize_from(input)?;
+        self.next_tile = bincode::deserialize_from(input)?;
+        self.bg_lo_shift = bincode::deserialize_from(input)?;
+        self.bg_hi_shift = bincode::deserialize_from(input)?;
+        self.bg_attr_lo_shift = bincode::deserialize_from(input)?;
+        self.bg_attr_hi_shift = bincode::deserialize_from(input)?;
+        // self.frame = bincode::deserialize_from(input)?;
+        self.frame_count = bincode::deserialize_from(input)?;
+        self.odd_frame = bincode::deserialize_from(input)?;
+        Ok(())
+    }
+}
+
 impl<'a> Ppu<'a> {
-    pub fn new<F>(bus: Box<dyn Interface>, render_fn: Box<F>) -> Self
+    pub fn new<F>(bus: Box<dyn PpuInterface>, render_fn: Box<F>) -> Self
     where
         F: FnMut(&[u8]) + 'a,
     {
@@ -592,6 +679,8 @@ impl<'a> Ppu<'a> {
                     // The attribute byte is one of the hardest thing to
                     // understand. It is well explained here:
                     // https://bugzmanov.github.io/nes_ebook/chapter_6_4.html
+                    // and here:
+                    // https://youtu.be/-THeUXqR3zY?t=2439
 
                     // Get the address of the tile attribute
                     let vaddr = self.v_addr.tile_attr_addr();
@@ -618,6 +707,20 @@ impl<'a> Ppu<'a> {
                     self.next_tile.attr &= 0x3;
                 }
                 4 => {
+                    // The pixel value are divided in two bitplanes.
+                    // The bitplanes are 8 consecutive bytes in memory.
+                    // So, the high and low bitplanes are 8 bytes apart
+                    //
+                    // Two bitplanes represent one background tile
+                    // 0 1 1 0 0 1 2 0  =  0 1 1 0 0 1 1 0  +  0 0 0 0 0 0 1 0
+                    // 0 0 0 0 0 1 2 0  =  0 0 0 0 0 1 1 0  +  0 0 0 0 0 0 1 0
+                    // 0 0 0 0 0 1 2 0  =  0 0 0 0 0 1 1 0  +  0 0 0 0 0 0 1 0
+                    // 0 1 0 0 0 0 2 0  =  0 1 0 0 0 0 1 0  +  0 0 0 0 0 0 1 0
+                    // 0 1 1 0 0 0 1 0  =  0 1 1 0 0 0 0 0  +  0 0 0 0 0 0 1 0
+                    // 0 0 0 0 0 1 2 0  =  0 0 0 0 0 1 1 0  +  0 0 0 0 0 0 1 0
+                    // 0 1 1 0 0 0 1 0  =  0 1 1 0 0 0 0 0  +  0 0 0 0 0 0 1 0
+                    // 0 1 1 0 0 1 2 0  =  0 1 1 0 0 1 1 0  +  0 0 0 0 0 0 1 0
+
                     let vaddr = self.ctrl.bg_base_addr()
                         + ((self.next_tile.id as u16) << 4)
                         + self.v_addr.yfine() as u16;

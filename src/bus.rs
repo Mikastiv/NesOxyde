@@ -1,7 +1,7 @@
 pub use main_bus::MainBus;
+pub use ppu_bus::PpuBus;
 pub use snake_bus::SnakeBus;
 pub use test_bus::TestBus;
-pub use ppu_bus::PpuBus;
 
 mod main_bus;
 mod ppu_bus;

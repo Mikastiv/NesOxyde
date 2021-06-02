@@ -1,7 +1,10 @@
+use serde::{Deserialize, Serialize};
+
 use super::Rgb;
 use crate::nes::{HEIGHT, WIDTH};
 
 /// Helper struct for pixel buffer
+#[derive(Serialize, Deserialize)]
 pub struct Frame {
     pixels: Vec<u8>,
 }
