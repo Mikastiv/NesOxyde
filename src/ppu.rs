@@ -119,8 +119,6 @@ impl Savable for Ppu<'_> {
         bincode::serialize_into(output, &self.pending_nmi)?;
         bincode::serialize_into(output, &self.open_bus)?;
         bincode::serialize_into(output, &self.open_bus_timer)?;
-        // bincode::serialize_into(output, &self.oam_data[..])?;
-        // bincode::serialize_into(output, &self.oam2_data[..])?;
         bincode::serialize_into(output, &self.oam_addr)?;
         bincode::serialize_into(output, &self.clearing_oam)?;
         bincode::serialize_into(output, &self.sprite_0_rendering)?;
@@ -139,7 +137,12 @@ impl Savable for Ppu<'_> {
         bincode::serialize_into(output, &self.bg_hi_shift)?;
         bincode::serialize_into(output, &self.bg_attr_lo_shift)?;
         bincode::serialize_into(output, &self.bg_attr_hi_shift)?;
-        // bincode::serialize_into(output, &self.frame)?;
+        for i in 0..OAM_SIZE {
+            bincode::serialize_into(output, &self.oam_data[i])?;
+        }
+        for i in 0..OAM2_SIZE {
+            bincode::serialize_into(output, &self.oam2_data[i])?;
+        }
         bincode::serialize_into(output, &self.frame_count)?;
         bincode::serialize_into(output, &self.odd_frame)?;
         Ok(())
@@ -156,12 +159,6 @@ impl Savable for Ppu<'_> {
         self.pending_nmi = bincode::deserialize_from(input)?;
         self.open_bus = bincode::deserialize_from(input)?;
         self.open_bus_timer = bincode::deserialize_from(input)?;
-        // for i in 0..OAM_SIZE {
-        //     self.oam_data[i] = bincode::deserialize_from(input)?;
-        // }
-        // for i in 0..OAM2_SIZE {
-        //     self.oam2_data[i] = bincode::deserialize_from(input)?;
-        // }
         self.oam_addr = bincode::deserialize_from(input)?;
         self.clearing_oam = bincode::deserialize_from(input)?;
         self.sprite_0_rendering = bincode::deserialize_from(input)?;
@@ -182,7 +179,12 @@ impl Savable for Ppu<'_> {
         self.bg_hi_shift = bincode::deserialize_from(input)?;
         self.bg_attr_lo_shift = bincode::deserialize_from(input)?;
         self.bg_attr_hi_shift = bincode::deserialize_from(input)?;
-        // self.frame = bincode::deserialize_from(input)?;
+        for i in 0..OAM_SIZE {
+            self.oam_data[i] = bincode::deserialize_from(input)?;
+        }
+        for i in 0..OAM2_SIZE {
+            self.oam2_data[i] = bincode::deserialize_from(input)?;
+        }
         self.frame_count = bincode::deserialize_from(input)?;
         self.odd_frame = bincode::deserialize_from(input)?;
         Ok(())
