@@ -82,7 +82,7 @@ where
     queue.resume();
 
     let mut samples = vec![0.0; 1024];
-    let mut volume = 0.75;
+    let mut volume = 0.5;
 
     let mut reverbs = [
         Reverb::new(330, sample_rate, 0.15),
@@ -92,8 +92,6 @@ where
 
     println!("Audio driver: {}", audio_subsystem.current_audio_driver());
     println!("Emulation mode: {:?}", &mode);
-    println!("Vol down key: {:?}", Keycode::Num1);
-    println!("Vol up key: {:?}", Keycode::Num2);
     println!("Vol: {:.0}", volume * 100.0);
     // >----------------- SDL2 init
 
