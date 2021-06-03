@@ -51,7 +51,7 @@ where
     let formated_name = if filename.is_empty() {
         "".to_string()
     } else {
-        format!("- {}", &filename)
+        format!(" - {}", &filename)
     };
     let window = video_subsystem
         .window(
