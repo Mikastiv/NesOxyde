@@ -150,6 +150,7 @@ where
                     keycode: Some(Keycode::R),
                     ..
                 } => cpu.reset(),
+                // Save state
                 Event::KeyDown {
                     keycode: Some(Keycode::F1),
                     ..
@@ -160,6 +161,7 @@ where
                     },
                     Err(e) => println!("Error while saving state: {} -> {}", e, &savestate_file),
                 },
+                // Load state
                 Event::KeyDown {
                     keycode: Some(Keycode::F2),
                     ..

@@ -730,6 +730,7 @@ impl<'a> Ppu<'a> {
                     self.next_tile.lo = self.mem_read(vaddr);
                 }
                 6 => {
+                    // Same thing but + 8 for the high bitplane
                     let vaddr = self.ctrl.bg_base_addr()
                         + ((self.next_tile.id as u16) << 4)
                         + self.v_addr.yfine() as u16
@@ -737,6 +738,7 @@ impl<'a> Ppu<'a> {
 
                     self.next_tile.hi = self.mem_read(vaddr);
                 }
+                // Increment horizontal scroll
                 7 => self.increment_xscroll(),
                 _ => {}
             }
@@ -747,8 +749,11 @@ impl<'a> Ppu<'a> {
             self.increment_yscroll();
         }
 
+        // End of the scanline
         if cycle == 257 {
+            // Load the next tile into the shifters
             self.load_next_tile();
+            // Update x coarse and nametable x if background rendering is enabled
             if self.mask.render_bg() {
                 self.v_addr.set_nta_h(self.scroll.nta_h());
                 self.v_addr.set_xcoarse(self.scroll.xcoarse());
@@ -756,14 +761,23 @@ impl<'a> Ppu<'a> {
         }
 
         // Sprites
+
         if cycle == 1 {
             self.clearing_oam = true;
         } else if cycle == 64 {
             self.clearing_oam = false;
         }
 
+        // The sprite evaluation is done the same way as Javidx9 did
+        // in his emulator tutorial youtube videos
+        // https://www.youtube.com/playlist?list=PLrOv9FMX8xJHqMvSGB_9G9nZZ_4IgteYf
+
+        // Update foreground shifters
         self.shift_fg();
+
+        // All the sprite evaluation is done in 1 cycle (this is NOT how it is done on the real hardware)
         if cycle == 257 && scanline >= 0 {
+            // Set all the values
             self.oam2_data[..].fill(SpriteInfo {
                 y: 0xFF,
                 id: 0xFF,
@@ -772,16 +786,26 @@ impl<'a> Ppu<'a> {
                 index: 0xFF,
             });
 
+            // Reset the shifters
             self.fg_lo_shift.fill(0);
             self.fg_hi_shift.fill(0);
 
             let mut sprite_count = 0;
             let sprite_size = if self.ctrl.sprite_size() { 16 } else { 8 };
 
+            // Every sprite attributes in OAM is 4 bytes, thus step by 4
+            // 0: Y pos
+            // 1: Sprite tile ID
+            // 2: Attribute byte
+            // 3: X pos
             for index in (0..OAM_SIZE).step_by(4) {
+                // Calculate the difference between the scanline and the sprite y value
                 let diff = (scanline as u16).wrapping_sub(self.oam_data[index] as u16);
 
+                // Starting from sprite 0, check every sprite if they hit the scanline
                 if (0..sprite_size).contains(&diff) {
+                    // If the sprite is visible and there is less than 8 sprite already visible,
+                    // add it to secondary OAM
                     if sprite_count < 8 {
                         self.oam2_data[sprite_count].y = self.oam_data[index];
                         self.oam2_data[sprite_count].id = self.oam_data[index + 1];
@@ -789,11 +813,14 @@ impl<'a> Ppu<'a> {
                         self.oam2_data[sprite_count].x = self.oam_data[index + 3];
                         self.oam2_data[sprite_count].index = index as u8;
                     }
+                    // Total number of sprite on the scanline (including discarded ones)
                     sprite_count += 1;
                 }
             }
 
+            // If more than 8 sprites, set the sprite overflow bit
             self.status.set_sp_overflow(sprite_count > 8);
+            // Visible sprite count
             self.sprite_count = if sprite_count > 8 { 8 } else { sprite_count };
         }
 
@@ -802,10 +829,14 @@ impl<'a> Ppu<'a> {
         }
     }
 
+    /// Load sprites from secondary OAM into the shifters
     fn load_sprites(&mut self) {
         let scanline = self.scanline as u8;
+        // For each visible sprites
         for i in 0..self.sprite_count {
+            // Check height (8 or 16)
             let sprite_addr = match !self.ctrl.sprite_size() {
+                // 8
                 true => {
                     let offset = self.ctrl.sp_base_addr();
                     let flipped_v = self.oam2_data[i].attr & 0x80 != 0;
@@ -817,6 +848,7 @@ impl<'a> Ppu<'a> {
 
                     offset | (tile_id as u16) << 4 | row
                 }
+                // 16
                 false => {
                     let offset = ((self.oam2_data[i].id & 0x01) as u16) << 12;
                     let flipped_v = self.oam2_data[i].attr & 0x80 != 0;
@@ -837,7 +869,8 @@ impl<'a> Ppu<'a> {
             let sprite_lo = self.mem_read(sprite_addr);
             let sprite_hi = self.mem_read(sprite_addr.wrapping_add(8));
 
-            let flip = |mut v: u8| {
+            // Flip horizontal closure
+            let flip_h = |mut v: u8| {
                 v = (v & 0xF0) >> 4 | (v & 0x0F) << 4;
                 v = (v & 0xCC) >> 2 | (v & 0x33) << 2;
                 v = (v & 0xAA) >> 1 | (v & 0x55) << 1;
@@ -845,17 +878,18 @@ impl<'a> Ppu<'a> {
             };
 
             self.fg_lo_shift[i] = match self.oam2_data[i].attr & 0x40 != 0 {
-                true => flip(sprite_lo),
+                true => flip_h(sprite_lo),
                 false => sprite_lo,
             };
 
             self.fg_hi_shift[i] = match self.oam2_data[i].attr & 0x40 != 0 {
-                true => flip(sprite_hi),
+                true => flip_h(sprite_hi),
                 false => sprite_hi,
             };
         }
     }
 
+    /// Returns pixel value and palette index of current background pixel
     fn get_bg_pixel_info(&self) -> (u8, u8) {
         if self.mask.render_bg() && (self.mask.render_bg8() || self.cycle >= 9) {
             let mux = 0x8000 >> self.xfine;
@@ -874,6 +908,7 @@ impl<'a> Ppu<'a> {
         (0, 0)
     }
 
+    /// Returns pixel value, palette index and attribute byte of current foreground pixel
     fn get_fg_pixel_info(&mut self) -> (u8, u8, u8) {
         if self.mask.render_sp() && (self.mask.render_sp8() || self.cycle >= 9) {
             self.sprite_0_rendering = false;
@@ -890,6 +925,7 @@ impl<'a> Ppu<'a> {
                 let fg_priority = ((self.oam2_data[i].attr & 0x20) == 0) as u8;
 
                 if fg_pixel != 0 {
+                    // Set a flag if it is sprite 0
                     if self.oam2_data[i].index == 0 {
                         self.sprite_0_rendering = true;
                     }
@@ -901,6 +937,7 @@ impl<'a> Ppu<'a> {
         (0, 0, 0)
     }
 
+    /// Returns the RBG value of the pixel with greyscale and color emphasis applied
     fn get_color(&mut self, palette: u8, pixel: u8) -> Rgb {
         let index = self.mem_read(0x3F00 + ((palette as u16) << 2) + pixel as u16)
             & self.mask.greyscale_mask();
@@ -919,6 +956,7 @@ impl<'a> Ppu<'a> {
         }
     }
 
+    /// Increment horizontal scroll
     fn increment_xscroll(&mut self) {
         if self.mask.render_bg() {
             let xcoarse = self.v_addr.xcoarse();
@@ -932,6 +970,7 @@ impl<'a> Ppu<'a> {
         }
     }
 
+    /// Increment vertical scroll
     fn increment_yscroll(&mut self) {
         if self.mask.render_bg() {
             let yfine = self.v_addr.yfine();
@@ -953,6 +992,7 @@ impl<'a> Ppu<'a> {
         }
     }
 
+    /// Loads the next background tile into the shifters
     fn load_next_tile(&mut self) {
         if self.rendering_enabled() {
             self.bg_lo_shift |= self.next_tile.lo as u16;
@@ -964,6 +1004,7 @@ impl<'a> Ppu<'a> {
         }
     }
 
+    /// Shifts the backgroung shifters
     fn shift_bg(&mut self) {
         if self.mask.render_bg() {
             self.bg_lo_shift <<= 1;
@@ -973,6 +1014,7 @@ impl<'a> Ppu<'a> {
         }
     }
 
+    /// Shifts the foreground shifters
     fn shift_fg(&mut self) {
         if self.mask.render_sp() && (2..258).contains(&self.cycle) {
             for (i, sprite) in self
@@ -991,19 +1033,23 @@ impl<'a> Ppu<'a> {
         }
     }
 
+    /// Returns if the rendering is enabled or not
     fn rendering_enabled(&self) -> bool {
         self.mask.render_sp() | self.mask.render_bg()
     }
 
+    /// Increments the VRAM address by 1 or 32 (based on the control register bit)
     fn increment_vaddr(&mut self) {
         let new_addr = self.v_addr.raw().wrapping_add(self.ctrl.increment());
         self.v_addr.set_raw(new_addr);
     }
 
+    /// Reads from the Ppu bus
     fn mem_read(&mut self, addr: u16) -> u8 {
         self.bus.read(addr)
     }
 
+    /// Writes to the Ppu bus
     fn mem_write(&mut self, addr: u16, data: u8) {
         self.bus.write(addr, data);
     }
