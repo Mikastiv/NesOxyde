@@ -21,11 +21,13 @@ impl RomMapper for Mapper3 {}
 
 impl Savable for Mapper3 {
     fn save(&self, output: &File) -> bincode::Result<()> {
+        self.rom.save(output)?;
         bincode::serialize_into(output, &self.bank)?;
         Ok(())
     }
 
     fn load(&mut self, input: &File) -> bincode::Result<()> {
+        self.rom.load(input)?;
         self.bank = bincode::deserialize_from(input)?;
         Ok(())
     }

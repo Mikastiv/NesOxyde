@@ -49,6 +49,7 @@ impl RomMapper for Mapper1 {}
 
 impl Savable for Mapper1 {
     fn save(&self, output: &File) -> bincode::Result<()> {
+        self.rom.save(output)?;
         bincode::serialize_into(output, &self.chr_lo)?;
         bincode::serialize_into(output, &self.chr_hi)?;
         bincode::serialize_into(output, &self.chr_8k)?;
@@ -66,6 +67,7 @@ impl Savable for Mapper1 {
     }
 
     fn load(&mut self, input: &File) -> bincode::Result<()> {
+        self.rom.load(input)?;
         self.chr_lo = bincode::deserialize_from(input)?;
         self.chr_hi = bincode::deserialize_from(input)?;
         self.chr_8k = bincode::deserialize_from(input)?;

@@ -53,6 +53,7 @@ impl RomMapper for Mapper10 {}
 
 impl Savable for Mapper10 {
     fn save(&self, output: &File) -> bincode::Result<()> {
+        self.rom.save(output)?;
         bincode::serialize_into(output, &self.latch0)?;
         bincode::serialize_into(output, &self.latch1)?;
         bincode::serialize_into(output, &self.prg_bank)?;
@@ -69,6 +70,7 @@ impl Savable for Mapper10 {
     }
 
     fn load(&mut self, input: &File) -> bincode::Result<()> {
+        self.rom.load(input)?;
         self.latch0 = bincode::deserialize_from(input)?;
         self.latch1 = bincode::deserialize_from(input)?;
         self.prg_bank = bincode::deserialize_from(input)?;

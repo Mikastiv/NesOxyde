@@ -3,6 +3,8 @@ use std::fs::File;
 use std::io::{self, Read, Seek, SeekFrom};
 use std::path::Path;
 
+use crate::savable::Savable;
+
 use super::MirrorMode;
 
 /// Size of one PRG bank
@@ -68,6 +70,22 @@ pub struct Rom {
     pub header: INesHeader,
     pub prg: Vec<u8>,
     pub chr: Vec<u8>,
+}
+
+impl Savable for Rom {
+    fn save(&self, output: &File) -> bincode::Result<()> {
+        if self.header.chr_count() == 0 {
+            bincode::serialize_into(output, &self.chr)?;
+        }
+        Ok(())
+    }
+
+    fn load(&mut self, input: &File) -> bincode::Result<()> {
+        if self.header.chr_count() == 0 {
+            self.chr = bincode::deserialize_from(input)?;
+        }
+        Ok(())
+    }
 }
 
 impl Rom {

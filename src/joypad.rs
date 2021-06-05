@@ -1,9 +1,7 @@
 use bitflags::bitflags;
-use serde::{Deserialize, Serialize};
 
 bitflags! {
     /// State of the controller buttons
-    #[derive(Serialize, Deserialize)]
     struct State: u8 {
         const A      = 0b00000001;
         const B      = 0b00000010;
@@ -23,7 +21,7 @@ pub enum JoyPort {
 }
 
 /// Buttons on the NES controller
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug)]
 pub enum Button {
     A,
     B,
@@ -36,7 +34,7 @@ pub enum Button {
 }
 
 /// NES controller
-#[derive(Clone, Copy, Serialize, Deserialize)]
+#[derive(Clone, Copy)]
 pub struct JoyPad {
     strobe: bool,
     state: State,

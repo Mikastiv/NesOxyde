@@ -1,3 +1,5 @@
+use std::fs::File;
+
 use super::Mapper;
 use crate::cartridge::{MirrorMode, Rom, RomMapper};
 use crate::savable::Savable;
@@ -18,7 +20,23 @@ impl Mapper0 {
 
 impl RomMapper for Mapper0 {}
 
-impl Savable for Mapper0 {}
+impl Savable for Mapper0 {
+    fn save(&self, output: &File) -> bincode::Result<()> {
+        self.rom.save(output)?;
+        for i in 0..0x2000 {
+            bincode::serialize_into(output, &self.ram[i])?;
+        }
+        Ok(())
+    }
+
+    fn load(&mut self, input: &File) -> bincode::Result<()> {
+        self.rom.load(input)?;
+        for i in 0..0x2000 {
+            self.ram[i] = bincode::deserialize_from(input)?;
+        }
+        Ok(())
+    }
+}
 
 impl Mapper for Mapper0 {
     fn read_prg(&mut self, addr: u16) -> u8 {

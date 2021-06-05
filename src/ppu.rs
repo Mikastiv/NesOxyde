@@ -123,8 +123,6 @@ impl Savable for Ppu<'_> {
         bincode::serialize_into(output, &self.clearing_oam)?;
         bincode::serialize_into(output, &self.sprite_0_rendering)?;
         bincode::serialize_into(output, &self.sprite_count)?;
-        bincode::serialize_into(output, &self.fg_lo_shift)?;
-        bincode::serialize_into(output, &self.fg_hi_shift)?;
         bincode::serialize_into(output, &self.addr_toggle)?;
         bincode::serialize_into(output, &self.read_buffer)?;
         bincode::serialize_into(output, &self.xfine)?;
@@ -141,6 +139,8 @@ impl Savable for Ppu<'_> {
             bincode::serialize_into(output, &self.oam_data[i])?;
         }
         for i in 0..OAM2_SIZE {
+            bincode::serialize_into(output, &self.fg_lo_shift[i])?;
+            bincode::serialize_into(output, &self.fg_hi_shift[i])?;
             bincode::serialize_into(output, &self.oam2_data[i])?;
         }
         bincode::serialize_into(output, &self.frame_count)?;
@@ -163,8 +163,6 @@ impl Savable for Ppu<'_> {
         self.clearing_oam = bincode::deserialize_from(input)?;
         self.sprite_0_rendering = bincode::deserialize_from(input)?;
         self.sprite_count = bincode::deserialize_from(input)?;
-        self.fg_lo_shift = bincode::deserialize_from(input)?;
-        self.fg_hi_shift = bincode::deserialize_from(input)?;
         self.addr_toggle = bincode::deserialize_from(input)?;
         self.read_buffer = bincode::deserialize_from(input)?;
         self.xfine = bincode::deserialize_from(input)?;
@@ -183,6 +181,8 @@ impl Savable for Ppu<'_> {
             self.oam_data[i] = bincode::deserialize_from(input)?;
         }
         for i in 0..OAM2_SIZE {
+            self.fg_lo_shift[i] = bincode::deserialize_from(input)?;
+            self.fg_hi_shift[i] = bincode::deserialize_from(input)?;
             self.oam2_data[i] = bincode::deserialize_from(input)?;
         }
         self.frame_count = bincode::deserialize_from(input)?;
