@@ -21,10 +21,7 @@ mod timer;
 /// Parses program arguments
 fn parse_args(args: &[String]) -> (Mode, &String) {
     if args.len() != 2 && args.len() != 3 {
-        eprintln!(
-            "Usage: {} [SyncMode: Audio (default) or Video (-A or -V)] <iNES File>",
-            args[0]
-        );
+        eprintln!("Usage: {} [-V] <iNES File>", args[0]);
         std::process::exit(0);
     }
 
