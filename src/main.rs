@@ -29,15 +29,14 @@ fn parse_args(args: &[String]) -> (Mode, &String) {
         // Default to AudioSync
         2 => (nes::Mode::AudioSync, &args[1]),
         3 => match args[1].as_str() {
-            "-A" => (nes::Mode::AudioSync, &args[2]),
             "-V" => (nes::Mode::VideoSync, &args[2]),
             flag => {
-                eprintln!("Bad option flag: {}. Use -A or -V", flag);
+                eprintln!("Bad option flag: {}. Use -V for video sync", flag);
                 std::process::exit(0);
             }
         },
         count => {
-            eprintln!("Bad argument count: {}", count);
+            eprintln!("Bad argument count: {}, expected 2 or 3", count);
             std::process::exit(0);
         }
     }
