@@ -43,6 +43,12 @@ Defaults:
 - LeftArrow -> Left
 - RightArrow -> Right
 
+## Possible Improvements
+
+- Make the CPU and PPU cycle accurate
+- Change the sprite rendering routine to match what real hardware does
+- Fix some mapper bugs (4 doesn't work with every game)
+
 ## Screenshots
 
 ![Super Mario Bros](/screenshots/smb.png "Super Mario Bros")
