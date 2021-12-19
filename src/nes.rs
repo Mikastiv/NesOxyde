@@ -178,8 +178,8 @@ where
                     Err(e) => println!("Error while loading state: {} -> {}", e, &savestate_file),
                 },
                 Event::KeyDown {
-                    keycode: Some(key), ..
-                } => {
+                    keycode: Some(key), repeat, ..
+                } if !repeat => {
                     // If a button is found from the mapping, update the proper controller state
                     if let Some(button) = map_key(key, JoyPort::Port1) {
                         cpu.update_joypad(button, true, JoyPort::Port1)
@@ -189,8 +189,8 @@ where
                     }
                 }
                 Event::KeyUp {
-                    keycode: Some(key), ..
-                } => {
+                    keycode: Some(key), repeat, ..
+                } if !repeat => {
                     // If a button is found from the mapping, update the proper controller state
                     if let Some(button) = map_key(key, JoyPort::Port1) {
                         cpu.update_joypad(button, false, JoyPort::Port1)
