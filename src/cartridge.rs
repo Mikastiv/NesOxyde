@@ -1,8 +1,8 @@
 use core::panic;
-use std::fmt::Display;
 use std::fs::File;
-use std::io;
+use std::io::{self, BufWriter};
 use std::path::Path;
+use std::{fmt::Display, io::BufReader};
 
 use serde::{Deserialize, Serialize};
 
@@ -93,11 +93,11 @@ impl Cartridge {
         }
     }
 
-    pub fn save(&self, output: &File) -> bincode::Result<()> {
+    pub fn save(&self, output: &mut BufWriter<File>) -> bincode::Result<()> {
         self.mapper.save(output)
     }
 
-    pub fn load(&mut self, input: &File) -> bincode::Result<()> {
+    pub fn load(&mut self, input: &mut BufReader<File>) -> bincode::Result<()> {
         self.mapper.load(input)
     }
 }

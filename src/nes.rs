@@ -5,6 +5,7 @@ use sdl2::pixels::PixelFormatEnum;
 use spin_sleep::SpinSleeper;
 use std::cell::RefCell;
 use std::fs::File;
+use std::io::{BufReader, BufWriter};
 use std::rc::Rc;
 use std::time::Duration;
 
@@ -155,10 +156,13 @@ where
                     keycode: Some(Keycode::F1),
                     ..
                 } => match File::create(&savestate_file) {
-                    Ok(file) => match cpu.save(&file) {
-                        Ok(_) => println!("State saved!"),
-                        Err(e) => println!("Error while saving state: {}", e),
-                    },
+                    Ok(file) => {
+                        let mut buf = BufWriter::new(file);
+                        match cpu.save(&mut buf) {
+                            Ok(_) => println!("State saved!"),
+                            Err(e) => println!("Error while saving state: {}", e),
+                        }
+                    }
                     Err(e) => println!("Error while saving state: {} -> {}", e, &savestate_file),
                 },
                 // Load state
@@ -166,19 +170,24 @@ where
                     keycode: Some(Keycode::F2),
                     ..
                 } => match File::open(&savestate_file) {
-                    Ok(file) => match cpu.load(&file) {
-                        Ok(_) => {
-                            println!("State loaded!");
-                            samples.clear();
-                            queue.clear();
-                            reverbs.iter_mut().for_each(|r| r.clear());
+                    Ok(file) => {
+                        let mut buf = BufReader::new(file);
+                        match cpu.load(&mut buf) {
+                            Ok(_) => {
+                                println!("State loaded!");
+                                samples.clear();
+                                queue.clear();
+                                reverbs.iter_mut().for_each(|r| r.clear());
+                            }
+                            Err(e) => println!("Error while loading state: {}", e),
                         }
-                        Err(e) => println!("Error while loading state: {}", e),
-                    },
+                    }
                     Err(e) => println!("Error while loading state: {} -> {}", e, &savestate_file),
                 },
                 Event::KeyDown {
-                    keycode: Some(key), repeat, ..
+                    keycode: Some(key),
+                    repeat,
+                    ..
                 } if !repeat => {
                     // If a button is found from the mapping, update the proper controller state
                     if let Some(button) = map_key(key, JoyPort::Port1) {
@@ -189,7 +198,9 @@ where
                     }
                 }
                 Event::KeyUp {
-                    keycode: Some(key), repeat, ..
+                    keycode: Some(key),
+                    repeat,
+                    ..
                 } if !repeat => {
                     // If a button is found from the mapping, update the proper controller state
                     if let Some(button) = map_key(key, JoyPort::Port1) {

@@ -1,6 +1,6 @@
 use std::fmt::Display;
 use std::fs::File;
-use std::io::{self, Read, Seek, SeekFrom};
+use std::io::{self, BufReader, BufWriter, Read, Seek, SeekFrom};
 use std::path::Path;
 
 use crate::savable::Savable;
@@ -73,14 +73,14 @@ pub struct Rom {
 }
 
 impl Savable for Rom {
-    fn save(&self, output: &File) -> bincode::Result<()> {
+    fn save(&self, output: &mut BufWriter<File>) -> bincode::Result<()> {
         if self.header.chr_count() == 0 {
             bincode::serialize_into(output, &self.chr)?;
         }
         Ok(())
     }
 
-    fn load(&mut self, input: &File) -> bincode::Result<()> {
+    fn load(&mut self, input: &mut BufReader<File>) -> bincode::Result<()> {
         if self.header.chr_count() == 0 {
             self.chr = bincode::deserialize_from(input)?;
         }

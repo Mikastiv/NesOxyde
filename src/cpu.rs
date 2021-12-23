@@ -1,4 +1,5 @@
 use std::fs::File;
+use std::io::{BufReader, BufWriter};
 
 use bitflags::bitflags;
 use serde::{Deserialize, Serialize};
@@ -123,29 +124,29 @@ pub struct Cpu<'a> {
 }
 
 impl Savable for Cpu<'_> {
-    fn save(&self, output: &File) -> bincode::Result<()> {
+    fn save(&self, mut output: &mut BufWriter<File>) -> bincode::Result<()> {
         self.bus.save(output)?;
-        bincode::serialize_into(output, &self.a)?;
-        bincode::serialize_into(output, &self.x)?;
-        bincode::serialize_into(output, &self.y)?;
-        bincode::serialize_into(output, &self.s)?;
-        bincode::serialize_into(output, &self.p)?;
-        bincode::serialize_into(output, &self.pc)?;
-        bincode::serialize_into(output, &self.ins_cycles)?;
-        bincode::serialize_into(output, &self.cycles)?;
+        bincode::serialize_into(&mut output, &self.a)?;
+        bincode::serialize_into(&mut output, &self.x)?;
+        bincode::serialize_into(&mut output, &self.y)?;
+        bincode::serialize_into(&mut output, &self.s)?;
+        bincode::serialize_into(&mut output, &self.p)?;
+        bincode::serialize_into(&mut output, &self.pc)?;
+        bincode::serialize_into(&mut output, &self.ins_cycles)?;
+        bincode::serialize_into(&mut output, &self.cycles)?;
         Ok(())
     }
 
-    fn load(&mut self, input: &File) -> bincode::Result<()> {
+    fn load(&mut self, mut input: &mut BufReader<File>) -> bincode::Result<()> {
         self.bus.load(input)?;
-        self.a = bincode::deserialize_from(input)?;
-        self.x = bincode::deserialize_from(input)?;
-        self.y = bincode::deserialize_from(input)?;
-        self.s = bincode::deserialize_from(input)?;
-        self.p = bincode::deserialize_from(input)?;
-        self.pc = bincode::deserialize_from(input)?;
-        self.ins_cycles = bincode::deserialize_from(input)?;
-        self.cycles = bincode::deserialize_from(input)?;
+        self.a = bincode::deserialize_from(&mut input)?;
+        self.x = bincode::deserialize_from(&mut input)?;
+        self.y = bincode::deserialize_from(&mut input)?;
+        self.s = bincode::deserialize_from(&mut input)?;
+        self.p = bincode::deserialize_from(&mut input)?;
+        self.pc = bincode::deserialize_from(&mut input)?;
+        self.ins_cycles = bincode::deserialize_from(&mut input)?;
+        self.cycles = bincode::deserialize_from(&mut input)?;
         Ok(())
     }
 }

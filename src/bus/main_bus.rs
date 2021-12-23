@@ -1,5 +1,7 @@
 use std::cell::RefCell;
 use std::fs::File;
+use std::io::BufReader;
+use std::io::BufWriter;
 use std::rc::Rc;
 
 use super::PpuBus;
@@ -69,27 +71,27 @@ pub struct MainBus<'a> {
 impl CpuInterface for MainBus<'_> {}
 
 impl Savable for MainBus<'_> {
-    fn save(&self, output: &File) -> bincode::Result<()> {
+    fn save(&self, mut output: &mut BufWriter<File>) -> bincode::Result<()> {
         self.apu.save(output)?;
         self.ppu.save(output)?;
         self.cartridge.borrow().save(output)?;
         for i in 0..RAM_SIZE {
-            bincode::serialize_into(output, &self.ram[i])?;
+            bincode::serialize_into(&mut output, &self.ram[i])?;
         }
-        bincode::serialize_into(output, &self.audio_time)?;
-        bincode::serialize_into(output, &self.samples)?;
+        bincode::serialize_into(&mut output, &self.audio_time)?;
+        bincode::serialize_into(&mut output, &self.samples)?;
         Ok(())
     }
 
-    fn load(&mut self, input: &File) -> bincode::Result<()> {
+    fn load(&mut self, mut input: &mut BufReader<File>) -> bincode::Result<()> {
         self.apu.load(input)?;
         self.ppu.load(input)?;
         self.cartridge.borrow_mut().load(input)?;
         for i in 0..RAM_SIZE {
-            self.ram[i] = bincode::deserialize_from(input)?;
+            self.ram[i] = bincode::deserialize_from(&mut input)?;
         }
-        self.audio_time = bincode::deserialize_from(input)?;
-        self.samples = bincode::deserialize_from(input)?;
+        self.audio_time = bincode::deserialize_from(&mut input)?;
+        self.samples = bincode::deserialize_from(&mut input)?;
         Ok(())
     }
 }

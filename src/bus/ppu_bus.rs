@@ -1,5 +1,6 @@
 use std::cell::RefCell;
 use std::fs::File;
+use std::io::{BufReader, BufWriter};
 use std::rc::Rc;
 
 use crate::cartridge::{Cartridge, MirrorMode};
@@ -37,22 +38,22 @@ pub struct PpuBus {
 impl PpuInterface for PpuBus {}
 
 impl Savable for PpuBus {
-    fn save(&self, output: &File) -> bincode::Result<()> {
+    fn save(&self, mut output: &mut BufWriter<File>) -> bincode::Result<()> {
         for i in 0..PALETTE_RAM_SIZE {
-            bincode::serialize_into(output, &self.pal_ram[i])?;
+            bincode::serialize_into(&mut output, &self.pal_ram[i])?;
         }
         for i in 0..VRAM_SIZE {
-            bincode::serialize_into(output, &self.vram[i])?;
+            bincode::serialize_into(&mut output, &self.vram[i])?;
         }
         Ok(())
     }
 
-    fn load(&mut self, input: &File) -> bincode::Result<()> {
+    fn load(&mut self, mut input: &mut BufReader<File>) -> bincode::Result<()> {
         for i in 0..PALETTE_RAM_SIZE {
-            self.pal_ram[i] = bincode::deserialize_from(input)?;
+            self.pal_ram[i] = bincode::deserialize_from(&mut input)?;
         }
         for i in 0..VRAM_SIZE {
-            self.vram[i] = bincode::deserialize_from(input)?;
+            self.vram[i] = bincode::deserialize_from(&mut input)?;
         }
         Ok(())
     }

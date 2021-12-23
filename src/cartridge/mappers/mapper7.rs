@@ -1,4 +1,5 @@
 use std::fs::File;
+use std::io::{BufReader, BufWriter};
 
 use crate::cartridge::{MirrorMode, Rom, RomMapper};
 use crate::savable::Savable;
@@ -25,17 +26,17 @@ impl Mapper7 {
 impl RomMapper for Mapper7 {}
 
 impl Savable for Mapper7 {
-    fn save(&self, output: &File) -> bincode::Result<()> {
+    fn save(&self, mut output: &mut BufWriter<File>) -> bincode::Result<()> {
         self.rom.save(output)?;
-        bincode::serialize_into(output, &self.bank)?;
-        bincode::serialize_into(output, &self.mirror_mode)?;
+        bincode::serialize_into(&mut output, &self.bank)?;
+        bincode::serialize_into(&mut output, &self.mirror_mode)?;
         Ok(())
     }
 
-    fn load(&mut self, input: &File) -> bincode::Result<()> {
+    fn load(&mut self, mut input: &mut BufReader<File>) -> bincode::Result<()> {
         self.rom.load(input)?;
-        self.bank = bincode::deserialize_from(input)?;
-        self.mirror_mode = bincode::deserialize_from(input)?;
+        self.bank = bincode::deserialize_from(&mut input)?;
+        self.mirror_mode = bincode::deserialize_from(&mut input)?;
         Ok(())
     }
 }

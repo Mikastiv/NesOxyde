@@ -1,4 +1,5 @@
 use std::fs::File;
+use std::io::{BufReader, BufWriter};
 
 use crate::cartridge::{MirrorMode, Rom, RomMapper};
 use crate::savable::Savable;
@@ -58,40 +59,40 @@ impl Mapper9 {
 impl RomMapper for Mapper9 {}
 
 impl Savable for Mapper9 {
-    fn save(&self, output: &File) -> bincode::Result<()> {
+    fn save(&self, mut output: &mut BufWriter<File>) -> bincode::Result<()> {
         self.rom.save(output)?;
-        bincode::serialize_into(output, &self.latch0)?;
-        bincode::serialize_into(output, &self.latch1)?;
-        bincode::serialize_into(output, &self.prg_bank)?;
-        bincode::serialize_into(output, &self.prg_fixed0)?;
-        bincode::serialize_into(output, &self.prg_fixed1)?;
-        bincode::serialize_into(output, &self.prg_fixed2)?;
-        bincode::serialize_into(output, &self.chr_lo_fd)?;
-        bincode::serialize_into(output, &self.chr_lo_fe)?;
-        bincode::serialize_into(output, &self.chr_hi_fd)?;
-        bincode::serialize_into(output, &self.chr_hi_fe)?;
-        bincode::serialize_into(output, &self.mirror_mode)?;
+        bincode::serialize_into(&mut output, &self.latch0)?;
+        bincode::serialize_into(&mut output, &self.latch1)?;
+        bincode::serialize_into(&mut output, &self.prg_bank)?;
+        bincode::serialize_into(&mut output, &self.prg_fixed0)?;
+        bincode::serialize_into(&mut output, &self.prg_fixed1)?;
+        bincode::serialize_into(&mut output, &self.prg_fixed2)?;
+        bincode::serialize_into(&mut output, &self.chr_lo_fd)?;
+        bincode::serialize_into(&mut output, &self.chr_lo_fe)?;
+        bincode::serialize_into(&mut output, &self.chr_hi_fd)?;
+        bincode::serialize_into(&mut output, &self.chr_hi_fe)?;
+        bincode::serialize_into(&mut output, &self.mirror_mode)?;
         for i in 0..0x2000 {
-            bincode::serialize_into(output, &self.ram[i])?;
+            bincode::serialize_into(&mut output, &self.ram[i])?;
         }
         Ok(())
     }
 
-    fn load(&mut self, input: &File) -> bincode::Result<()> {
+    fn load(&mut self, mut input: &mut BufReader<File>) -> bincode::Result<()> {
         self.rom.load(input)?;
-        self.latch0 = bincode::deserialize_from(input)?;
-        self.latch1 = bincode::deserialize_from(input)?;
-        self.prg_bank = bincode::deserialize_from(input)?;
-        self.prg_fixed0 = bincode::deserialize_from(input)?;
-        self.prg_fixed1 = bincode::deserialize_from(input)?;
-        self.prg_fixed2 = bincode::deserialize_from(input)?;
-        self.chr_lo_fd = bincode::deserialize_from(input)?;
-        self.chr_lo_fe = bincode::deserialize_from(input)?;
-        self.chr_hi_fd = bincode::deserialize_from(input)?;
-        self.chr_hi_fe = bincode::deserialize_from(input)?;
-        self.mirror_mode = bincode::deserialize_from(input)?;
+        self.latch0 = bincode::deserialize_from(&mut input)?;
+        self.latch1 = bincode::deserialize_from(&mut input)?;
+        self.prg_bank = bincode::deserialize_from(&mut input)?;
+        self.prg_fixed0 = bincode::deserialize_from(&mut input)?;
+        self.prg_fixed1 = bincode::deserialize_from(&mut input)?;
+        self.prg_fixed2 = bincode::deserialize_from(&mut input)?;
+        self.chr_lo_fd = bincode::deserialize_from(&mut input)?;
+        self.chr_lo_fe = bincode::deserialize_from(&mut input)?;
+        self.chr_hi_fd = bincode::deserialize_from(&mut input)?;
+        self.chr_hi_fe = bincode::deserialize_from(&mut input)?;
+        self.mirror_mode = bincode::deserialize_from(&mut input)?;
         for i in 0..0x2000 {
-            self.ram[i] = bincode::deserialize_from(input)?;
+            self.ram[i] = bincode::deserialize_from(&mut input)?;
         }
         Ok(())
     }

@@ -1,4 +1,5 @@
 use std::fs::File;
+use std::io::{BufReader, BufWriter};
 
 use crate::cartridge::rom::PRG_PAGE_SIZE;
 use crate::cartridge::{MirrorMode, Rom, RomMapper};
@@ -20,13 +21,13 @@ impl Mapper2 {
 impl RomMapper for Mapper2 {}
 
 impl Savable for Mapper2 {
-    fn save(&self, output: &File) -> bincode::Result<()> {
+    fn save(&self, output: &mut BufWriter<File>) -> bincode::Result<()> {
         self.rom.save(output)?;
         bincode::serialize_into(output, &self.bank)?;
         Ok(())
     }
 
-    fn load(&mut self, input: &File) -> bincode::Result<()> {
+    fn load(&mut self, input: &mut BufReader<File>) -> bincode::Result<()> {
         self.rom.load(input)?;
         self.bank = bincode::deserialize_from(input)?;
         Ok(())

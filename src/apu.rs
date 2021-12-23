@@ -1,4 +1,5 @@
 use std::fs::File;
+use std::io::{BufReader, BufWriter};
 
 use serde::{Deserialize, Serialize};
 
@@ -96,33 +97,33 @@ pub struct Apu {
 }
 
 impl Savable for Apu {
-    fn save(&self, output: &File) -> bincode::Result<()> {
-        bincode::serialize_into(output, &self.cycles)?;
-        bincode::serialize_into(output, &self.hz240_counter)?;
-        bincode::serialize_into(output, &self.irq_off)?;
-        bincode::serialize_into(output, &self.pending_irq)?;
-        bincode::serialize_into(output, &self.sq1)?;
-        bincode::serialize_into(output, &self.sq2)?;
-        bincode::serialize_into(output, &self.tri)?;
-        bincode::serialize_into(output, &self.noise)?;
-        bincode::serialize_into(output, &self.dmc)?;
-        bincode::serialize_into(output, &self.sequencer)?;
-        bincode::serialize_into(output, &self.mode)?;
+    fn save(&self, mut output: &mut BufWriter<File>) -> bincode::Result<()> {
+        bincode::serialize_into(&mut output, &self.cycles)?;
+        bincode::serialize_into(&mut output, &self.hz240_counter)?;
+        bincode::serialize_into(&mut output, &self.irq_off)?;
+        bincode::serialize_into(&mut output, &self.pending_irq)?;
+        bincode::serialize_into(&mut output, &self.sq1)?;
+        bincode::serialize_into(&mut output, &self.sq2)?;
+        bincode::serialize_into(&mut output, &self.tri)?;
+        bincode::serialize_into(&mut output, &self.noise)?;
+        bincode::serialize_into(&mut output, &self.dmc)?;
+        bincode::serialize_into(&mut output, &self.sequencer)?;
+        bincode::serialize_into(&mut output, &self.mode)?;
         Ok(())
     }
 
-    fn load(&mut self, input: &File) -> bincode::Result<()> {
-        self.cycles = bincode::deserialize_from(input)?;
-        self.hz240_counter = bincode::deserialize_from(input)?;
-        self.irq_off = bincode::deserialize_from(input)?;
-        self.pending_irq = bincode::deserialize_from(input)?;
-        self.sq1 = bincode::deserialize_from(input)?;
-        self.sq2 = bincode::deserialize_from(input)?;
-        self.tri = bincode::deserialize_from(input)?;
-        self.noise = bincode::deserialize_from(input)?;
-        self.dmc = bincode::deserialize_from(input)?;
-        self.sequencer = bincode::deserialize_from(input)?;
-        self.mode = bincode::deserialize_from(input)?;
+    fn load(&mut self, mut input: &mut BufReader<File>) -> bincode::Result<()> {
+        self.cycles = bincode::deserialize_from(&mut input)?;
+        self.hz240_counter = bincode::deserialize_from(&mut input)?;
+        self.irq_off = bincode::deserialize_from(&mut input)?;
+        self.pending_irq = bincode::deserialize_from(&mut input)?;
+        self.sq1 = bincode::deserialize_from(&mut input)?;
+        self.sq2 = bincode::deserialize_from(&mut input)?;
+        self.tri = bincode::deserialize_from(&mut input)?;
+        self.noise = bincode::deserialize_from(&mut input)?;
+        self.dmc = bincode::deserialize_from(&mut input)?;
+        self.sequencer = bincode::deserialize_from(&mut input)?;
+        self.mode = bincode::deserialize_from(&mut input)?;
         self.filters.iter_mut().for_each(|f| f.reset());
         Ok(())
     }
