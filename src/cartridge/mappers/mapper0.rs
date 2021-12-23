@@ -22,18 +22,18 @@ impl Mapper0 {
 impl RomMapper for Mapper0 {}
 
 impl Savable for Mapper0 {
-    fn save(&self, mut output: &mut BufWriter<File>) -> bincode::Result<()> {
+    fn save(&self, output: &mut BufWriter<File>) -> bincode::Result<()> {
         self.rom.save(output)?;
         for i in 0..0x2000 {
-            bincode::serialize_into(&mut output, &self.ram[i])?;
+            bincode::serialize_into::<&mut BufWriter<File>, _>(output, &self.ram[i])?;
         }
         Ok(())
     }
 
-    fn load(&mut self, mut input: &mut BufReader<File>) -> bincode::Result<()> {
+    fn load(&mut self, input: &mut BufReader<File>) -> bincode::Result<()> {
         self.rom.load(input)?;
         for i in 0..0x2000 {
-            self.ram[i] = bincode::deserialize_from(&mut input)?;
+            self.ram[i] = bincode::deserialize_from::<&mut BufReader<File>, _>(input)?;
         }
         Ok(())
     }

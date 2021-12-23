@@ -38,22 +38,22 @@ pub struct PpuBus {
 impl PpuInterface for PpuBus {}
 
 impl Savable for PpuBus {
-    fn save(&self, mut output: &mut BufWriter<File>) -> bincode::Result<()> {
+    fn save(&self, output: &mut BufWriter<File>) -> bincode::Result<()> {
         for i in 0..PALETTE_RAM_SIZE {
-            bincode::serialize_into(&mut output, &self.pal_ram[i])?;
+            bincode::serialize_into::<&mut BufWriter<File>, _>(output, &self.pal_ram[i])?;
         }
         for i in 0..VRAM_SIZE {
-            bincode::serialize_into(&mut output, &self.vram[i])?;
+            bincode::serialize_into::<&mut BufWriter<File>, _>(output, &self.vram[i])?;
         }
         Ok(())
     }
 
-    fn load(&mut self, mut input: &mut BufReader<File>) -> bincode::Result<()> {
+    fn load(&mut self, input: &mut BufReader<File>) -> bincode::Result<()> {
         for i in 0..PALETTE_RAM_SIZE {
-            self.pal_ram[i] = bincode::deserialize_from(&mut input)?;
+            self.pal_ram[i] = bincode::deserialize_from::<&mut BufReader<File>, _>(input)?;
         }
         for i in 0..VRAM_SIZE {
-            self.vram[i] = bincode::deserialize_from(&mut input)?;
+            self.vram[i] = bincode::deserialize_from::<&mut BufReader<File>, _>(input)?;
         }
         Ok(())
     }

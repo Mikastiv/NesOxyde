@@ -26,17 +26,17 @@ impl Mapper7 {
 impl RomMapper for Mapper7 {}
 
 impl Savable for Mapper7 {
-    fn save(&self, mut output: &mut BufWriter<File>) -> bincode::Result<()> {
+    fn save(&self, output: &mut BufWriter<File>) -> bincode::Result<()> {
         self.rom.save(output)?;
-        bincode::serialize_into(&mut output, &self.bank)?;
-        bincode::serialize_into(&mut output, &self.mirror_mode)?;
+        bincode::serialize_into::<&mut BufWriter<File>, _>(output, &self.bank)?;
+        bincode::serialize_into::<&mut BufWriter<File>, _>(output, &self.mirror_mode)?;
         Ok(())
     }
 
-    fn load(&mut self, mut input: &mut BufReader<File>) -> bincode::Result<()> {
+    fn load(&mut self, input: &mut BufReader<File>) -> bincode::Result<()> {
         self.rom.load(input)?;
-        self.bank = bincode::deserialize_from(&mut input)?;
-        self.mirror_mode = bincode::deserialize_from(&mut input)?;
+        self.bank = bincode::deserialize_from::<&mut BufReader<File>, _>(input)?;
+        self.mirror_mode = bincode::deserialize_from::<&mut BufReader<File>, _>(input)?;
         Ok(())
     }
 }

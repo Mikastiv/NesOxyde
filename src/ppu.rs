@@ -114,82 +114,82 @@ pub struct Ppu<'a> {
 }
 
 impl Savable for Ppu<'_> {
-    fn save(&self, mut output: &mut BufWriter<File>) -> bincode::Result<()> {
+    fn save(&self, output: &mut BufWriter<File>) -> bincode::Result<()> {
         self.bus.save(output)?;
-        bincode::serialize_into(&mut output, &self.ctrl.bits())?;
-        bincode::serialize_into(&mut output, &self.mask.bits())?;
-        bincode::serialize_into(&mut output, &self.status.bits())?;
-        bincode::serialize_into(&mut output, &self.pending_nmi)?;
-        bincode::serialize_into(&mut output, &self.open_bus)?;
-        bincode::serialize_into(&mut output, &self.open_bus_timer)?;
-        bincode::serialize_into(&mut output, &self.oam_addr)?;
-        bincode::serialize_into(&mut output, &self.clearing_oam)?;
-        bincode::serialize_into(&mut output, &self.sprite_0_rendering)?;
-        bincode::serialize_into(&mut output, &self.sprite_count)?;
-        bincode::serialize_into(&mut output, &self.addr_toggle)?;
-        bincode::serialize_into(&mut output, &self.read_buffer)?;
-        bincode::serialize_into(&mut output, &self.xfine)?;
-        bincode::serialize_into(&mut output, &self.v_addr.raw())?;
-        bincode::serialize_into(&mut output, &self.scroll.raw())?;
-        bincode::serialize_into(&mut output, &self.scanline)?;
-        bincode::serialize_into(&mut output, &self.cycle)?;
-        bincode::serialize_into(&mut output, &self.next_tile)?;
-        bincode::serialize_into(&mut output, &self.bg_lo_shift)?;
-        bincode::serialize_into(&mut output, &self.bg_hi_shift)?;
-        bincode::serialize_into(&mut output, &self.bg_attr_lo_shift)?;
-        bincode::serialize_into(&mut output, &self.bg_attr_hi_shift)?;
+        bincode::serialize_into::<&mut BufWriter<File>, _>(output, &self.ctrl.bits())?;
+        bincode::serialize_into::<&mut BufWriter<File>, _>(output, &self.mask.bits())?;
+        bincode::serialize_into::<&mut BufWriter<File>, _>(output, &self.status.bits())?;
+        bincode::serialize_into::<&mut BufWriter<File>, _>(output, &self.pending_nmi)?;
+        bincode::serialize_into::<&mut BufWriter<File>, _>(output, &self.open_bus)?;
+        bincode::serialize_into::<&mut BufWriter<File>, _>(output, &self.open_bus_timer)?;
+        bincode::serialize_into::<&mut BufWriter<File>, _>(output, &self.oam_addr)?;
+        bincode::serialize_into::<&mut BufWriter<File>, _>(output, &self.clearing_oam)?;
+        bincode::serialize_into::<&mut BufWriter<File>, _>(output, &self.sprite_0_rendering)?;
+        bincode::serialize_into::<&mut BufWriter<File>, _>(output, &self.sprite_count)?;
+        bincode::serialize_into::<&mut BufWriter<File>, _>(output, &self.addr_toggle)?;
+        bincode::serialize_into::<&mut BufWriter<File>, _>(output, &self.read_buffer)?;
+        bincode::serialize_into::<&mut BufWriter<File>, _>(output, &self.xfine)?;
+        bincode::serialize_into::<&mut BufWriter<File>, _>(output, &self.v_addr.raw())?;
+        bincode::serialize_into::<&mut BufWriter<File>, _>(output, &self.scroll.raw())?;
+        bincode::serialize_into::<&mut BufWriter<File>, _>(output, &self.scanline)?;
+        bincode::serialize_into::<&mut BufWriter<File>, _>(output, &self.cycle)?;
+        bincode::serialize_into::<&mut BufWriter<File>, _>(output, &self.next_tile)?;
+        bincode::serialize_into::<&mut BufWriter<File>, _>(output, &self.bg_lo_shift)?;
+        bincode::serialize_into::<&mut BufWriter<File>, _>(output, &self.bg_hi_shift)?;
+        bincode::serialize_into::<&mut BufWriter<File>, _>(output, &self.bg_attr_lo_shift)?;
+        bincode::serialize_into::<&mut BufWriter<File>, _>(output, &self.bg_attr_hi_shift)?;
         for i in 0..OAM_SIZE {
-            bincode::serialize_into(&mut output, &self.oam_data[i])?;
+            bincode::serialize_into::<&mut BufWriter<File>, _>(output, &self.oam_data[i])?;
         }
         for i in 0..OAM2_SIZE {
-            bincode::serialize_into(&mut output, &self.fg_lo_shift[i])?;
-            bincode::serialize_into(&mut output, &self.fg_hi_shift[i])?;
-            bincode::serialize_into(&mut output, &self.oam2_data[i])?;
+            bincode::serialize_into::<&mut BufWriter<File>, _>(output, &self.fg_lo_shift[i])?;
+            bincode::serialize_into::<&mut BufWriter<File>, _>(output, &self.fg_hi_shift[i])?;
+            bincode::serialize_into::<&mut BufWriter<File>, _>(output, &self.oam2_data[i])?;
         }
-        bincode::serialize_into(&mut output, &self.frame_count)?;
-        bincode::serialize_into(&mut output, &self.odd_frame)?;
+        bincode::serialize_into::<&mut BufWriter<File>, _>(output, &self.frame_count)?;
+        bincode::serialize_into::<&mut BufWriter<File>, _>(output, &self.odd_frame)?;
         Ok(())
     }
 
-    fn load(&mut self, mut input: &mut BufReader<File>) -> bincode::Result<()> {
+    fn load(&mut self, input: &mut BufReader<File>) -> bincode::Result<()> {
         self.bus.load(input)?;
-        let byte: u8 = bincode::deserialize_from(&mut input)?;
+        let byte: u8 = bincode::deserialize_from::<&mut BufReader<File>, _>(input)?;
         self.ctrl.set_raw(byte);
-        let byte: u8 = bincode::deserialize_from(&mut input)?;
+        let byte: u8 = bincode::deserialize_from::<&mut BufReader<File>, _>(input)?;
         self.mask.set_raw(byte);
-        let byte: u8 = bincode::deserialize_from(&mut input)?;
+        let byte: u8 = bincode::deserialize_from::<&mut BufReader<File>, _>(input)?;
         self.status.set_raw(byte);
-        self.pending_nmi = bincode::deserialize_from(&mut input)?;
-        self.open_bus = bincode::deserialize_from(&mut input)?;
-        self.open_bus_timer = bincode::deserialize_from(&mut input)?;
-        self.oam_addr = bincode::deserialize_from(&mut input)?;
-        self.clearing_oam = bincode::deserialize_from(&mut input)?;
-        self.sprite_0_rendering = bincode::deserialize_from(&mut input)?;
-        self.sprite_count = bincode::deserialize_from(&mut input)?;
-        self.addr_toggle = bincode::deserialize_from(&mut input)?;
-        self.read_buffer = bincode::deserialize_from(&mut input)?;
-        self.xfine = bincode::deserialize_from(&mut input)?;
-        let word: u16 = bincode::deserialize_from(&mut input)?;
+        self.pending_nmi = bincode::deserialize_from::<&mut BufReader<File>, _>(input)?;
+        self.open_bus = bincode::deserialize_from::<&mut BufReader<File>, _>(input)?;
+        self.open_bus_timer = bincode::deserialize_from::<&mut BufReader<File>, _>(input)?;
+        self.oam_addr = bincode::deserialize_from::<&mut BufReader<File>, _>(input)?;
+        self.clearing_oam = bincode::deserialize_from::<&mut BufReader<File>, _>(input)?;
+        self.sprite_0_rendering = bincode::deserialize_from::<&mut BufReader<File>, _>(input)?;
+        self.sprite_count = bincode::deserialize_from::<&mut BufReader<File>, _>(input)?;
+        self.addr_toggle = bincode::deserialize_from::<&mut BufReader<File>, _>(input)?;
+        self.read_buffer = bincode::deserialize_from::<&mut BufReader<File>, _>(input)?;
+        self.xfine = bincode::deserialize_from::<&mut BufReader<File>, _>(input)?;
+        let word: u16 = bincode::deserialize_from::<&mut BufReader<File>, _>(input)?;
         self.v_addr.set_raw(word);
-        let word: u16 = bincode::deserialize_from(&mut input)?;
+        let word: u16 = bincode::deserialize_from::<&mut BufReader<File>, _>(input)?;
         self.scroll.set_raw(word);
-        self.scanline = bincode::deserialize_from(&mut input)?;
-        self.cycle = bincode::deserialize_from(&mut input)?;
-        self.next_tile = bincode::deserialize_from(&mut input)?;
-        self.bg_lo_shift = bincode::deserialize_from(&mut input)?;
-        self.bg_hi_shift = bincode::deserialize_from(&mut input)?;
-        self.bg_attr_lo_shift = bincode::deserialize_from(&mut input)?;
-        self.bg_attr_hi_shift = bincode::deserialize_from(&mut input)?;
+        self.scanline = bincode::deserialize_from::<&mut BufReader<File>, _>(input)?;
+        self.cycle = bincode::deserialize_from::<&mut BufReader<File>, _>(input)?;
+        self.next_tile = bincode::deserialize_from::<&mut BufReader<File>, _>(input)?;
+        self.bg_lo_shift = bincode::deserialize_from::<&mut BufReader<File>, _>(input)?;
+        self.bg_hi_shift = bincode::deserialize_from::<&mut BufReader<File>, _>(input)?;
+        self.bg_attr_lo_shift = bincode::deserialize_from::<&mut BufReader<File>, _>(input)?;
+        self.bg_attr_hi_shift = bincode::deserialize_from::<&mut BufReader<File>, _>(input)?;
         for i in 0..OAM_SIZE {
-            self.oam_data[i] = bincode::deserialize_from(&mut input)?;
+            self.oam_data[i] = bincode::deserialize_from::<&mut BufReader<File>, _>(input)?;
         }
         for i in 0..OAM2_SIZE {
-            self.fg_lo_shift[i] = bincode::deserialize_from(&mut input)?;
-            self.fg_hi_shift[i] = bincode::deserialize_from(&mut input)?;
-            self.oam2_data[i] = bincode::deserialize_from(&mut input)?;
+            self.fg_lo_shift[i] = bincode::deserialize_from::<&mut BufReader<File>, _>(input)?;
+            self.fg_hi_shift[i] = bincode::deserialize_from::<&mut BufReader<File>, _>(input)?;
+            self.oam2_data[i] = bincode::deserialize_from::<&mut BufReader<File>, _>(input)?;
         }
-        self.frame_count = bincode::deserialize_from(&mut input)?;
-        self.odd_frame = bincode::deserialize_from(&mut input)?;
+        self.frame_count = bincode::deserialize_from::<&mut BufReader<File>, _>(input)?;
+        self.odd_frame = bincode::deserialize_from::<&mut BufReader<File>, _>(input)?;
         Ok(())
     }
 }

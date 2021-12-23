@@ -53,36 +53,36 @@ impl Mapper10 {
 impl RomMapper for Mapper10 {}
 
 impl Savable for Mapper10 {
-    fn save(&self, mut output: &mut BufWriter<File>) -> bincode::Result<()> {
+    fn save(&self, output: &mut BufWriter<File>) -> bincode::Result<()> {
         self.rom.save(output)?;
-        bincode::serialize_into(&mut output, &self.latch0)?;
-        bincode::serialize_into(&mut output, &self.latch1)?;
-        bincode::serialize_into(&mut output, &self.prg_bank)?;
-        bincode::serialize_into(&mut output, &self.prg_fixed)?;
-        bincode::serialize_into(&mut output, &self.chr_lo_fd)?;
-        bincode::serialize_into(&mut output, &self.chr_lo_fe)?;
-        bincode::serialize_into(&mut output, &self.chr_hi_fd)?;
-        bincode::serialize_into(&mut output, &self.chr_hi_fe)?;
-        bincode::serialize_into(&mut output, &self.mirror_mode)?;
+        bincode::serialize_into::<&mut BufWriter<File>, _>(output, &self.latch0)?;
+        bincode::serialize_into::<&mut BufWriter<File>, _>(output, &self.latch1)?;
+        bincode::serialize_into::<&mut BufWriter<File>, _>(output, &self.prg_bank)?;
+        bincode::serialize_into::<&mut BufWriter<File>, _>(output, &self.prg_fixed)?;
+        bincode::serialize_into::<&mut BufWriter<File>, _>(output, &self.chr_lo_fd)?;
+        bincode::serialize_into::<&mut BufWriter<File>, _>(output, &self.chr_lo_fe)?;
+        bincode::serialize_into::<&mut BufWriter<File>, _>(output, &self.chr_hi_fd)?;
+        bincode::serialize_into::<&mut BufWriter<File>, _>(output, &self.chr_hi_fe)?;
+        bincode::serialize_into::<&mut BufWriter<File>, _>(output, &self.mirror_mode)?;
         for i in 0..0x2000 {
-            bincode::serialize_into(&mut output, &self.ram[i])?;
+            bincode::serialize_into::<&mut BufWriter<File>, _>(output, &self.ram[i])?;
         }
         Ok(())
     }
 
-    fn load(&mut self, mut input: &mut BufReader<File>) -> bincode::Result<()> {
+    fn load(&mut self, input: &mut BufReader<File>) -> bincode::Result<()> {
         self.rom.load(input)?;
-        self.latch0 = bincode::deserialize_from(&mut input)?;
-        self.latch1 = bincode::deserialize_from(&mut input)?;
-        self.prg_bank = bincode::deserialize_from(&mut input)?;
-        self.prg_fixed = bincode::deserialize_from(&mut input)?;
-        self.chr_lo_fd = bincode::deserialize_from(&mut input)?;
-        self.chr_lo_fe = bincode::deserialize_from(&mut input)?;
-        self.chr_hi_fd = bincode::deserialize_from(&mut input)?;
-        self.chr_hi_fe = bincode::deserialize_from(&mut input)?;
-        self.mirror_mode = bincode::deserialize_from(&mut input)?;
+        self.latch0 = bincode::deserialize_from::<&mut BufReader<File>, _>(input)?;
+        self.latch1 = bincode::deserialize_from::<&mut BufReader<File>, _>(input)?;
+        self.prg_bank = bincode::deserialize_from::<&mut BufReader<File>, _>(input)?;
+        self.prg_fixed = bincode::deserialize_from::<&mut BufReader<File>, _>(input)?;
+        self.chr_lo_fd = bincode::deserialize_from::<&mut BufReader<File>, _>(input)?;
+        self.chr_lo_fe = bincode::deserialize_from::<&mut BufReader<File>, _>(input)?;
+        self.chr_hi_fd = bincode::deserialize_from::<&mut BufReader<File>, _>(input)?;
+        self.chr_hi_fe = bincode::deserialize_from::<&mut BufReader<File>, _>(input)?;
+        self.mirror_mode = bincode::deserialize_from::<&mut BufReader<File>, _>(input)?;
         for i in 0..0x2000 {
-            self.ram[i] = bincode::deserialize_from(&mut input)?;
+            self.ram[i] = bincode::deserialize_from::<&mut BufReader<File>, _>(input)?;
         }
         Ok(())
     }
