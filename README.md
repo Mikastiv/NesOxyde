@@ -31,9 +31,7 @@ Esc -> Close emulator
 F1 -> Save state  
 F2 -> Load state
 
-Key mappings can be changed in main.rs  
-Defaults:
-
+Joypad:
 - A -> B
 - S -> A
 - Z -> Select
