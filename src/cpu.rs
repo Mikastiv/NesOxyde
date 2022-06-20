@@ -268,6 +268,7 @@ impl<'a> Cpu<'a> {
     /// Executes an instruction and runs a callback function in a loop
     ///
     /// Used with the trace debug module
+    #[allow(dead_code)]
     pub fn run_with_callback<F>(&mut self, mut callback: F)
     where
         F: FnMut(&mut Self),
@@ -281,6 +282,7 @@ impl<'a> Cpu<'a> {
     /// Executes a full instruction
     ///
     /// Returns how many cycles were executed
+    #[allow(dead_code)]
     pub fn execute(&mut self) -> u64 {
         let mut nmi_cycles = 0;
         // If Ppu has requested a NMI, do it
