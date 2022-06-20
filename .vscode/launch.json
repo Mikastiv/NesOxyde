@@ -19,7 +19,7 @@
 					"kind": "bin"
 				}
 			},
-			"args": ["/home/mikastiv/Documents/rust/NesOxyde/roms/smb.nes"],
+			"args": ["/home/mikastiv/Documents/rust/NesOxyde/roms/megaman2.nes"],
 			"cwd": "${workspaceFolder}"
 		},
 		{
