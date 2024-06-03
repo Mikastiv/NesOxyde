@@ -8,11 +8,11 @@ This project is my first big coding project and also my first emulator (I'm not 
 
 I chose Rust because it's fast and it's by far my favorite language. Also all the code is 100% safe Rust!
 
-This was my 3rd attempt at coding a NES emulator and I finally succeded! The emulator is not cycle accurate, but all the games I've tried work pretty well. Based on the mappers I implemented, appart from a few exceptions, ~90% of games should work.
+The emulator is not cycle accurate, but all the games I've tried work pretty well. Based on the mappers I implemented, appart from a few exceptions, ~90% of games should work.
 
 ## Usage
 
-The program is needs libsdl2 to run and libsdl2-devel to compile.
+The program needs libsdl2 to run and libsdl2-devel to compile.
 It works on Linux, Windows and MacOS
 
 Launch: ./nesoxyde [SyncMode] \<iNES File\>
